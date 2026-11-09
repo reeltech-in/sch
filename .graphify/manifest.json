@@ -1,7 +1,7 @@
 {
   "api.go": {
-    "mtime": 1794214721329.0176,
-    "hash": "625ce3324ac5b081ef66952c31cf090f"
+    "mtime": 1794266820344.4275,
+    "hash": "9c065ac93b6d6dc9497977ced1a84f33"
   },
   "api_lms.go": {
     "mtime": 1794214723812.4656,
@@ -20,24 +20,24 @@
     "hash": "c1c26eae7035adcef1d04c35948060dd"
   },
   "main.go": {
-    "mtime": 1794214723815.0571,
-    "hash": "7c3c34ae16a0ec758e9538c427f674c2"
+    "mtime": 1794266720296.7788,
+    "hash": "ebb9451fd5e16a5568142d86a0327734"
   },
   "maintenance.go": {
-    "mtime": 1794214721332.9395,
-    "hash": "b7455011f063209df29cdb12e04e2873"
+    "mtime": 1794267057004.5562,
+    "hash": "7e780b237f470c8cbd6e2134095eaaf4"
   },
   "migrate.go": {
     "mtime": 1794214721333.3853,
     "hash": "d24765980f18e69c833635705a08b590"
   },
   "mod_absensi.go": {
-    "mtime": 1794214723813.4678,
-    "hash": "ead04e05ee6dd09ee18336283f0a0805"
+    "mtime": 1794266710485.4866,
+    "hash": "bf54dad8120193ecfb4d82ae3d91c671"
   },
   "mod_ai.go": {
-    "mtime": 1794214721334.4543,
-    "hash": "2b8621af4c902e598d72278f502d9ab6"
+    "mtime": 1794267061273.7097,
+    "hash": "2bb3b5ad4e34aef1b4978f8e2fb378cd"
   },
   "mod_layanan.go": {
     "mtime": 1794214723817.1858,
@@ -48,16 +48,16 @@
     "hash": "b1ef0b35fc4d3e8b43391e133266daf0"
   },
   "mod_sarpras.go": {
-    "mtime": 1794214721337.2998,
-    "hash": "1828b093ab6712dcf8c74f77a4abe1c7"
+    "mtime": 1794266839030.4648,
+    "hash": "4c60e6ac9ccf6c5687b8543b20b16b59"
   },
   "mod_tahun.go": {
-    "mtime": 1794214721337.8098,
-    "hash": "be70f6dfc1573ba5fd7cf498f64f3e73"
+    "mtime": 1794267029588.8235,
+    "hash": "838bc01981064f065eb7f9f3507b37d6"
   },
   "mod_ujian.go": {
-    "mtime": 1794214723818.3325,
-    "hash": "94cca357d296155ab84f74b6fe371022"
+    "mtime": 1794267038167.341,
+    "hash": "0fb6b5de9df56311509e998caec7c8b9"
   },
   "modules.go": {
     "mtime": 1794214721339.1816,
@@ -80,32 +80,32 @@
     "hash": "cb1e14e2eb27ebabfd99397a8fe5120d"
   },
   "web/app.js": {
-    "mtime": 1794216826144.1055,
-    "hash": "b58db1af8d2fc09746fdaeb74101133d"
+    "mtime": 1794267371100.765,
+    "hash": "5e883bd14801ae0f74958e6d4af90896"
   },
   "web/mod-ai.js": {
-    "mtime": 1794211758891.2615,
-    "hash": "59a0bdd5b38abc914f0092c7ce66a31d"
+    "mtime": 1794267364354.9795,
+    "hash": "8ec65a9664728f40045e38f7ba58c443"
   },
   "web/mod-audit.js": {
     "mtime": 1794204010220.2983,
     "hash": "2eb9502918e80380f9a394d38b996ece"
   },
   "web/mod-kesiswaan.js": {
-    "mtime": 1794218060384.3545,
-    "hash": "653dbfc4413f2b2075935beb9f1a0966"
+    "mtime": 1794267347718.4177,
+    "hash": "e2c60dae09cbdf4d98cad9b632a7c67c"
   },
   "web/mod-sarpras.js": {
-    "mtime": 1794216826144.7473,
-    "hash": "9d15b0ab9176ced6ef31df94293e149c"
+    "mtime": 1794227192587.6057,
+    "hash": "9049495c46c3616ea8e9c7524d42e433"
   },
   "web/mod-tahun.js": {
     "mtime": 1794200698269.6829,
     "hash": "6881ec8ffd3f86540194abe91ead0297"
   },
   "web/pages-admin.js": {
-    "mtime": 1794212080951.9585,
-    "hash": "17f5a66947e79da683fc85c70523e19d"
+    "mtime": 1794224161171.51,
+    "hash": "dbad6fa9ba833ec13dc37204efe55a75"
   },
   "web/pages-guru.js": {
     "mtime": 1794216826145.591,
@@ -120,12 +120,12 @@
     "hash": "e23343d8c9827b32230cc0d7b142ab21"
   },
   "CHANGELOG.md": {
-    "mtime": 1794218128152.2295,
-    "hash": "987f7fe56e2d70441d7d483dbfe1920d"
+    "mtime": 1794267481753.6165,
+    "hash": "cff1278019da4e77c6739acc8f7f5b83"
   },
   "README.md": {
-    "mtime": 1794214892047.1052,
-    "hash": "c0f6f701e67607c5b8d1a8b48ebc9cd4"
+    "mtime": 1794227431117.0571,
+    "hash": "96dfa5277c7d9e88131a3a3302f7e9a0"
   },
   "docs/design-system.md": {
     "mtime": 1794201149296.8513,
@@ -152,44 +152,44 @@
     "hash": "109a915c6b76223883b3507b986677d6"
   },
   "web/mod-admguru.js": {
-    "mtime": 1794216826145.3616,
-    "hash": "88ebde04321bc4ed901448442c3220c5"
+    "mtime": 1794265556082.8767,
+    "hash": "07165acc3c54ae1fd9a7b334e02db6f8"
   },
   "mod_wa.go": {
-    "mtime": 1794214721338.8367,
-    "hash": "5212b5cce9a5d5452f9deb88d66b779c"
+    "mtime": 1794267009432.1248,
+    "hash": "be4f87a9933c2896f1fcb20faa36fbf9"
   },
   "mod_ljk.go": {
-    "mtime": 1794214721336.4277,
-    "hash": "40f0fe7bba9235325ff828a4e8460b3a"
+    "mtime": 1794266906332.5715,
+    "hash": "e5c47142c965262de516954360fdf4c2"
   },
   "web/mod-ljk.js": {
-    "mtime": 1794211758890.614,
-    "hash": "23ed1436f441b894da558f2a4fb1bd8f"
+    "mtime": 1794267332666.5417,
+    "hash": "caa8b8aae4c2d1eeced08a234f45303a"
   },
   "mapel.go": {
     "mtime": 1794214721333.1497,
     "hash": "10115333beb8acfdb778fed728fb5378"
   },
   "guards.go": {
-    "mtime": 1794214721331.5876,
-    "hash": "50faeead1b5b00ae20cb1b2eedc20a82"
+    "mtime": 1794266929382.296,
+    "hash": "9806412ef80df3004f59c6b7e2b4e2fa"
   },
   "indexes.go": {
-    "mtime": 1794214721332.0645,
-    "hash": "9ec0c3183ad4b7a61020cf1d971f8261"
+    "mtime": 1794266820344.5835,
+    "hash": "a42ef41e24e6040e2c8da181e351db92"
   },
   "api_absensi_mapel.go": {
     "mtime": 1794214723809.018,
     "hash": "8ac314293226d49e0b64581ded37feab"
   },
   "api_kuis.go": {
-    "mtime": 1794214723809.6335,
-    "hash": "2f109925394a74c7a7ee6353b154e07c"
+    "mtime": 1794266925289.8145,
+    "hash": "12aa7e55be79d98cea6ec5629e02cc22"
   },
   "app.go": {
-    "mtime": 1794214723810.808,
-    "hash": "08705d87d08bb960bd3a78816db74531"
+    "mtime": 1794266893983.0054,
+    "hash": "cc1a7c1d1d32b48a72b0b0b4e73fcbbc"
   },
   "auth.go": {
     "mtime": 1794214723811.1804,
@@ -200,24 +200,24 @@
     "hash": "228e72f32a639d2565a80409c790f091"
   },
   "limiter.go": {
-    "mtime": 1794214723812.244,
-    "hash": "f49484d2079b7807c2ae460fcf9219bb"
+    "mtime": 1794267065749.4326,
+    "hash": "82d1cc76c02836c9437c0038eb6b41da"
   },
   "mod_bukuinduk.go": {
     "mtime": 1794214723812.796,
     "hash": "50e1f619555bf9b89f40f591ae1fce3d"
   },
   "mod_bukutamu.go": {
-    "mtime": 1794214723812.8481,
-    "hash": "9d98f8aa64bb2602272a041a22fbd75a"
+    "mtime": 1794266750824.6846,
+    "hash": "b0597fd12e6757c69a60e037a5bd43c0"
   },
   "mod_evoting.go": {
     "mtime": 1794214723814.4836,
     "hash": "1541412139322f8fb4e3a15ca4ee37e7"
   },
   "mod_kalender.go": {
-    "mtime": 1794218048639.1875,
-    "hash": "f58dadc27dd229c9acb17653f7e94b8d"
+    "mtime": 1794266945999.741,
+    "hash": "fc44388b0293c00323d0743ea1015eb8"
   },
   "mod_kasir.go": {
     "mtime": 1794214723814.9033,
@@ -228,12 +228,12 @@
     "hash": "7717d2d630603c485927285c76c7f805"
   },
   "mod_ppdb.go": {
-    "mtime": 1794214723817.75,
-    "hash": "70f69fae9a1bd246c112143f1f5c9250"
+    "mtime": 1794266750824.3591,
+    "hash": "5e3f2c8b22f93aa2eff5c7b7182e0929"
   },
   "mod_surat.go": {
-    "mtime": 1794214723812.1846,
-    "hash": "7308e37907ad881c0cd9777574003c97"
+    "mtime": 1794267009431.8086,
+    "hash": "61a8f63dc83de149354a3996b41f2259"
   },
   "mod_ujian_event.go": {
     "mtime": 1794214723818.1255,
@@ -244,12 +244,12 @@
     "hash": "ffd2e6ea7a66cf662027db7a37ecf201"
   },
   "web/mod-bukutamu.js": {
-    "mtime": 1794214819743.2002,
-    "hash": "53a34ebe54a66997969db591e06c25ae"
+    "mtime": 1794267332689.8657,
+    "hash": "bf980a83b3a39c9426dcd914bf469ab1"
   },
   "web/mod-cbt.js": {
-    "mtime": 1794214819744.1768,
-    "hash": "caf596d0d58f2e081605e909813bea44"
+    "mtime": 1794228040945.3818,
+    "hash": "e4b7bb32dc4aca16927d9d536650a5bb"
   },
   "web/mod-evoting.js": {
     "mtime": 1794214819743.5576,
@@ -274,5 +274,25 @@
   "web/mod-surat.js": {
     "mtime": 1794214819743.3896,
     "hash": "2a5e81dc8fa588b5594baf1bce824db5"
+  },
+  "audit_test.go": {
+    "mtime": 1794267251332.7175,
+    "hash": "4588437d43ced9a0b355376d1e2dd3fd"
+  },
+  "ebook_test.go": {
+    "mtime": 1794227381833.9192,
+    "hash": "a9af803eed887f2368b3b05e1a0f555a"
+  },
+  "mod_ebook.go": {
+    "mtime": 1794267079062.465,
+    "hash": "0463300d0475ca3a4bb1cbfb7fb6cca4"
+  },
+  ".graphify/GRAPH_REPORT.md": {
+    "mtime": 1794218153192.904,
+    "hash": "ad24051ba7727a6726177646291b8c9a"
+  },
+  "docs/INSTALL-UBUNTU.md": {
+    "mtime": 1794267381424.0015,
+    "hash": "0a5f47d410558fd2f07268ccd23250c8"
   }
 }
