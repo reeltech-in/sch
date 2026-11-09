@@ -8,6 +8,11 @@ Format versi: `MAYOR.MINOR.PERBAIKAN`
 Versi yang sedang berjalan terlihat di menu kiri aplikasi (bawah nama pengguna), di `GET /api/version`,
 di header respons `X-SCH-Version`, dan dengan perintah `sch-server -version`.
 
+## v1.19.1 — 2026-11-09 (Mapel yang diampu diutamakan)
+- Kolom **Mata pelajaran** di Asisten AI (RPM, LKPD, soal, Prota/Promes, KKTP) dan formulir **Ujian CBT**: mapel yang
+  diampu guru tampil paling atas dengan keterangan *Mapel yang Anda ampu*. Mapel lain tetap bisa dipilih atau diketik.
+- Guru yang hanya mengampu satu mapel: kolom mapel langsung terisi.
+
 ## v1.19.0 — 2026-11-09 (E-book dari Buku Kemendikbud)
 - **Impor e-book gratis dari Buku Kemendikbud** (buku.kemendikdasmen.go.id): Perpustakaan → Katalog/E-book →
   *Impor e-book Kemendikbud*. Pilih dari ±1.600 judul (Kurikulum Merdeka, Kurikulum 2013, buku bacaan), saring per

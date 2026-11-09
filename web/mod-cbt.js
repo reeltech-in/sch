@@ -29,7 +29,7 @@ const randToken = () => Array.from(crypto.getRandomValues(new Uint8Array(5)), b 
 ACT.cbtForm = async el => {
   const mapel = await mapelOpts();
   const x = el.dataset.id ? { ...S.cbtList[el.dataset.id], kelas_ids: JSON.parse(S.cbtList[el.dataset.id].kelas_ids) }
-    : { durasi_menit: 90, jumlah_opsi: 4, acak_soal: 1, acak_opsi: 1, tampil_nilai: 1, token: randToken(), kelas_ids: [] };
+    : { mapel: mapelAwal(), durasi_menit: 90, jumlah_opsi: 4, acak_soal: 1, acak_opsi: 1, tampil_nilai: 1, token: randToken(), kelas_ids: [] };
   x.acak_soal = !!x.acak_soal; x.acak_opsi = !!x.acak_opsi; x.tampil_nilai = !!x.tampil_nilai;
   openForm({
     title: x.id ? 'Ubah ujian' : 'Buat ujian CBT', values: x, wide: true,

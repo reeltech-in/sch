@@ -338,11 +338,16 @@ const MAPEL_STD = [['PAI', 'Pendidikan Agama Islam dan Budi Pekerti'], ['PAK', '
   ['BDR', 'Bahasa Daerah'], ['BAR', 'Bahasa Arab'], ['FIS', 'Fisika'], ['KIM', 'Kimia'], ['BIO', 'Biologi'], ['EKO', 'Ekonomi'], ['GEO', 'Geografi'], ['SOS', 'Sosiologi'],
   ['SEJ', 'Sejarah'], ['BK', 'Bimbingan Konseling']];
 const MAPEL_UMUM = MAPEL_STD.map(([, n]) => n);
+// daftar mapel: untuk guru, mapel yang diampunya di urutan atas (berlabel); mapel lain tetap bisa dipilih/diketik
 async function mapelOpts() {
   let cs = [];
-  try { cs = (await GET('/courses')).map(c => c.nama); } catch { /* tetap pakai daftar umum */ }
-  return uniqList([...cs, ...MAPEL_UMUM]);
+  try { cs = uniqList((await GET('/courses')).map(c => c.nama)); } catch { /* tetap pakai daftar umum */ }
+  const guru = S.user && S.user.role === 'guru';
+  S.mapelAmpu = guru ? cs : [];
+  return [...(guru ? cs.map(n => [n, 'Mapel yang Anda ampu']) : cs), ...MAPEL_UMUM.filter(n => !cs.some(c => c.toLowerCase() === n.toLowerCase()))];
 }
+// guru yang hanya mengampu satu mapel: kolom mapel langsung terisi
+const mapelAwal = () => (S.mapelAmpu || []).length === 1 ? S.mapelAmpu[0] : '';
 async function kelasOpts() {
   try { return uniqList((await GET('/classes')).map(k => k.nama)); } catch { return []; }
 }
