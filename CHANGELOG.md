@@ -8,6 +8,12 @@ Format versi: `MAYOR.MINOR.PERBAIKAN`
 Versi yang sedang berjalan terlihat di menu kiri aplikasi (bawah nama pengguna), di `GET /api/version`,
 di header respons `X-SCH-Version`, dan dengan perintah `sch-server -version`.
 
+## v1.18.1 — 2026-11-09 (Pengaturan AI pindah ke menu Pengaturan)
+- **Pengaturan Asisten AI** (URL endpoint, API key, model, kuota, kreativitas) kini diisi langsung di
+  **Pengaturan → Asisten AI**, tidak lagi lewat tab terpisah di halaman Asisten AI. Tautan lama otomatis diarahkan.
+- Halaman Asisten AI tinggal *Buat dokumen* dan *Riwayat*; bila AI belum diatur, admin mendapat tombol langsung ke pengaturannya.
+- Skrip **install.sh** dan panduan **docs/INSTALL-UBUNTU.md**: pasang/perbarui di server Ubuntu/Debian dengan satu perintah.
+
 ## v1.18.0 — 2026-11-09 (Kalender Akademik: otomatis, libur nasional, cetak)
 - **Kegiatan otomatis dari modul lain** tampil di kalender tanpa input ganda (bergaris putus-putus, "otomatis"):
   ujian CBT, kegiatan & jadwal Manajemen Ujian, masa pendaftaran PPDB, masa E-Voting, pengumuman kelulusan, dan
