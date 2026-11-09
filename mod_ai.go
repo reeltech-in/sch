@@ -7,9 +7,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -211,7 +213,8 @@ func apiAIModels(c *Ctx) error {
 	defer cancel()
 	res, err := aiRequest(ctx, "GET", base+"/models", key, nil)
 	if err != nil {
-		return bad("Tidak bisa menghubungi endpoint: " + err.Error())
+		log.Println("ai: model list:", err)
+		return bad("Tidak bisa menghubungi endpoint. Periksa URL, koneksi internet server, dan API key.")
 	}
 	defer res.Body.Close()
 	if res.StatusCode >= 300 {
@@ -245,12 +248,20 @@ func apiAIModels(c *Ctx) error {
 	return c.JSON(map[string]any{"models": ids})
 }
 
+// Pemakaian harian dihitung di tabel kv (ai_pakai:<tanggal sekolah>:<user>), bukan dari jumlah dokumen,
+// agar kuota tidak bisa diakali dengan menghapus dokumen. Tidak lewat kvCache (ditulis dengan SQL langsung).
+func aiUsageKey(uid int64) string {
+	return "ai_pakai:" + localDate() + ":" + strconv.FormatInt(uid, 10)
+}
+
 func (c *Ctx) aiUsedToday() int {
 	var n int
-	y, m, d := time.Now().Date()
-	start := time.Date(y, m, d, 0, 0, 0, 0, time.Local).UTC().Format(time.RFC3339)
-	c.A.db.QueryRow(`SELECT COUNT(*) FROM ai_documents WHERE user_id=? AND created_at>=?`, c.U.ID, start).Scan(&n)
+	c.A.db.QueryRow(`SELECT CAST(v AS INTEGER) FROM kv WHERE k=?`, aiUsageKey(c.U.ID)).Scan(&n)
 	return n
+}
+
+func (c *Ctx) aiCountUse() {
+	c.A.db.Exec(`INSERT INTO kv (k, v) VALUES (?, '1') ON CONFLICT (k) DO UPDATE SET v=CAST(v AS INTEGER)+1`, aiUsageKey(c.U.ID))
 }
 
 func apiAIStatus(c *Ctx) error {
@@ -508,7 +519,8 @@ func apiAIGenerate(c *Ctx) error {
 	defer cancel()
 	res, err := aiRequest(ctx, "POST", base+"/chat/completions", kvGet(c.A.db, "ai_key"), body)
 	if err != nil {
-		return bad("Tidak bisa menghubungi penyedia AI: " + err.Error())
+		log.Println("ai: generate:", err)
+		return bad("Tidak bisa menghubungi penyedia AI. Periksa koneksi internet server, lalu coba lagi.")
 	}
 	defer res.Body.Close()
 	if res.StatusCode >= 300 {
@@ -555,7 +567,16 @@ func apiAIGenerate(c *Ctx) error {
 				continue
 			}
 			if ev.Error != nil {
-				write(fmt.Sprintf("\n\n[Gagal dari penyedia AI: %v]", ev.Error))
+				log.Printf("ai: penyedia mengirim galat: %v", ev.Error)
+				msg := "penyedia AI menolak permintaan (kuota habis, model tidak tersedia, atau isi diblokir)"
+				if m, ok := ev.Error.(map[string]any); ok {
+					if s, ok := m["message"].(string); ok && s != "" {
+						msg = s
+					}
+				} else if s, ok := ev.Error.(string); ok && s != "" {
+					msg = s
+				}
+				write("\n\n[Gagal: " + msg + "]")
 				break
 			}
 			if len(ev.Choices) > 0 {
@@ -585,6 +606,7 @@ func apiAIGenerate(c *Ctx) error {
 		return nil
 	}
 	ib, _ := json.Marshal(clean)
+	c.aiCountUse() // dokumen berhasil dibuat: dihitung ke kuota (walau nanti dihapus)
 	res2, err := c.A.db.Exec(`INSERT INTO ai_documents (user_id, template, judul, input, output, model, created_at) VALUES (?,?,?,?,?,?,?)`,
 		c.U.ID, in.Template, tpl.Judul(clean), string(ib), text, model, nowStr())
 	if err == nil {

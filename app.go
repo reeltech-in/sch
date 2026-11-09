@@ -110,6 +110,9 @@ func (a *App) cleanupLoop() {
 		if i%10 == 0 {
 			a.maybeMaintain()
 		}
+		if i%5 == 0 {
+			a.finalizeCBT(0) // ujian yang waktunya habis tapi tidak dikumpulkan
+		}
 		if a.sleep(time.Minute) {
 			return
 		}

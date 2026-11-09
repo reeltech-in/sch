@@ -23,6 +23,16 @@ func init() {
 			`CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id)`,
 			`CREATE INDEX IF NOT EXISTS idx_wa_created ON wa_outbox(created_at)`,
 			`CREATE INDEX IF NOT EXISTS idx_daily_foto ON daily_attendance(tanggal) WHERE foto IS NOT NULL`,
+			// kunci tamu (foreign key) yang dipindai SQLite saat pengguna dihapus (ON DELETE SET NULL/CASCADE);
+			// tanpa indeks, menghapus satu guru memindai ratusan ribu baris absensi
+			`CREATE INDEX IF NOT EXISTS idx_daily_petugas ON daily_attendance(petugas_id) WHERE petugas_id IS NOT NULL`,
+			`CREATE INDEX IF NOT EXISTS idx_loans_petugas ON loans(petugas_id) WHERE petugas_id IS NOT NULL`,
+			`CREATE INDEX IF NOT EXISTS idx_notes_created_by ON student_notes(created_by)`,
+			`CREATE INDEX IF NOT EXISTS idx_exams_created_by ON exams(created_by)`,
+			// cari buku per ISBN (pinjam dengan scan ISBN, cegah duplikat impor e-book)
+			`CREATE INDEX IF NOT EXISTS idx_books_isbn ON books(isbn) WHERE isbn IS NOT NULL`,
+			// jumlah peserta selesai per ujian (daftar CBT guru/admin) tanpa membaca baris jawaban
+			`CREATE INDEX IF NOT EXISTS idx_exam_att_done ON exam_attempts(exam_id) WHERE selesai=1`,
 		} {
 			if _, err := db.Exec(q); err != nil {
 				return fmt.Errorf("%s: %w", q, err)

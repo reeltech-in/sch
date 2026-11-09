@@ -105,6 +105,8 @@ func cfgOn(c map[string]any, k string) bool    { b, _ := c[k].(bool); return b }
 
 // waQueue memasukkan pesan ke antrean bila notifikasi aktif dan jenis kejadian ini dinyalakan.
 // Tidak pernah menggagalkan aksi utama (absensi/pendaftaran tetap tersimpan walau WA bermasalah).
+const waHidden = "(isi disembunyikan karena memuat PIN)"
+
 func (a *App) waQueue(event, kunci, hp string, vals map[string]string, rahasia bool) {
 	cfg := getConfig(a.db, "wa")
 	if !cfgOn(cfg, "aktif") || !cfgOn(cfg, "kirim_"+event) {
@@ -211,7 +213,8 @@ func (a *App) waSendNext() bool {
 	}
 	// pesan kehadiran yang tertunda >6 jam (gateway mati / notifikasi sempat dimatikan) tidak dikirim lagi:
 	// "sudah tiba pukul 07.00" yang datang sore/esok hari menyesatkan. Pesan lain kedaluwarsa setelah 3 hari.
-	a.db.Exec(`UPDATE wa_outbox SET status='gagal', galat='kedaluwarsa: tertunda terlalu lama' WHERE status='antre'
+	a.db.Exec(`UPDATE wa_outbox SET status='gagal', galat='kedaluwarsa: tertunda terlalu lama',
+		pesan=CASE WHEN rahasia=1 THEN '`+waHidden+`' ELSE pesan END WHERE status='antre'
 		AND ((jenis IN ('masuk','pulang','alfa') AND created_at < ?) OR created_at < ?)`,
 		time.Now().UTC().Add(-6*time.Hour).Format(time.RFC3339), time.Now().UTC().Add(-72*time.Hour).Format(time.RFC3339))
 	var id int64
@@ -233,11 +236,13 @@ func (a *App) waSendNext() bool {
 		if try >= waMaxTry {
 			status = "gagal"
 		}
-		a.db.Exec(`UPDATE wa_outbox SET status=?, percobaan=?, galat=?, next_at=? WHERE id=?`, status, try, err.Error(), next, id)
+		// pesan berisi PIN yang akhirnya gagal tidak disimpan terbuka (log & backup)
+		a.db.Exec(`UPDATE wa_outbox SET status=?, percobaan=?, galat=?, next_at=?,
+			pesan=CASE WHEN rahasia=1 AND ?='gagal' THEN '`+waHidden+`' ELSE pesan END WHERE id=?`, status, try, err.Error(), next, status, id)
 		return true
 	}
 	if secret == 1 {
-		msg = "(isi disembunyikan karena memuat PIN)"
+		msg = waHidden
 	}
 	if _, err := a.db.Exec(`UPDATE wa_outbox SET status='terkirim', percobaan=?, galat=NULL, sent_at=?, pesan=? WHERE id=?`, try+1, nowStr(), msg, id); err != nil {
 		log.Println("wa: status terkirim gagal disimpan (pesan tidak akan diulang sebelum 10 menit):", err)
@@ -362,7 +367,8 @@ func (a *App) apiWATest(c *Ctx) error {
 }
 
 func apiWAOutbox(c *Ctx) error {
-	q := `SELECT id, jenis, tujuan, pesan, status, percobaan, galat, created_at, sent_at FROM wa_outbox`
+	// pesan antre yang memuat PIN tidak ditampilkan ke admin
+	q := `SELECT id, jenis, tujuan, CASE WHEN rahasia=1 THEN '` + waHidden + `' ELSE pesan END AS pesan, status, percobaan, galat, created_at, sent_at FROM wa_outbox`
 	var args []any
 	if st := c.R.URL.Query().Get("status"); st == "antre" || st == "terkirim" || st == "gagal" {
 		q += ` WHERE status=?`
@@ -376,12 +382,14 @@ func apiWAOutbox(c *Ctx) error {
 }
 
 func apiWARetry(c *Ctx) error {
-	res, err := c.A.db.Exec(`UPDATE wa_outbox SET status='antre', percobaan=0, galat=NULL, next_at=? WHERE id=? AND status='gagal'`, nowStr(), c.ID("id"))
+	// created_at diperbarui: tanpa ini pesan lama langsung ditandai kedaluwarsa lagi oleh penyapu antrean
+	res, err := c.A.db.Exec(`UPDATE wa_outbox SET status='antre', percobaan=0, galat=NULL, next_at=?, created_at=? WHERE id=? AND status='gagal'
+		AND pesan NOT LIKE '(isi disembunyikan%'`, nowStr(), nowStr(), c.ID("id"))
 	if err != nil {
 		return err
 	}
 	if n, _ := res.RowsAffected(); n == 0 {
-		return bad("Hanya pesan yang gagal yang bisa dikirim ulang.")
+		return bad("Hanya pesan gagal yang bisa dikirim ulang (pesan berisi PIN yang sudah disembunyikan tidak bisa).")
 	}
 	return c.OK()
 }

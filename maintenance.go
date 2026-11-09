@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -60,7 +61,14 @@ func (a *App) reader() *sql.DB {
 }
 
 // maintain menjalankan pemeliharaan harian. ok=false bila backup gagal (agar dicoba ulang).
+var maintMu sync.Mutex
+
 func (a *App) maintain() (string, bool) {
+	// tombol "Jalankan sekarang" dan jadwal harian tidak boleh berjalan bersamaan (file backup .tmp yang sama)
+	if !maintMu.TryLock() {
+		return "pemeliharaan sedang berjalan", false
+	}
+	defer maintMu.Unlock()
 	cfg := getConfig(a.db, "penyimpanan")
 	var notes []string
 	ok := true
@@ -149,6 +157,8 @@ func (a *App) maintain() (string, bool) {
 	if d := cfgInt(cfg, "ai_hari", 0); d > 0 {
 		a.db.Exec(`DELETE FROM ai_documents WHERE created_at < ?`, time.Now().AddDate(0, 0, -d).UTC().Format(time.RFC3339))
 	}
+	// penghitung kuota Asisten AI harian (ai_pakai:<tanggal>:<user>) yang lebih dari 7 hari
+	a.db.Exec(`DELETE FROM kv WHERE k LIKE 'ai_pakai:%' AND substr(k, 10, 10) < ?`, time.Now().AddDate(0, 0, -7).Format("2006-01-02"))
 	// 3. file yatim
 	orphans, err := a.removeOrphans(24 * time.Hour)
 	trash := a.emptyTrash(30 * 24 * time.Hour)
@@ -178,7 +188,7 @@ var fileRefRe = regexp.MustCompile(`[a-f0-9]{24}\.(?:jpg|png|gif|webp|pdf)`)
 func (a *App) removeOrphans(minAge time.Duration) (int, error) {
 	refs := map[string]bool{}
 	queries := []string{
-		`SELECT foto FROM student_profiles`, `SELECT foto FROM daily_attendance`, `SELECT gambar FROM exam_questions`,
+		`SELECT foto FROM student_profiles`, `SELECT foto FROM daily_attendance WHERE foto IS NOT NULL`, `SELECT gambar FROM exam_questions`,
 		`SELECT foto FROM assets`, `SELECT cover FROM books`, `SELECT ebook FROM books`, `SELECT file FROM letters`,
 		`SELECT foto FROM guestbook`, `SELECT foto FROM candidates`, `SELECT logo_url FROM settings`,
 		`SELECT berkas FROM ppdb_applicants`, `SELECT lampiran FROM materials`, `SELECT konten FROM materials`,

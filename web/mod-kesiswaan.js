@@ -271,9 +271,9 @@ async function pageKalender() {
   const month = evs.filter(e => e.selesai >= `${ym}-01` && e.mulai <= `${ym}-31`);
   return head('Kalender Akademik', monthLabel(ym), btn('Cetak', 'calPrint', {}, 'ghost', 'print') +
       (isAdm('kalender') ? btn('Libur nasional', 'calLibur', {}, 'ghost', 'cal') + btn('Tambah kegiatan', 'evForm', {}, '', 'plus') : '')) +
-    `<div class="bar">${btn('', 'go', { page: 'kalender', params: JSON.stringify({ bulan: ymOf(prev) }) }, 'ghost icon', 'back')}
+    `<div class="bar">${btn('', 'go', { page: 'kalender', params: JSON.stringify({ bulan: ymOf(prev) }) }, 'ghost icon', 'back').replace('<button', '<button aria-label="Bulan sebelumnya"')}
       <input type="month" value="${ym}" data-change="calMonth" aria-label="Bulan" style="min-width:0">
-      ${btn('', 'go', { page: 'kalender', params: JSON.stringify({ bulan: ymOf(next) }) }, 'ghost icon', 'back').replace('<svg', '<svg style="transform:rotate(180deg)"')}
+      ${btn('', 'go', { page: 'kalender', params: JSON.stringify({ bulan: ymOf(next) }) }, 'ghost icon', 'back').replace('<svg', '<svg style="transform:rotate(180deg)"').replace('<button', '<button aria-label="Bulan berikutnya"')}
       ${btn('Bulan ini', 'go', { page: 'kalender', params: '{}' }, 'ghost sm')}
       <div class="cal-legend">${(evs.some(e => e.kategori === 'tugas') ? KAT_TAMPIL : KAT).map(([k, l]) => `<span><i class="dot ${k}"></i>${l}</span>`).join('')}</div></div>
     <div class="cal">${['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'].map(d => `<div class="dow">${d}</div>`).join('')}${cells.join('')}</div>

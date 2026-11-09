@@ -37,7 +37,9 @@ PUBLIC_PAGES.bukutamu = () => {
   const stopCam = () => { if (stream) stream.getTracks().forEach(t => t.stop()); stream = null; };
   ACT.tamuCam = async () => {
     if (!window.isSecureContext) return toast('Kamera butuh alamat https.', 'bad');
-    try { stopCam(); stream = trackStream(await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 640 } })); const vd = $('#tamuV'); vd.hidden = false; vd.srcObject = stream; $('#tamuShot').hidden = false; }
+    try { stopCam(); stream = trackStream(await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 640 } })); const vd = $('#tamuV');
+      if (!vd) return stopCam(); // formulir sudah ditutup saat izin kamera ditanyakan
+      vd.hidden = false; vd.srcObject = stream; $('#tamuShot').hidden = false; }
     catch { toast('Kamera tidak bisa dibuka.', 'bad'); }
   };
   ACT.tamuShot = () => {

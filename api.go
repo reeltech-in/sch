@@ -315,7 +315,7 @@ func apiPutSettings(c *Ctx) error {
 func apiDashboard(c *Ctx) error {
 	count := func(q string, args ...any) int64 {
 		var n int64
-		c.A.db.QueryRow(q, args...).Scan(&n)
+		c.A.reader().QueryRow(q, args...).Scan(&n)
 		return n
 	}
 	if c.U.Role == "admin" {

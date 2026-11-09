@@ -8,6 +8,44 @@ Format versi: `MAYOR.MINOR.PERBAIKAN`
 Versi yang sedang berjalan terlihat di menu kiri aplikasi (bawah nama pengguna), di `GET /api/version`,
 di header respons `X-SCH-Version`, dan dengan perintah `sch-server -version`.
 
+## v1.20.0 — 2026-11-10 (Hasil audit: keamanan, ujian, query, tampilan)
+**Keamanan**
+- Mode proxy (`-proxy` tanpa `-proxy-ip`) kini hanya mempercayai proxy di komputer yang sama (127.0.0.1). Sebelumnya
+  pengguna LAN bisa memalsukan header IP dan lolos dari pembatas login/PPDB/kelulusan. Server live tidak terdampak
+  (memakai `-proxy-ip`).
+- Guru tidak bisa lagi menghapus absensi harian siswa kelas lain dengan mengganti `siswa_id`.
+- Formulir publik PPDB & buku tamu: batas per perangkat dicek **sebelum** membaca isi (hingga 10 MB).
+- E-book: unduhan dari sumber tidak mengikuti pengalihan ke alamat lain, total salinan dibatasi (= batas upload),
+  dan satu akun dibatasi 15 e-book baru per 10 menit.
+- PIN PPDB pada pesan WhatsApp yang gagal/kedaluwarsa/antre tidak lagi tersimpan atau tampil terbuka.
+
+**Ujian & nilai**
+- Ujian CBT yang waktunya habis tetapi tidak dikumpulkan (HP mati, browser tertutup) kini dinilai otomatis dari
+  jawaban yang tersimpan, tidak lagi "belum selesai" selamanya.
+- Nilai CBT hanya dihitung dari soal yang memang diterima siswa (soal tambahan susulan tidak menurunkan nilai).
+- Jumlah pilihan ujian/kuis tidak bisa dikurangi bila masih ada soal berkunci di luar pilihan baru.
+- Kuota harian Asisten AI tidak bisa lagi diakali dengan menghapus dokumen.
+
+**Perbaikan lain**
+- Kalender: ujian/tenggat pagi hari di tanggal pertama rentang tidak lagi hilang.
+- Pinjam buku: stok terakhir tidak bisa dipinjamkan dua kali bersamaan; buku khusus e-book ditolak dengan pesan jelas.
+- Nomor surat keluar tidak lagi berulang setelah ada surat yang dihapus. "Kirim ulang" WA yang kedaluwarsa kini berfungsi.
+- Pemeliharaan harian tidak bisa berjalan ganda; galat penyimpanan pada pergantian tahun ajaran tidak lagi diabaikan.
+- Pesan galat Asisten AI dalam bahasa Indonesia (rincian teknis ke log server).
+- Katalog Buku Kemendikbud: bila sumber sedang bermasalah, daftar lama tetap dipakai dan permintaan lain tidak ikut menunggu.
+
+**Kecepatan (query)**
+- Indeks baru untuk kunci tamu (menghapus guru tidak lagi memindai ratusan ribu baris absensi), ISBN buku, dan
+  jumlah peserta selesai CBT. Pemeriksaan baca-saja (hak akses, dasbor) tidak lagi antre di koneksi tulis.
+
+**Tampilan**
+- Sesi habis di tengah kuis/ujian tidak lagi menghapus jawaban yang belum terkirim.
+- Klik ganda cepat tidak menjalankan aksi dua kali. Kamera tidak tetap menyala bila halaman ditinggal saat izin kamera ditanya.
+- Isian saring daftar tetap setelah menyimpan data. Hasil saringan lama tidak menimpa yang baru di jendela impor e-book.
+- iPhone: jendela & menu memakai tinggi layar yang terlihat (tombol Simpan tidak tertutup toolbar); isian 16px di semua layar sentuh.
+- Dropdown di HP tidak lagi menggulir layar setiap ketikan. Tab & tombol bulan kalender berlabel untuk pembaca layar.
+- Tabel kartu HP hanya diproses ulang bila ada tabel baru (lebih ringan saat timer ujian berjalan).
+
 ## v1.19.2 — 2026-11-10 (Dropdown ramah HP)
 - **Dropdown "pilih atau ketik"** (mapel, kelas, kategori, penerbit, rak, dll.) diganti komponen sendiri: diketuk langsung
   menampilkan semua pilihan, mengetik menyaring daftar, baris pilihan besar untuk jari, isian baru tetap bisa diketik.

@@ -632,3 +632,12 @@ select[multiple] { background-image: none; padding-right: 11px; }
 }
 .cols.cols-ai { grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); }
 @media (max-width: 960px) { .cols.cols-ai { grid-template-columns: 1fr; } }
+
+/* iPhone/Android: tinggi layar yang benar-benar terlihat (bilah alamat & toolbar Safari tidak menutup tombol Simpan/Keluar) */
+@supports (height: 100dvh) {
+  .shell, .login-wrap { min-height: 100dvh; }
+  .side { height: 100dvh; }
+  .sheet { max-height: calc(100dvh - 32px); }
+}
+/* layar sentuh (termasuk HP besar posisi mendatar): isian 16px agar iPhone tidak memperbesar halaman */
+@media (pointer: coarse) { input, select, textarea { font-size: 16px; } }

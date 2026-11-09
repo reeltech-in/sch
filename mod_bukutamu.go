@@ -20,12 +20,15 @@ func (a *App) apiGuestAdd(c *Ctx) error {
 		Foto      string `json:"foto"`
 		Website   string `json:"website"`
 	}
+	if err := c.publicGuard("tamu:", 6, ""); err != nil { // sebelum membaca isi (hingga 3 MB)
+		return err
+	}
 	c.longBody()
 	if err := c.bindLarge(&in, 3<<20); err != nil {
 		return err
 	}
-	if err := c.publicGuard("tamu:", 6, in.Website); err != nil {
-		return err
+	if strings.TrimSpace(in.Website) != "" { // honeypot
+		return bad("Pengiriman ditolak.")
 	}
 	cut := func(s string, n int) any {
 		r := []rune(strings.TrimSpace(s))

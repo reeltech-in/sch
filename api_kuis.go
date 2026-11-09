@@ -58,6 +58,9 @@ func apiSaveQuiz(c *Ctx) error {
 		in.JumlahOpsi = 4
 	}
 	if id > 0 {
+		if err := opsiCukup(c, "quiz_questions", "quiz_id", id, in.JumlahOpsi); err != nil {
+			return err
+		}
 		_, err = c.A.db.Exec(`UPDATE quizzes SET judul=?, durasi_menit=?, jumlah_opsi=? WHERE id=?`, judul, in.DurasiMenit, in.JumlahOpsi, id)
 	} else {
 		_, err = c.A.db.Exec(`INSERT INTO quizzes (course_id, judul, durasi_menit, jumlah_opsi, created_at) VALUES (?,?,?,?,?)`,
@@ -295,10 +298,7 @@ func apiQuizSubmit(c *Ctx) error {
 		}
 	}
 	rows.Close()
-	skor := 0.0
-	if total > 0 {
-		skor = math.Round(benar/total*10000) / 100
-	}
+	skor := persen(benar, total)
 	jb, _ := json.Marshal(clean)
 	if _, err := tx.Exec(`UPDATE quiz_attempts SET skor=?, jawaban=?, selesai=1, submitted_at=? WHERE id=?`, skor, string(jb), nowStr(), attempt); err != nil {
 		return err

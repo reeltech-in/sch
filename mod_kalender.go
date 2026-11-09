@@ -85,7 +85,15 @@ func (c *Ctx) autoEvents(from, to string) []map[string]any {
 			"keterangan": ket, "otomatis": true, "halaman": halaman})
 	}
 	// batas kasar untuk kolom waktu RFC3339 (dibandingkan sebagai teks); ketepatan dicek ulang di add()
+	// waktu disimpan UTC (WIB/WITA/WIT = UTC+7..9): ujian pukul 06.00 tanggal 1 tersimpan tanggal 31 UTC.
+	// Saringan kasar diperlebar sehari; add() memeriksa tanggal lokal yang tepat.
 	lo, hi := from, to+"~"
+	if t, err := time.Parse("2006-01-02", from); err == nil {
+		lo = t.AddDate(0, 0, -1).Format("2006-01-02")
+	}
+	if t, err := time.Parse("2006-01-02", to); err == nil {
+		hi = t.AddDate(0, 0, 1).Format("2006-01-02") + "~"
+	}
 	staff := c.U.Role != "siswa"
 
 	if on["ujian"] {

@@ -79,10 +79,25 @@ type sibiBook struct {
 var sibiCache struct {
 	sync.Mutex
 	at   map[string]time.Time
+	fail map[string]time.Time
 	data map[string][]sibiBook
 }
 
-var httpLong = &http.Client{Timeout: 15 * time.Minute}
+// pengalihan (redirect) dari sumber hanya diikuti bila tujuannya tetap host cermin resmi (cegah SSRF ke jaringan dalam)
+var httpLong = &http.Client{Timeout: 15 * time.Minute, CheckRedirect: func(req *http.Request, via []*http.Request) error {
+	if len(via) >= 5 || sibiURL(req.URL.String()) == "" {
+		return http.ErrUseLastResponse
+	}
+	return nil
+}}
+
+// katalog: pengalihan hanya ke host API yang sama
+var httpCatalog = &http.Client{Timeout: 90 * time.Second, CheckRedirect: func(req *http.Request, via []*http.Request) error {
+	if len(via) >= 5 || req.URL.Scheme != "https" || req.URL.Host != via[0].URL.Host {
+		return http.ErrUseLastResponse
+	}
+	return nil
+}}
 
 // sibiURL memeriksa & menormalkan alamat file SIBI (hanya https ke host cermin resmi).
 func sibiURL(raw string) string {
@@ -124,15 +139,45 @@ func sibiLoad(jenis string) ([]sibiBook, error) {
 	if !ok {
 		return nil, bad("Jenis buku tidak dikenal.")
 	}
-	sibiCache.Lock()
-	defer sibiCache.Unlock()
-	if sibiCache.data == nil {
-		sibiCache.at, sibiCache.data = map[string]time.Time{}, map[string][]sibiBook{}
+	get := func() (d []sibiBook, fresh bool, failedRecently bool) {
+		sibiCache.Lock()
+		defer sibiCache.Unlock()
+		if sibiCache.data == nil {
+			sibiCache.at, sibiCache.data, sibiCache.fail = map[string]time.Time{}, map[string][]sibiBook{}, map[string]time.Time{}
+		}
+		d = sibiCache.data[jenis]
+		return d, d != nil && time.Since(sibiCache.at[jenis]) < 6*time.Hour, time.Since(sibiCache.fail[jenis]) < time.Minute
 	}
-	if d, ok := sibiCache.data[jenis]; ok && time.Since(sibiCache.at[jenis]) < 6*time.Hour {
+	if d, fresh, failed := get(); fresh || (failed && d != nil) {
+		return d, nil
+	} else if failed {
+		return nil, apiErr{502, "Katalog Buku Kemendikdasmen tidak bisa dihubungi. Coba lagi sebentar lagi."}
+	}
+	// satu pengambilan per jenis; kunci cache TIDAK dipegang selama unduhan (bisa 90 detik)
+	mu, _ := sibiFetchMu.LoadOrStore(jenis, &sync.Mutex{})
+	mu.(*sync.Mutex).Lock()
+	defer mu.(*sync.Mutex).Unlock()
+	if d, fresh, _ := get(); fresh {
 		return d, nil
 	}
-	resp, err := (&http.Client{Timeout: 90 * time.Second}).Get(sibiAPI + j.ep + "?title=&limit=3000&offset=0")
+	out, err := sibiFetch(j.ep, jenis)
+	sibiCache.Lock()
+	defer sibiCache.Unlock()
+	if err != nil {
+		sibiCache.fail[jenis] = time.Now()
+		if old := sibiCache.data[jenis]; old != nil {
+			return old, nil // sumber sedang bermasalah: pakai daftar lama
+		}
+		return nil, err
+	}
+	sibiCache.data[jenis], sibiCache.at[jenis] = out, time.Now()
+	return out, nil
+}
+
+var sibiFetchMu sync.Map
+
+func sibiFetch(ep, jenis string) ([]sibiBook, error) {
+	resp, err := httpCatalog.Get(sibiAPI + ep + "?title=&limit=3000&offset=0")
 	if err != nil {
 		return nil, apiErr{502, "Katalog Buku Kemendikdasmen tidak bisa dihubungi. Pastikan server terhubung internet."}
 	}
@@ -177,7 +222,6 @@ func sibiLoad(jenis string) ([]sibiBook, error) {
 			Mapel: strings.ReplaceAll(s(r, "subject"), "_", " "), PDF: pdf, Cover: sibiURL(s(r, "image")), Sinopsis: s(r, "description")})
 	}
 	sort.SliceStable(out, func(i, k int) bool { return out[i].Judul < out[k].Judul })
-	sibiCache.data[jenis], sibiCache.at[jenis] = out, time.Now()
 	return out, nil
 }
 
@@ -334,6 +378,9 @@ var fetchSlots = make(chan struct{}, 3) // maksimal 3 unduhan dari sumber sekali
 
 const ebookMaxBytes = 500 << 20
 
+// batas total salinan e-book: sama dengan batas folder upload (-upload-max-gb, bawaan 5 GB)
+func ebookCacheMax() int64 { return uploadMaxBytes }
+
 // cachedFile mengembalikan path file lokal untuk src; mengunduhnya dulu bila belum ada.
 func (a *App) cachedFile(src, ext string, isPDF bool) (string, error) {
 	dir := a.ebookCacheDir()
@@ -345,7 +392,7 @@ func (a *App) cachedFile(src, ext string, isPDF bool) (string, error) {
 	}
 	mu, _ := fetchLocks.LoadOrStore(p, &sync.Mutex{})
 	mu.(*sync.Mutex).Lock()
-	defer mu.(*sync.Mutex).Unlock()
+	defer func() { mu.(*sync.Mutex).Unlock(); fetchLocks.Delete(p) }()
 	if _, err := os.Stat(p); err == nil { // sudah diunduh permintaan lain saat menunggu
 		return p, nil
 	}
@@ -422,7 +469,19 @@ func (a *App) apiBookRead(c *Ctx) error {
 	case local != "" && fileNameRe.MatchString(name):
 		p = filepath.Join(a.uploadDir(), name)
 	case sibiURL(remote) != "":
-		if p, err = a.cachedFile(sibiURL(remote), ".pdf", true); err != nil {
+		src := sibiURL(remote)
+		if _, e := os.Stat(filepath.Join(a.ebookCacheDir(), cacheName(src, ".pdf"))); e != nil {
+			// buku yang belum tersimpan: batasi per pengguna agar tidak ada yang memicu unduhan seluruh katalog
+			key := "ebook:" + strconv.FormatInt(c.U.ID, 10)
+			if c.U.Role != "admin" && c.A.limit.blockedN(key, 15) {
+				return apiErr{429, "Terlalu banyak e-book baru dibuka. Coba lagi 10 menit lagi, atau buka e-book yang sudah pernah dibaca."}
+			}
+			c.A.limit.fail(key)
+			if _, size := a.ebookCacheSize(); size > ebookCacheMax() {
+				return apiErr{507, "Penyimpanan salinan e-book penuh. Hubungi admin (hapus e-book yang tidak dipakai dari katalog)."}
+			}
+		}
+		if p, err = a.cachedFile(src, ".pdf", true); err != nil {
 			return err
 		}
 	default:

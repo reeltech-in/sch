@@ -118,8 +118,11 @@ func apiYearActivate(c *Ctx) error {
 		return err
 	}
 	defer tx.Rollback()
-	tx.Exec(`UPDATE academic_years SET aktif=(id=?)`, id)
-	tx.Exec(`UPDATE settings SET tahun_ajaran=? WHERE id=1`, nama)
+	for _, q := range [][]any{{`UPDATE academic_years SET aktif=(id=?)`, id}, {`UPDATE settings SET tahun_ajaran=? WHERE id=1`, nama}} {
+		if _, err := tx.Exec(q[0].(string), q[1:]...); err != nil {
+			return err
+		}
+	}
 	if err := tx.Commit(); err != nil {
 		return err
 	}
@@ -305,10 +308,14 @@ func apiPromote(c *Ctx) error {
 				}
 			case "lulus":
 				_, err = tx.Exec(`UPDATE users SET kelas_id=NULL, status='nonaktif', angkatan_lulus=? WHERE id=?`, srcNama, sid)
-				tx.Exec(`DELETE FROM sessions WHERE user_id=?`, sid)
+				if err == nil {
+					_, err = tx.Exec(`DELETE FROM sessions WHERE user_id=?`, sid)
+				}
 			case "keluar":
 				_, err = tx.Exec(`UPDATE users SET kelas_id=NULL, status='nonaktif' WHERE id=?`, sid)
-				tx.Exec(`DELETE FROM sessions WHERE user_id=?`, sid)
+				if err == nil {
+					_, err = tx.Exec(`DELETE FROM sessions WHERE user_id=?`, sid)
+				}
 			}
 			if err != nil {
 				return err
@@ -316,9 +323,13 @@ func apiPromote(c *Ctx) error {
 			sum[aksi]++
 		}
 	}
-	tx.Exec(`UPDATE academic_years SET dinaikkan=1 WHERE id=?`, src)
-	tx.Exec(`UPDATE academic_years SET aktif=(id=?)`, dst)
-	tx.Exec(`UPDATE settings SET tahun_ajaran=? WHERE id=1`, tujuan)
+	// kenaikan kelas: semua atau tidak sama sekali (tahun aktif & data siswa harus konsisten)
+	for _, q := range [][]any{{`UPDATE academic_years SET dinaikkan=1 WHERE id=?`, src}, {`UPDATE academic_years SET aktif=(id=?)`, dst},
+		{`UPDATE settings SET tahun_ajaran=? WHERE id=1`, tujuan}} {
+		if _, err := tx.Exec(q[0].(string), q[1:]...); err != nil {
+			return err
+		}
+	}
 	if err := tx.Commit(); err != nil {
 		return err
 	}

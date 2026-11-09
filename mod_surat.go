@@ -42,8 +42,15 @@ func apiLetterNumber(c *Ctx) error {
 	c.A.db.QueryRow(`SELECT COUNT(*) FROM letters WHERE jenis='keluar' AND tanggal >= ? AND tanggal < ?`, now.Format("2006")+"-01-01", now.Format("2006")+"-12-32").Scan(&n)
 	f, _ := cfg["format"].(string)
 	sing, _ := cfg["singkatan"].(string)
-	no := strings.NewReplacer("{no}", fmt.Sprintf("%03d", n+1), "{kode}", kode, "{singkatan}", sing,
-		"{bulan}", romawi[now.Month()], "{tahun}", now.Format("2006")).Replace(f)
+	// urut = jumlah surat + 1; bila nomor itu sudah terpakai (ada surat yang dihapus), naikkan sampai belum ada
+	var no string
+	for i := n + 1; i <= n+1000; i++ {
+		no = strings.NewReplacer("{no}", fmt.Sprintf("%03d", i), "{kode}", kode, "{singkatan}", sing,
+			"{bulan}", romawi[now.Month()], "{tahun}", now.Format("2006")).Replace(f)
+		if _, dup := c.exists(`SELECT nomor FROM letters WHERE jenis='keluar' AND nomor=?`, no); !dup || !strings.Contains(f, "{no}") {
+			break
+		}
+	}
 	return c.JSON(map[string]string{"nomor": no})
 }
 

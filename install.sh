@@ -20,7 +20,7 @@
 #   SCH_USER=sch              user sistem yang menjalankan program
 #   SCH_PORT=3220             port HTTP
 #   SCH_HTTPS_PORT=3221       port HTTPS lokal (kamera HP di jaringan sekolah); kosongkan = mati
-#   SCH_PROXY=0               1 = online lewat Cloudflare Tunnel / reverse proxy
+#   SCH_PROXY=0               1 = cloudflared/nginx di server yang sama (hanya 127.0.0.1 dipercaya)
 #   SCH_PROXY_IP=             IP proxy yang dipercaya (mis. IP mesin cloudflared); otomatis SCH_PROXY=1
 #   SCH_DEMO=0                1 = isi data contoh (hanya bila database masih kosong)
 #   SCH_UFW=0                 1 = buka port di firewall ufw

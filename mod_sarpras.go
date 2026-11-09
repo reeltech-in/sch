@@ -335,17 +335,27 @@ func (a *App) apiBorrow(c *Ctx) error {
 		return err
 	}
 	lama, _, maks := perpusCfg(a.db)
+	// cek stok + simpan dalam satu transaksi: dua petugas yang memindai bersamaan tidak bisa
+	// meminjamkan eksemplar terakhir dua kali
+	tx, err := a.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
 	var bookID int64
 	var judul string
 	var stok int
-	if err := a.db.QueryRow(`SELECT id, judul, stok FROM books WHERE kode=? COLLATE NOCASE OR (isbn IS NOT NULL AND isbn=?)`, strings.TrimSpace(in.Buku), strings.TrimSpace(in.Buku)).Scan(&bookID, &judul, &stok); err != nil {
+	if err := tx.QueryRow(`SELECT id, judul, stok FROM books WHERE kode=? COLLATE NOCASE OR (isbn IS NOT NULL AND isbn=?)`, strings.TrimSpace(in.Buku), strings.TrimSpace(in.Buku)).Scan(&bookID, &judul, &stok); err != nil {
 		return bad("Buku dengan kode itu tidak ditemukan.")
 	}
 	var dipinjam, aktif, sama int
-	a.db.QueryRow(`SELECT COUNT(*) FROM loans WHERE book_id=? AND tgl_kembali IS NULL`, bookID).Scan(&dipinjam)
-	a.db.QueryRow(`SELECT COUNT(*) FROM loans WHERE user_id=? AND tgl_kembali IS NULL`, in.UserID).Scan(&aktif)
-	a.db.QueryRow(`SELECT COUNT(*) FROM loans WHERE user_id=? AND book_id=? AND tgl_kembali IS NULL`, in.UserID, bookID).Scan(&sama)
+	if err := tx.QueryRow(`SELECT COALESCE(SUM(book_id=?),0), COUNT(*) FILTER (WHERE user_id=?), COUNT(*) FILTER (WHERE user_id=? AND book_id=?)
+		FROM loans WHERE tgl_kembali IS NULL AND (book_id=? OR user_id=?)`, bookID, in.UserID, in.UserID, bookID, bookID, in.UserID).Scan(&dipinjam, &aktif, &sama); err != nil {
+		return err
+	}
 	switch {
+	case stok == 0:
+		return bad("\"" + judul + "\" hanya tersedia sebagai e-book (tidak ada buku fisik).")
 	case dipinjam >= stok:
 		return bad("Stok \"" + judul + "\" sedang habis dipinjam.")
 	case sama > 0:
@@ -354,12 +364,20 @@ func (a *App) apiBorrow(c *Ctx) error {
 		return bad("Anggota sudah meminjam " + itoa(aktif) + " buku (batas " + itoa(maks) + ").")
 	}
 	var ok int
-	a.db.QueryRow(`SELECT COUNT(*) FROM users WHERE id=? AND status='aktif' AND role IN ('siswa','guru')`, in.UserID).Scan(&ok)
+	tx.QueryRow(`SELECT COUNT(*) FROM users WHERE id=? AND status='aktif' AND role IN ('siswa','guru')`, in.UserID).Scan(&ok)
 	if ok == 0 {
 		return bad("Anggota tidak valid.")
 	}
-	due := time.Now().AddDate(0, 0, lama).Format("2006-01-02")
-	if _, err := a.db.Exec(`INSERT INTO loans (book_id, user_id, tgl_pinjam, jatuh_tempo, petugas_id) VALUES (?,?,?,?,?)`, bookID, in.UserID, localDate(), due, c.U.ID); err != nil {
+	today := localDate()
+	base, err := time.Parse("2006-01-02", today)
+	if err != nil {
+		return err
+	}
+	due := base.AddDate(0, 0, lama).Format("2006-01-02") // jatuh tempo dihitung dari tanggal sekolah, bukan jam server
+	if _, err := tx.Exec(`INSERT INTO loans (book_id, user_id, tgl_pinjam, jatuh_tempo, petugas_id) VALUES (?,?,?,?,?)`, bookID, in.UserID, today, due, c.U.ID); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
 		return err
 	}
 	return c.JSON(map[string]any{"judul": judul, "jatuh_tempo": due})

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
@@ -16,7 +17,7 @@ func onlyDigits(s string) string { return digitsRe.ReplaceAllString(s, "") }
 // exists: nilai kolom pertama dari baris pertama yang cocok (mis. nama pemilik data yang bentrok).
 func (c *Ctx) exists(q string, args ...any) (string, bool) {
 	var v string
-	err := c.A.db.QueryRow(q, args...).Scan(&v)
+	err := c.A.reader().QueryRow(q, args...).Scan(&v) // pemeriksaan baca saja: jangan antre di koneksi tulis
 	return v, err == nil
 }
 
@@ -116,6 +117,23 @@ func cekRentang(mulai, selesai any, label string) error {
 	s, ok2 := selesai.(string)
 	if ok1 && ok2 && m != "" && s != "" && s < m {
 		return bad(label + " selesai tidak boleh sebelum " + strings.ToLower(label) + " mulai.")
+	}
+	return nil
+}
+
+// opsiCukup menolak pengurangan jumlah pilihan bila masih ada soal berkunci di luar pilihan baru
+// (mis. 5 → 4 pilihan padahal ada kunci E): soal itu tidak akan pernah bisa dijawab benar.
+// Tabel & kolom hanya dari kode, bukan masukan.
+func opsiCukup(c *Ctx, table, col string, id int64, n int) error {
+	if n < 2 || n > 5 {
+		return nil
+	}
+	maxKey := string(rune('a' + n - 1))
+	var jumlah int
+	c.A.reader().QueryRow(`SELECT COUNT(*) FROM `+table+` WHERE `+col+`=? AND jawaban_benar > ?`, id, maxKey).Scan(&jumlah)
+	if jumlah > 0 {
+		return bad(fmt.Sprintf("Ada %d soal berkunci jawaban di luar %d pilihan (A–%s). Ubah kunci soal itu dulu, baru kurangi jumlah pilihan.",
+			jumlah, n, strings.ToUpper(maxKey)))
 	}
 	return nil
 }

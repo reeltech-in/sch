@@ -159,7 +159,10 @@ ACT.aiImport = async () => {
   const targets = [];
   if (modOn('ujian')) (await GET('/cbt').catch(() => [])).forEach(x => targets.push([`cbt:${x.id}:${x.jumlah_opsi}`, `CBT · ${x.judul}`]));
   if (S.user.role === 'guru' && modOn('lms')) {
-    for (const c of await GET('/courses')) (await GET('/quizzes?course_id=' + c.id)).forEach(q => targets.push([`kuis:${q.id}:${q.jumlah_opsi}`, `Kuis · ${q.judul} (${c.nama} ${c.kelas_nama})`]));
+    // kuis semua mapel diambil bersamaan (sebelumnya satu per satu: guru dengan 10 mapel menunggu 10× lebih lama)
+    const cs = await GET('/courses');
+    const per = await Promise.all(cs.map(c => GET('/quizzes?course_id=' + c.id).catch(() => [])));
+    cs.forEach((c, i) => per[i].forEach(q => targets.push([`kuis:${q.id}:${q.jumlah_opsi}`, `Kuis · ${q.judul} (${c.nama} ${c.kelas_nama})`])));
   }
   if (!targets.length) return toast('Buat dulu ujian CBT atau kuis mapel sebagai tujuan.', 'bad');
   const fields = [{ n: 'tujuan', l: 'Tujuan', t: 'select', o: targets }];

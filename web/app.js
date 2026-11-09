@@ -99,7 +99,7 @@ async function api(method, path, body) {
   if (sd) S.skew = sd - Date.now();
   let data = null;
   try { data = await res.json(); } catch { /* bukan JSON */ }
-  if (res.status === 401 && S.user && path !== '/login') { resetClient(); }
+  if (res.status === 401 && S.user && path !== '/login') { resetClient(true); }
   if (!res.ok) throw new Error((data && data.error) || `Gagal (${res.status})`);
   return data;
 }
@@ -229,7 +229,10 @@ function openModal({ title, body = '', wide = false, builder = null }) {
 }
 async function refreshModal(m) {
   if (!m.body.innerHTML.trim()) m.body.innerHTML = '<div class="skel"></div><div class="skel"></div><div class="skel"></div>';
-  try { m.body.innerHTML = await m.builder(); } catch (e) { m.body.innerHTML = errBox(e); }
+  const seq = m.seq = (m.seq || 0) + 1; // filter diganti cepat: hasil permintaan lama tidak menimpa yang baru
+  let html;
+  try { html = await m.builder(); } catch (e) { html = errBox(e); }
+  if (seq === m.seq) m.body.innerHTML = html;
 }
 function closeModal() { const m = MODALS.pop(); if (m) { m.el.remove(); stopAllMedia(); } }
 
@@ -242,9 +245,12 @@ function stopAllMedia() {
   MEDIA.clear();
 }
 // Bersihkan semua data lokal milik pengguna (penting di PC lab bersama), lalu muat ulang aplikasi.
-function resetClient() {
+// keepAnswers: sesi habis (401) di tengah kuis/ujian → jawaban yang belum terkirim TIDAK dihapus; setelah login
+// lagi siswa melanjutkan dari jawaban itu (kuncinya memuat id pengguna, jadi tidak terbaca akun lain).
+function resetClient(keepAnswers = false) {
   stopAllMedia();
-  try { Object.keys(localStorage).filter(k => k.startsWith('sch_')).forEach(k => localStorage.removeItem(k)); } catch { /* abaikan */ }
+  const keep = k => keepAnswers && (k.startsWith('sch_quiz_') || k.startsWith('sch_cbt_'));
+  try { Object.keys(localStorage).filter(k => k.startsWith('sch_') && !keep(k)).forEach(k => localStorage.removeItem(k)); } catch { /* abaikan */ }
   location.hash = '';
   location.reload();
 }
@@ -341,11 +347,12 @@ const Combo = {
     ul.innerHTML = shown.length ? shown.map((x, i) => `<li role="option" id="${w.dataset.cb}-o${i}" data-v="${esc(x.v)}" aria-selected="${x.v.toLowerCase() === cur}">
         <span>${esc(x.v)}</span>${x.l ? `<small>${esc(x.l)}</small>` : ''}</li>`).join('')
       : `<li class="cb-none" aria-disabled="true">${q ? `Tidak ada di daftar — "${esc(inp.value.trim())}" akan disimpan sebagai isian baru` : 'Belum ada pilihan, ketik isian'}</li>`;
+    const wasHidden = ul.hidden;
     ul.hidden = false; w.classList.add('open'); inp.setAttribute('aria-expanded', 'true');
     const sel = $('[aria-selected=true]', ul);
     if (sel) { Combo.hi(w, sel); sel.scrollIntoView({ block: 'nearest' }); } else inp.removeAttribute('aria-activedescendant');
-    // di HP: pastikan daftar terlihat di atas keyboard
-    if (matchMedia('(max-width: 640px)').matches) setTimeout(() => inp.scrollIntoView({ block: 'start', behavior: 'smooth' }), 60);
+    // di HP: pastikan daftar terlihat di atas keyboard — hanya saat baru dibuka, tidak setiap ketikan (layar bergetar)
+    if (wasHidden && matchMedia('(max-width: 640px)').matches) setTimeout(() => inp.scrollIntoView({ block: 'start', behavior: 'smooth' }), 60);
   },
   close(w) {
     const ul = $('.cb-list', w);
@@ -519,9 +526,11 @@ window.addEventListener('hashchange', () => { if (S.user) route(); });
 
 async function route() {
   if (S.timer) { clearInterval(S.timer); S.timer = null; }
+  if (confirmResolve) { const r = confirmResolve; confirmResolve = null; r(false); } // dialog konfirmasi ditinggal = "batal"
   while (MODALS.length) closeModal();
   stopAllMedia();
   for (const id of Object.keys(FORMS)) if (!document.querySelector(`[data-form="${id}"]`)) delete FORMS[id];
+  for (const id of Object.keys(COMBO)) if (!document.querySelector(`[data-cb="${id}"]`)) delete COMBO[id];
   if (S.user && S.user.ganti_pw) return renderGantiPW();
   const { page, params } = parseHash();
   const navItem = navFor(S.user.role).find(n => n[0] === (PAGE_PARENT[page] || page)) || NAV[S.user.role].find(n => n[0] === (PAGE_PARENT[page] || page));
@@ -548,8 +557,15 @@ async function refresh(quiet) {
     // tidak menimpa/menjalankan "after" milik halaman baru
     const [html, after] = await pageFn(S.user.role, page)(S.params).then(h => { const a = S.after; S.after = null; return [h, a]; });
     if (seq !== S.seq || page !== S.page) return;
+    // isian saring cepat ([data-filter]) dipertahankan saat halaman yang sama dimuat ulang (mis. setelah simpan)
+    const keepFilter = main.dataset.page === page ? $$('[data-filter]', main).map(i => [i.dataset.filter, i.value]).filter(([, v]) => v) : [];
     main.dataset.seq = seq;
+    main.dataset.page = page;
     main.innerHTML = html;
+    for (const [id, v] of keepFilter) {
+      const i = $(`[data-filter="${id}"]`, main);
+      if (i) { i.value = v; i.dispatchEvent(new Event('input', { bubbles: true })); }
+    }
     if (after) after();
   } catch (e) {
     if (seq !== S.seq) return;
@@ -676,8 +692,12 @@ document.addEventListener('click', e => {
   const fn = ACT[el.dataset.act];
   if (!fn) return;
   e.preventDefault();
-  Promise.resolve().then(() => fn(el, e)).catch(ex => toast(ex.message, 'bad'));
+  // klik ganda cepat tidak menjalankan aksi dua kali (pinjam/kembali buku, kirim ulang WA, buka jendela, dll.)
+  if (BUSY.has(el)) return;
+  BUSY.add(el);
+  Promise.resolve().then(() => fn(el, e)).catch(ex => toast(ex.message, 'bad')).finally(() => BUSY.delete(el));
 });
+const BUSY = new WeakSet();
 document.addEventListener('change', e => {
   const el = e.target.closest('[data-change]');
   if (el && CHG[el.dataset.change]) Promise.resolve(CHG[el.dataset.change](el)).catch(ex => toast(ex.message, 'bad'));
@@ -834,6 +854,7 @@ const Scanner = {
     if (!this.supported()) throw new Error('Browser ini belum mendukung pemindai kamera. Gunakan Chrome di Android, atau scanner barcode USB.');
     const det = new BarcodeDetector({ formats: ['qr_code', 'code_128', 'ean_13', 'code_39'] });
     const st = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    if (!video.isConnected) { st.getTracks().forEach(t => t.stop()); return; } // sudah pindah halaman
     if (this.stream) this.stream.getTracks().forEach(t => t.stop());
     this.stream = st;
     video.srcObject = this.stream;
@@ -862,7 +883,7 @@ function beep(ok = true) {
 const monthNow = () => today().slice(0, 7);
 const MONTHS = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
 const monthLabel = ym => { const [y, m] = ym.split('-'); return MONTHS[Number(m) - 1] + ' ' + y; };
-const tabs = (items, cur, act = 'tab') => `<div class="tabs no-print" role="tablist">${items.map(([k, l]) => `<button type="button" role="tab" class="${k === cur ? 'on' : ''}" data-act="${act}" data-tab="${k}">${esc(l)}</button>`).join('')}</div>`;
+const tabs = (items, cur, act = 'tab') => `<div class="tabs no-print" role="tablist">${items.map(([k, l]) => `<button type="button" role="tab" class="${k === cur ? 'on' : ''}" aria-selected="${k === cur}" data-act="${act}" data-tab="${k}">${esc(l)}</button>`).join('')}</div>`;
 ACT.tab = el => go(S.page, { ...S.params, tab: el.dataset.tab });
 
 // =====================================================================
@@ -1005,8 +1026,10 @@ function stackTables(root = document) {
   }
 }
 let stackPending = false;
-new MutationObserver(() => {
-  if (stackPending) return;
+// hanya bereaksi bila ada TABEL baru (bukan setiap detik timer ujian, toast, atau ketikan di dropdown)
+const addsTable = recs => recs.some(r => [...r.addedNodes].some(n => n.nodeType === 1 && (n.tagName === 'TABLE' || n.tagName === 'TR' || n.querySelector?.('table, tr'))));
+new MutationObserver(recs => {
+  if (stackPending || !addsTable(recs)) return;
   stackPending = true;
   requestAnimationFrame(() => { stackPending = false; stackTables(); });
 }).observe(document.documentElement, { childList: true, subtree: true });

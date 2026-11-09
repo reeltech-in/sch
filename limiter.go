@@ -21,21 +21,7 @@ type loginLimiter struct {
 
 func newLoginLimiter() *loginLimiter { return &loginLimiter{fails: map[string][]time.Time{}} }
 
-func (l *loginLimiter) blocked(ip string) bool {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	cut := time.Now().Add(-10 * time.Minute)
-	keep := l.fails[ip][:0]
-	for _, t := range l.fails[ip] {
-		if t.After(cut) {
-			keep = append(keep, t)
-		}
-	}
-	l.fails[ip] = keep
-	return len(keep) >= 10
-}
-
-// blockedN: seperti blocked tetapi dengan batas sendiri (dipakai per-username & formulir publik).
+// blockedN: true bila key gagal >= n kali dalam 10 menit terakhir (dipakai per-username & formulir publik).
 func (l *loginLimiter) blockedN(key string, n int) bool {
 	l.mu.Lock()
 	defer l.mu.Unlock()

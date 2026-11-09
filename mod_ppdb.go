@@ -50,16 +50,21 @@ func (a *App) apiPPDBDaftar(c *Ctx) error {
 		Berkas  map[string]string `json:"berkas"`  // {kk|akta|foto|lain: dataURL}
 		Website string            `json:"website"` // honeypot
 	}
-	c.longBody()
-	if err := c.bindLarge(&in, 10<<20); err != nil {
-		return err
-	}
-	if err := c.publicGuard("ppdb:", 3, in.Website); err != nil {
+	// batas per perangkat & masa pendaftaran dicek SEBELUM membaca isi (hingga 10 MB), agar pengirim
+	// yang sudah diblokir tidak bisa menghabiskan memori server
+	if err := c.publicGuard("ppdb:", 3, ""); err != nil {
 		return err
 	}
 	cfg := getConfig(a.db, "ppdb")
 	if open, msg := ppdbOpen(cfg); !open {
 		return bad(msg)
+	}
+	c.longBody()
+	if err := c.bindLarge(&in, 10<<20); err != nil {
+		return err
+	}
+	if strings.TrimSpace(in.Website) != "" { // honeypot
+		return bad("Pengiriman ditolak.")
 	}
 	d := map[string]any{}
 	for _, f := range ppdbFields {

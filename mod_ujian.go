@@ -141,7 +141,7 @@ CREATE TABLE IF NOT EXISTS graduation (
 // ---------------------------------------------------------------------
 func (c *Ctx) ownsExam(id int64) bool {
 	var by sql.NullInt64
-	if c.A.db.QueryRow(`SELECT created_by FROM exams WHERE id=?`, id).Scan(&by) != nil {
+	if c.A.reader().QueryRow(`SELECT created_by FROM exams WHERE id=?`, id).Scan(&by) != nil {
 		return false
 	}
 	return c.U.Role == "admin" || (by.Valid && by.Int64 == c.U.ID)
@@ -253,6 +253,9 @@ func apiCBTSave(c *Ctx) error {
 		return 0
 	}
 	if id > 0 {
+		if err := opsiCukup(c, "exam_questions", "exam_id", id, in.JumlahOpsi); err != nil {
+			return err
+		}
 		_, err = c.A.db.Exec(`UPDATE exams SET judul=?, mapel=?, kelas_ids=?, mulai=?, selesai=?, durasi_menit=?, jumlah_opsi=?, acak_soal=?, acak_opsi=?, token=?, tampil_nilai=? WHERE id=?`,
 			judul, str(in.Mapel), string(kb), mulai, selesai, in.DurasiMenit, in.JumlahOpsi, b(in.AcakSoal), b(in.AcakOpsi), tok, b(in.TampilNilai), id)
 	} else {
@@ -345,8 +348,14 @@ func apiCBTSoalSave(c *Ctx) error {
 	}
 	var err error
 	if isUpdate {
-		_, err = c.A.db.Exec(`UPDATE exam_questions SET pertanyaan=?, gambar=?, opsi_a=?, opsi_b=?, opsi_c=?, opsi_d=?, opsi_e=?, jawaban_benar=?, bobot=? WHERE id=?`,
+		var res sql.Result
+		res, err = c.A.db.Exec(`UPDATE exam_questions SET pertanyaan=?, gambar=?, opsi_a=?, opsi_b=?, opsi_c=?, opsi_d=?, opsi_e=?, jawaban_benar=?, bobot=? WHERE id=?`,
 			p, gambar, opts[0], opts[1], opts[2], opts[3], opts[4], kunci, bobot, id)
+		if err == nil {
+			if n, _ := res.RowsAffected(); n == 0 {
+				return notFound() // soal sudah dihapus (mis. di tab lain): jangan laporkan "tersimpan"
+			}
+		}
 	} else {
 		_, err = c.A.db.Exec(`INSERT INTO exam_questions (exam_id, pertanyaan, gambar, opsi_a, opsi_b, opsi_c, opsi_d, opsi_e, jawaban_benar, bobot, created_at)
 			VALUES (?,?,?,?,?,?,?,?,?,?,?)`, examID, p, gambar, opts[0], opts[1], opts[2], opts[3], opts[4], kunci, bobot, nowStr())
@@ -371,6 +380,7 @@ func apiCBTHasil(c *Ctx) error {
 	if !c.ownsExam(id) {
 		return forbidden()
 	}
+	c.A.finalizeCBT(id) // nilai langsung terlihat untuk siswa yang tidak sempat mengumpulkan
 	var kelas string
 	c.A.db.QueryRow(`SELECT kelas_ids FROM exams WHERE id=?`, id).Scan(&kelas)
 	var ids []int64
@@ -636,9 +646,9 @@ func apiCBTSubmit(c *Ctx) error {
 	}
 	defer tx.Rollback()
 	var aid int64
-	var omap, saved, started, durasi, selesai string
-	if err := tx.QueryRow(`SELECT t.id, t.opsi_map, t.jawaban, t.started_at, e.durasi_menit, e.selesai FROM exam_attempts t JOIN exams e ON e.id=t.exam_id
-		WHERE t.exam_id=? AND t.siswa_id=? AND t.selesai=0`, id, c.U.ID).Scan(&aid, &omap, &saved, &started, &durasi, &selesai); err != nil {
+	var omap, saved, started, durasi, selesai, urutan string
+	if err := tx.QueryRow(`SELECT t.id, t.opsi_map, t.jawaban, t.started_at, e.durasi_menit, e.selesai, t.urutan FROM exam_attempts t JOIN exams e ON e.id=t.exam_id
+		WHERE t.exam_id=? AND t.siswa_id=? AND t.selesai=0`, id, c.U.ID).Scan(&aid, &omap, &saved, &started, &durasi, &selesai, &urutan); err != nil {
 		return bad("Ujian belum dimulai atau sudah dikirim.")
 	}
 	ans := toOriginal(in.Answers, omap)
@@ -647,25 +657,9 @@ func apiCBTSubmit(c *Ctx) error {
 		ans = map[string]string{}
 		json.Unmarshal([]byte(saved), &ans)
 	}
-	rows, err := tx.Query(`SELECT id, jawaban_benar, bobot FROM exam_questions WHERE exam_id=?`, id)
+	skor, err := scoreAttempt(tx, id, urutan, ans)
 	if err != nil {
 		return err
-	}
-	var total, benar float64
-	for rows.Next() {
-		var qid int64
-		var kunci string
-		var bobot float64
-		rows.Scan(&qid, &kunci, &bobot)
-		total += bobot
-		if ans[strconv.FormatInt(qid, 10)] == kunci {
-			benar += bobot
-		}
-	}
-	rows.Close()
-	skor := 0.0
-	if total > 0 {
-		skor = math.Round(benar/total*10000) / 100
 	}
 	jb, _ := json.Marshal(ans)
 	if _, err := tx.Exec(`UPDATE exam_attempts SET jawaban=?, skor=?, selesai=1, submitted_at=? WHERE id=?`, string(jb), skor, nowStr(), aid); err != nil {
@@ -680,4 +674,101 @@ func apiCBTSubmit(c *Ctx) error {
 		return c.JSON(map[string]any{"skor": nil})
 	}
 	return c.JSON(map[string]any{"skor": skor})
+}
+
+// scoreAttempt menilai jawaban (huruf asli) hanya atas soal yang memang diterima siswa (urutan miliknya):
+// soal yang ditambahkan guru setelah siswa mulai tidak menurunkan nilai.
+func scoreAttempt(tx *sql.Tx, examID int64, urutan string, ans map[string]string) (float64, error) {
+	var got []int64
+	json.Unmarshal([]byte(urutan), &got)
+	dapat := map[int64]bool{}
+	for _, q := range got {
+		dapat[q] = true
+	}
+	rows, err := tx.Query(`SELECT id, jawaban_benar, bobot FROM exam_questions WHERE exam_id=?`, examID)
+	if err != nil {
+		return 0, err
+	}
+	defer rows.Close()
+	var total, benar float64
+	for rows.Next() {
+		var qid int64
+		var kunci string
+		var bobot float64
+		if err := rows.Scan(&qid, &kunci, &bobot); err != nil {
+			return 0, err
+		}
+		if len(dapat) > 0 && !dapat[qid] {
+			continue
+		}
+		total += bobot
+		if ans[strconv.FormatInt(qid, 10)] == kunci {
+			benar += bobot
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return 0, err
+	}
+	return persen(benar, total), nil
+}
+
+// persen: nilai 0–100 dengan dua desimal (dipakai CBT, kuis, dan LJK)
+func persen(benar, total float64) float64 {
+	if total <= 0 {
+		return 0
+	}
+	return math.Round(benar/total*10000) / 100
+}
+
+// finalizeCBT menilai ujian yang waktunya sudah habis tetapi tidak pernah dikumpulkan (HP mati, browser
+// tertutup): jawaban yang sudah tersimpan otomatis dinilai, sehingga tidak tertinggal "belum selesai" selamanya.
+// examID 0 = semua ujian.
+func (a *App) finalizeCBT(examID int64) {
+	q := `SELECT t.id, t.exam_id, t.started_at, e.durasi_menit, e.selesai FROM exam_attempts t
+		JOIN exams e ON e.id=t.exam_id WHERE t.selesai=0`
+	args := []any{}
+	if examID > 0 {
+		q += ` AND t.exam_id=?`
+		args = append(args, examID)
+	}
+	type att struct {
+		id, exam          int64
+		start, dur, tutup string
+	}
+	rows, err := a.reader().Query(q, args...)
+	if err != nil {
+		return
+	}
+	var due []att
+	for rows.Next() {
+		var x att
+		if rows.Scan(&x.id, &x.exam, &x.start, &x.dur, &x.tutup) == nil && time.Now().After(examDeadline(x.start, x.dur, x.tutup)) {
+			due = append(due, x)
+		}
+	}
+	rows.Close()
+	for _, x := range due {
+		func() {
+			tx, err := a.db.Begin()
+			if err != nil {
+				return
+			}
+			defer tx.Rollback()
+			var jawaban, urutan string
+			if tx.QueryRow(`SELECT jawaban, urutan FROM exam_attempts WHERE id=? AND selesai=0`, x.id).Scan(&jawaban, &urutan) != nil {
+				return
+			}
+			ans := map[string]string{}
+			json.Unmarshal([]byte(jawaban), &ans)
+			skor, err := scoreAttempt(tx, x.exam, urutan, ans)
+			if err != nil {
+				return
+			}
+			if res, err := tx.Exec(`UPDATE exam_attempts SET skor=?, selesai=1, submitted_at=? WHERE id=? AND selesai=0`, skor, nowStr(), x.id); err == nil {
+				if n, _ := res.RowsAffected(); n == 1 {
+					tx.Commit()
+				}
+			}
+		}()
+	}
 }

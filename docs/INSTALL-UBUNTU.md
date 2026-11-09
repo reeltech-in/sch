@@ -68,7 +68,7 @@ Tambahkan variabel sebelum `bash` (repo publik) atau sebelum `./install.sh` (rep
 | `SCH_PORT` | `3220` | port HTTP |
 | `SCH_HTTPS_PORT` | `3221` | port HTTPS lokal untuk kamera HP; kosongkan (`SCH_HTTPS_PORT=`) untuk mematikan |
 | `SCH_PROXY_IP` | – | IP mesin Cloudflare Tunnel / reverse proxy yang dipercaya (otomatis menyalakan mode proxy) |
-| `SCH_PROXY` | `0` | `1` = mode proxy tanpa membatasi IP |
+| `SCH_PROXY` | `0` | `1` = mode proxy untuk cloudflared/nginx di server yang **sama** (hanya 127.0.0.1 dipercaya) |
 | `SCH_DEMO` | `0` | `1` = isi data contoh untuk mencoba (hanya bila database kosong) |
 | `SCH_UFW` | `0` | `1` = buka port di firewall `ufw` |
 | `SCH_TEST` | `0` | `1` = jalankan tes otomatis sebelum memasang |

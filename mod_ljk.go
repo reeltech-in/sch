@@ -3,7 +3,6 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
-	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -134,10 +133,7 @@ func apiLJKSave(c *Ctx) error {
 			nBenar++
 		}
 	}
-	skor := 0.0
-	if total > 0 {
-		skor = math.Round(benar/total*10000) / 100
-	}
+	skor := persen(benar, total)
 	jb, _ := json.Marshal(ans)
 	ub, _ := json.Marshal(urutan)
 	ob, _ := json.Marshal(omap)

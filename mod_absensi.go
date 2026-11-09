@@ -244,16 +244,21 @@ func apiAbsenHarianSave(c *Ctx) error {
 	var alfa []int64 // siswa yang benar-benar dicatat alfa (hanya mereka yang dikabari)
 	for _, it := range in.Items {
 		switch it.Status {
-		case "hadir", "terlambat", "izin", "sakit", "alfa":
-		case "":
-			tx.Exec(`DELETE FROM daily_attendance WHERE siswa_id=? AND tanggal=? AND metode='manual'`, it.SiswaID, tgl)
-			continue
+		case "hadir", "terlambat", "izin", "sakit", "alfa", "":
 		default:
 			return bad("Status tidak valid.")
 		}
+		// siswa harus anggota kelas yang dikelola (termasuk saat MENGHAPUS status), agar guru tidak bisa
+		// mengubah absensi siswa kelas lain dengan mengganti siswa_id
 		var ok int
 		tx.QueryRow(`SELECT COUNT(*) FROM users WHERE id=? AND role='siswa' AND kelas_id=?`, it.SiswaID, in.KelasID).Scan(&ok)
 		if ok == 0 {
+			continue
+		}
+		if it.Status == "" {
+			if _, err := tx.Exec(`DELETE FROM daily_attendance WHERE siswa_id=? AND tanggal=? AND metode='manual'`, it.SiswaID, tgl); err != nil {
+				return err
+			}
 			continue
 		}
 		if it.Status == "alfa" {

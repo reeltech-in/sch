@@ -291,6 +291,7 @@ ACT.ljkCam = async () => {
   try {
     ACT.ljkCamStop(); // tombol diketuk dua kali: kamera lama dimatikan dulu
     S.ljkStream = trackStream(await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } } }));
+    if (!v.isConnected) return ACT.ljkCamStop(); // sudah pindah halaman saat izin kamera ditanyakan: matikan lagi
     v.srcObject = S.ljkStream; await v.play(); $('#ljkCamBox').hidden = false;
   } catch { toast('Kamera tidak bisa dibuka. Izinkan akses kamera atau pakai tombol Foto.', 'bad'); }
 };
