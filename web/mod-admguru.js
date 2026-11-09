@@ -131,7 +131,7 @@ ACT.catForm = async el => {
   });
   // kategori menyesuaikan jenis yang dipilih
   const f = $$('.modal form').pop();
-  f.jenis.addEventListener('change', () => { f.kategori.list.innerHTML = (KATEGORI_CAT[f.jenis.value] || []).map(x => `<option value="${esc(x)}"></option>`).join(''); });
+  f.jenis.addEventListener('change', () => { setComboOptions(f.kategori, KATEGORI_CAT[f.jenis.value] || []); });
 };
 const catRows = () => Object.values(S.catatan).sort((a, b) => a.tanggal.localeCompare(b.tanggal));
 ACT.catCSV = () => downloadText('catatan-siswa.csv', toCSV([['Tanggal', 'Siswa', 'NIS', 'Kelas', 'Jenis', 'Kategori', 'Poin', 'Keterangan', 'Tindak lanjut', 'Penulis'],

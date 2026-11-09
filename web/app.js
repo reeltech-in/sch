@@ -43,6 +43,7 @@ const ICONS = {
   check: '<path d="m5 12 5 5L20 7"/>',
   print: '<path d="M6 9V2h12v7"/><rect x="6" y="14" width="12" height="8"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>',
   upload: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5M12 3v12"/>',
+  down: '<path d="m6 9 6 6 6-6"/>',
   download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5M12 15V3"/>',
   link: '<path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/>',
   file: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/>',
@@ -291,11 +292,8 @@ function fieldHtml(f, vals) {
     const keep = v !== '' && v != null && !o.some(([ov]) => String(ov) === String(v)) ? [[v, v]] : [];
     inp = `<select name="${f.n}" ${req}>${opts([...keep, ...o], v, f.blank)}</select>`;
   } else if (f.t === 'combo') {
-    // dropdown pilihan + tetap boleh mengetik nilai baru
-    const dl = 'dl' + (++comboSeq);
-    const lbl = new Map((f.o || []).filter(Array.isArray).map(([ov, ol]) => [String(ov), ol]));
-    inp = `<input name="${f.n}" list="${dl}" value="${esc(v)}" ${req} placeholder="${esc(f.ph || 'Pilih atau ketik…')}" autocomplete="off">
-      <datalist id="${dl}">${uniqList(f.o || []).map(x => `<option value="${esc(x)}"${lbl.get(x) && lbl.get(x) !== x ? ` label="${esc(lbl.get(x))}"` : ''}></option>`).join('')}</datalist>`;
+    // dropdown pilihan + tetap boleh mengetik nilai baru (lihat Combo di bawah)
+    inp = comboHtml(f.n, v, f.o || [], { req, ph: f.ph });
   }
   else {
     const type = { number: 'number', date: 'date', datetime: 'datetime-local', time: 'time', password: 'password', email: 'email', url: 'url' }[f.t] || 'text';
@@ -313,7 +311,90 @@ function formHtml(id, fields, vals = {}, { submit = 'Simpan', cancel = true } = 
     <div class="sheet-foot">${cancel ? '<button type="button" class="btn ghost" data-act="closeModal">Batal</button>' : ''}<button class="btn" type="submit">${esc(submit)}</button></div></form>`;
 }
 
+// =====================================================================
+// Combo: dropdown "pilih atau ketik". Pengganti <datalist> yang di HP tidak menampilkan daftar
+// (iPhone hanya saran di atas keyboard, Android hanya yang cocok dengan isian). Pola ARIA combobox:
+// ketuk/fokus = buka semua pilihan, ketik = saring, panah atas/bawah + Enter = pilih, Esc = tutup.
+// =====================================================================
+const COMBO = {};
 let comboSeq = 0;
+function comboItems(list) {
+  const lbl = new Map(list.filter(Array.isArray).map(([ov, ol]) => [String(ov), ol]));
+  return uniqList(list).map(v => ({ v, l: lbl.get(v) && lbl.get(v) !== v ? lbl.get(v) : '' }));
+}
+function comboHtml(name, val, list, { req = '', ph = '' } = {}) {
+  const id = 'cb' + (++comboSeq);
+  COMBO[id] = comboItems(list);
+  return `<div class="cb" data-cb="${id}"><input name="${name}" value="${esc(val ?? '')}" ${req} placeholder="${esc(ph || 'Pilih atau ketik…')}" autocomplete="off"
+      role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="${id}-l">
+    <button type="button" class="cb-btn" tabindex="-1" aria-label="Tampilkan pilihan">${ico('down')}</button>
+    <ul class="cb-list" id="${id}-l" role="listbox" hidden></ul></div>`;
+}
+// ganti daftar pilihan combo yang sudah tampil (mis. kategori bergantung jenis)
+function setComboOptions(input, list) { const w = input.closest('.cb'); if (w) COMBO[w.dataset.cb] = comboItems(list); }
+const Combo = {
+  open(w, filter) {
+    const inp = $('input', w), ul = $('.cb-list', w), items = COMBO[w.dataset.cb] || [];
+    const q = (filter ? inp.value : '').trim().toLowerCase();
+    const cur = inp.value.trim().toLowerCase();
+    const shown = q ? items.filter(x => (x.v + ' ' + x.l).toLowerCase().includes(q)) : items;
+    ul.innerHTML = shown.length ? shown.map((x, i) => `<li role="option" id="${w.dataset.cb}-o${i}" data-v="${esc(x.v)}" aria-selected="${x.v.toLowerCase() === cur}">
+        <span>${esc(x.v)}</span>${x.l ? `<small>${esc(x.l)}</small>` : ''}</li>`).join('')
+      : `<li class="cb-none" aria-disabled="true">${q ? `Tidak ada di daftar — "${esc(inp.value.trim())}" akan disimpan sebagai isian baru` : 'Belum ada pilihan, ketik isian'}</li>`;
+    ul.hidden = false; w.classList.add('open'); inp.setAttribute('aria-expanded', 'true');
+    const sel = $('[aria-selected=true]', ul);
+    if (sel) { Combo.hi(w, sel); sel.scrollIntoView({ block: 'nearest' }); } else inp.removeAttribute('aria-activedescendant');
+    // di HP: pastikan daftar terlihat di atas keyboard
+    if (matchMedia('(max-width: 640px)').matches) setTimeout(() => inp.scrollIntoView({ block: 'start', behavior: 'smooth' }), 60);
+  },
+  close(w) {
+    const ul = $('.cb-list', w);
+    if (ul.hidden) return;
+    ul.hidden = true; w.classList.remove('open');
+    const inp = $('input', w); inp.setAttribute('aria-expanded', 'false'); inp.removeAttribute('aria-activedescendant');
+  },
+  hi(w, li) {
+    $$('.cb-list li.hi', w).forEach(x => x.classList.remove('hi'));
+    if (!li) return;
+    li.classList.add('hi'); li.scrollIntoView({ block: 'nearest' });
+    $('input', w).setAttribute('aria-activedescendant', li.id);
+  },
+  pick(w, li) {
+    const inp = $('input', w);
+    inp.value = li.dataset.v;
+    Combo.close(w);
+    inp.dispatchEvent(new Event('input', { bubbles: true }));
+    inp.dispatchEvent(new Event('change', { bubbles: true }));
+  },
+};
+// dibuka saat diketuk/diklik, diketik, atau panah bawah; tidak saat fokus otomatis (formulir baru dibuka)
+document.addEventListener('click', e => { if (e.target.matches && e.target.matches('.cb input') && $('.cb-list', e.target.closest('.cb')).hidden) Combo.open(e.target.closest('.cb'), false); });
+document.addEventListener('focusout', e => {
+  const w = e.target.closest && e.target.closest('.cb');
+  if (w) setTimeout(() => { if (!w.contains(document.activeElement)) Combo.close(w); }, 120);
+});
+document.addEventListener('input', e => { if (e.isTrusted !== false && e.target.matches && e.target.matches('.cb input')) Combo.open(e.target.closest('.cb'), true); });
+// pilih dengan ketuk/klik; mousedown dicegah agar input tetap fokus (keyboard HP tidak naik-turun)
+document.addEventListener('mousedown', e => { if (e.target.closest && e.target.closest('.cb-list, .cb-btn')) e.preventDefault(); });
+document.addEventListener('click', e => {
+  // preventDefault: combo ada di dalam <label>; tanpa ini klik diteruskan ke input dan daftar terbuka lagi
+  const li = e.target.closest && e.target.closest('.cb-list li');
+  if (li) { e.preventDefault(); if (li.matches('[role=option]')) Combo.pick(li.closest('.cb'), li); return; }
+  const b = e.target.closest && e.target.closest('.cb-btn');
+  if (b) { e.preventDefault(); const w = b.closest('.cb'); const inp = $('input', w); if ($('.cb-list', w).hidden) { inp.focus(); Combo.open(w, false); } else Combo.close(w); }
+});
+document.addEventListener('keydown', e => {
+  if (!e.target.matches || !e.target.matches('.cb input')) return;
+  const w = e.target.closest('.cb'), ul = $('.cb-list', w);
+  const opts = $$('li[role=option]', ul), cur = $('li.hi', ul), i = opts.indexOf(cur);
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    e.preventDefault();
+    if (ul.hidden) return Combo.open(w, false);
+    Combo.hi(w, opts[Math.min(opts.length - 1, Math.max(0, i + (e.key === 'ArrowDown' ? 1 : -1)))] || opts[0]);
+  } else if (e.key === 'Enter' && !ul.hidden && cur) { e.preventDefault(); Combo.pick(w, cur); }
+  else if (e.key === 'Escape' && !ul.hidden) { e.preventDefault(); e.stopPropagation(); Combo.close(w); }
+  else if (e.key === 'Tab') Combo.close(w);
+}, true);
 // daftar unik tanpa kosong (urutan dipertahankan, tanpa beda huruf besar/kecil)
 function uniqList(list) {
   const seen = new Set(), out = [];

@@ -105,7 +105,7 @@ async function pageAI() {
   [S.aiMapel, S.aiKelas, S.aiTahun] = await Promise.all([mapelOpts(), kelasOpts(), tahunAjaranOpts()]);
   const id = registerForm(x.fields, async v => aiRun(tpl, v));
   return hd + t + `<div style="margin-bottom:10px">${btn('Semua jenis', 'go', { page: 'ai', params: '{}' }, 'ghost sm', 'back')}</div>` + info +
-    `<div class="cols cols-21" style="grid-template-columns:minmax(0,1fr) minmax(0,1.4fr)"><section class="card"><div class="card-head"><h3>${esc(x.judul)}</h3></div>
+    `<div class="cols cols-ai"><section class="card"><div class="card-head"><h3>${esc(x.judul)}</h3></div>
       ${formHtml(id, x.fields, { mapel: mapelAwal() }, { submit: 'Buat dengan AI', cancel: false })}</section>
     <section class="card"><div class="card-head"><h3>Hasil</h3><div class="acts" id="aiActs"></div></div><div id="aiOut" class="md">${empty('Isi formulir lalu klik "Buat dengan AI".', 'spark')}</div></section></div>`;
 }

@@ -8,6 +8,14 @@ Format versi: `MAYOR.MINOR.PERBAIKAN`
 Versi yang sedang berjalan terlihat di menu kiri aplikasi (bawah nama pengguna), di `GET /api/version`,
 di header respons `X-SCH-Version`, dan dengan perintah `sch-server -version`.
 
+## v1.19.2 — 2026-11-10 (Dropdown ramah HP)
+- **Dropdown "pilih atau ketik"** (mapel, kelas, kategori, penerbit, rak, dll.) diganti komponen sendiri: diketuk langsung
+  menampilkan semua pilihan, mengetik menyaring daftar, baris pilihan besar untuk jari, isian baru tetap bisa diketik.
+  Sebelumnya memakai daftar bawaan browser yang di HP tidak tampil (iPhone) atau hanya menampilkan yang cocok (Android).
+  Bisa dipakai dengan keyboard (panah, Enter, Esc) dan pembaca layar.
+- Semua dropdown biasa memakai panah yang seragam dan tidak menempel di tepi.
+- Halaman **Asisten AI** di HP kini satu kolom (sebelumnya formulir terjepit setengah layar).
+
 ## v1.19.1 — 2026-11-09 (Mapel yang diampu diutamakan)
 - Kolom **Mata pelajaran** di Asisten AI (RPM, LKPD, soal, Prota/Promes, KKTP) dan formulir **Ujian CBT**: mapel yang
   diampu guru tampil paling atas dengan keterangan *Mapel yang Anda ampu*. Mapel lain tetap bisa dipilih atau diketik.
