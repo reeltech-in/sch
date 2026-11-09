@@ -44,7 +44,14 @@ Server memakai sekitar 10–50 MB RAM. Raspberry Pi juga bisa.
    `data\ADMIN-PASSWORD.txt`. Login, ganti password di menu **Akun Saya**, lalu hapus file itu.
 4. Jika Windows Firewall bertanya, pilih **Allow / Izinkan** untuk jaringan *Private*.
 
-### Linux / Raspberry Pi
+### Server Ubuntu / Debian (otomatis, disarankan)
+Satu perintah memasang dependensi, Go, build, user `sch`, dan layanan systemd:
+```bash
+curl -fsSL https://raw.githubusercontent.com/reeltech-in/sch/main/install.sh | sudo bash
+```
+Repo privat, pengaturan port/proxy, update, dan uninstall: lihat [docs/INSTALL-UBUNTU.md](docs/INSTALL-UBUNTU.md).
+
+### Linux / Raspberry Pi (manual)
 ```bash
 chmod +x sch-server-linux-amd64        # Raspberry Pi 64-bit: sch-server-linux-arm64, 32-bit: sch-server-linux-arm
 ./sch-server-linux-amd64 -addr :3220
