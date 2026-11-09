@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "sch-app",
+      "runtimeExecutable": "go",
+      "runtimeArgs": ["run", ".", "-addr", ":8090", "-db", "demo-data/sch.db", "-demo", "-https", ":8493"],
+      "port": 8090
+    }
+  ]
+}

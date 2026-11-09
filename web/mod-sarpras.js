@@ -1,0 +1,268 @@
+'use strict';
+/* Modul Sarana: Inventaris Sarpras (KIB A–F, foto, label QR) dan Perpustakaan (katalog, e-book, sirkulasi) */
+
+addNav('admin', ['aset', 'Inventaris (KIB)', 'db', 'sarpras', 'Sarana']);
+addNav('admin', ['perpus', 'Perpustakaan', 'book', 'perpus', 'Sarana']);
+addNav('guru', ['perpus', 'Perpustakaan', 'book', 'perpus', 'Sarana']);
+addNav('siswa', ['perpus', 'Perpustakaan', 'book', 'perpus', 'Sarana']);
+
+
+// =====================================================================
+// INVENTARIS SARPRAS (KIB)
+// =====================================================================
+const KIB = {
+  A: ['Tanah', [['luas_m2', 'Luas (m²)'], ['status_hak', 'Status hak'], ['no_sertifikat', 'No. sertifikat'], ['tgl_sertifikat', 'Tgl. sertifikat'], ['penggunaan', 'Penggunaan']]],
+  B: ['Peralatan dan Mesin', [['ukuran', 'Ukuran/CC'], ['bahan', 'Bahan'], ['no_pabrik', 'No. pabrik/seri'], ['no_rangka', 'No. rangka'], ['no_mesin', 'No. mesin'], ['no_polisi', 'No. polisi'], ['no_bpkb', 'No. BPKB']]],
+  C: ['Gedung dan Bangunan', [['bertingkat', 'Bertingkat/tidak'], ['beton', 'Beton/tidak'], ['luas_lantai', 'Luas lantai (m²)'], ['no_dokumen', 'No. dokumen gedung'], ['luas_tanah', 'Luas tanah (m²)'], ['status_tanah', 'Status tanah']]],
+  D: ['Jalan, Irigasi, dan Jaringan', [['konstruksi', 'Konstruksi'], ['panjang_m', 'Panjang (m)'], ['lebar_m', 'Lebar (m)'], ['luas_m2', 'Luas (m²)'], ['no_dokumen', 'No. dokumen'], ['status_tanah', 'Status tanah']]],
+  E: ['Aset Tetap Lainnya', [['judul_pencipta', 'Judul/pencipta (buku)'], ['spesifikasi', 'Spesifikasi'], ['asal_daerah', 'Asal daerah (kesenian)'], ['bahan', 'Bahan'], ['jenis_hewan', 'Jenis hewan/tumbuhan'], ['ukuran', 'Ukuran']]],
+  F: ['Konstruksi Dalam Pengerjaan', [['bangunan', 'Bangunan (P/SP/D)'], ['bertingkat', 'Bertingkat/tidak'], ['beton', 'Beton/tidak'], ['luas_m2', 'Luas (m²)'], ['tgl_mulai', 'Tgl. mulai'], ['status_tanah', 'Status tanah'], ['nilai_kontrak', 'Nilai kontrak']]],
+};
+const KONDISI = [['baik', 'Baik'], ['rusak_ringan', 'Rusak ringan'], ['rusak_berat', 'Rusak berat']];
+const kondisiTag = k => tag(KONDISI.find(x => x[0] === k)?.[1] || k, k === 'baik' ? 'ok' : k === 'rusak_ringan' ? 'warn' : 'bad');
+
+async function pageAset() {
+  const kib = 'ABCDEF'.includes(S.params.tab || '-') && S.params.tab ? S.params.tab : 'all';
+  const pg = await GETpage('/aset?' + (kib !== 'all' ? 'kib=' + kib + '&' : '') + new URLSearchParams(Object.entries({ q: S.params.q || '', limit: S.params.lim || 300 }).filter(([, v]) => v !== '')).toString());
+  const rows = pg.rows, total = pg.total;
+  S.aset = rows;
+  S.asetMap = Object.fromEntries(rows.map(r => [r.id, r]));
+  const nilai = Number(pg.headers.get('X-Total-Nilai') || rows.reduce((s, r) => s + r.harga * r.jumlah, 0));
+  const rusak = rows.filter(r => r.kondisi !== 'baik').length;
+  return head('Inventaris Sarpras', 'Kartu Inventaris Barang (KIB) A–F, lengkap dengan foto dan label QR.',
+      btn('Cetak label QR', 'asetLabels', {}, 'ghost', 'print') + btn('Cetak KIB', 'asetKIB', {}, 'ghost', 'print') + btn('Tambah barang', 'asetForm', { kib: kib === 'all' ? 'B' : kib }, '', 'plus')) +
+    tabs([['all', 'Semua'], ...Object.entries(KIB).map(([k, [n]]) => [k, `KIB ${k}`])], kib) +
+    `<div class="stats">${stat('db', total, kib === 'all' ? 'Jenis barang' : 'KIB ' + kib + ' · ' + KIB[kib][0])}${statRp('chart', nilai, 'Nilai aset')}${stat('trash', rusak, 'Perlu perbaikan')}</div>` +
+    (rows.length ? `${pagerBar('aset', total, rows.length, 'Cari kode, nama, lokasi, merk… (Enter)')}
+    <div class="tw"><table id="tblA"><thead><tr><th>Barang</th><th>KIB</th><th>Lokasi</th><th>Tahun</th><th class="n">Jumlah</th><th>Kondisi</th><th class="n">Harga satuan</th><th></th></tr></thead><tbody>
+    ${rows.map(r => `<tr><td><div class="cell-user">${r.foto ? `<img class="avatar" src="${esc(r.foto)}" alt="">` : `<span class="avatar">${ico('db')}</span>`}<div><b>${esc(r.nama)}</b><small class="muted"><code>${esc(r.kode)}</code> ${esc(r.merk || '')}</small></div></div></td>
+      <td>${tag(r.kib, 'brand')}</td><td>${esc(r.lokasi || '–')}</td><td>${esc(r.tahun || '–')}</td><td class="n">${r.jumlah} ${esc(r.satuan || '')}</td><td>${kondisiTag(r.kondisi)}</td><td class="n">${rupiah(r.harga)}</td>
+      <td><div class="acts">${iconBtn('edit', 'asetForm', { id: r.id }, 'Ubah')}${iconBtn('trash', 'asetDel', { id: r.id, nama: r.nama }, 'Hapus', 'danger')}</div></td></tr>`).join('')}
+    </tbody></table></div>${moreBtn('aset', total, rows.length)}` : `<div class="card">${empty('Belum ada barang di daftar ini.', 'db')}</div>`);
+}
+const kibDetailHtml = (kib, det = {}) => `<div class="form" id="kibDetail" style="gap:12px;background:var(--surface-2);padding:14px;border-radius:14px">
+  <b style="font-size:13px">Rincian KIB ${kib} · ${esc(KIB[kib][0])}</b><div class="row2">${KIB[kib][1].map(([k, l]) =>
+    `<label class="f"><span>${esc(l)}</span><input name="det_${k}" value="${esc(det[k] || '')}" style="background:var(--surface)"></label>`).join('')}</div></div>`;
+ACT.asetForm = async el => {
+  const [kat, sat, dana, lok] = await Promise.all([saran('aset.kategori', ['Elektronik', 'Mebel', 'Alat peraga', 'Alat olahraga', 'Alat kantor', 'Kendaraan', 'Alat laboratorium']),
+    saran('aset.satuan', ['unit', 'buah', 'set', 'paket', 'lembar', 'meter', 'm²']), saran('aset.sumber_dana', ['BOSP', 'APBD', 'APBN', 'DAK', 'Komite', 'Hibah', 'Swadaya']), saran('aset.lokasi')]);
+  const a = el.dataset.id ? S.asetMap[el.dataset.id] : { kib: el.dataset.kib || 'B', kondisi: 'baik', jumlah: 1, satuan: 'unit', tahun: String(new Date().getFullYear()), detail: {} };
+  openForm({
+    title: a.id ? 'Ubah barang' : 'Tambah barang', values: a, wide: true,
+    fields: [[{ n: 'kode', l: 'Kode barang', req: true, ph: 'INV-B-001', hint: 'Dicetak sebagai QR di label.' }, { n: 'nama', l: 'Nama barang', req: true }],
+      [{ n: 'kib', l: 'Jenis KIB', t: 'select', o: Object.entries(KIB).map(([k, [n]]) => [k, `${k} · ${n}`]) }, { n: 'kategori', l: 'Kategori', t: 'combo', o: kat }],
+      [{ n: 'merk', l: 'Merk/tipe' }, { n: 'tahun', l: 'Tahun perolehan', t: 'select', o: yearOpts(60).map(y => [y, y]), blank: '—' }],
+      [{ n: 'jumlah', l: 'Jumlah', t: 'number', min: 1, req: true }, { n: 'satuan', l: 'Satuan', t: 'combo', o: sat }],
+      [{ n: 'harga', l: 'Harga satuan (Rp)', t: 'number', min: 0, step: 'any' }, { n: 'sumber_dana', l: 'Sumber dana', t: 'combo', o: dana }],
+      [{ n: 'kondisi', l: 'Kondisi', t: 'select', o: KONDISI }, { n: 'lokasi', l: 'Lokasi/ruang', t: 'combo', o: lok, ph: 'Pilih atau ketik ruang baru…' }],
+      { n: 'foto', l: 'Foto barang', t: 'file', accept: 'image/*' },
+      { t: 'html', html: kibDetailHtml(a.kib, a.detail || {}) },
+      { n: 'keterangan', l: 'Keterangan', t: 'textarea', rows: 2 }],
+    onSubmit: (v, form) => {
+      const detail = Object.fromEntries($$('input[name^=det_]', form).map(i => [i.name.slice(4), i.value.trim()]));
+      const body = { ...v, harga: v.harga || 0, jumlah: v.jumlah || 1, detail };
+      return a.id ? PUT('/aset/' + a.id, body) : POST('/aset', body);
+    },
+  });
+  // ganti rincian saat jenis KIB diubah
+  const sel = $$('.modal select[name=kib]').pop();
+  sel?.addEventListener('change', () => { $$('.modal #kibDetail').pop().outerHTML = kibDetailHtml(sel.value, a.detail || {}); });
+};
+ACT.asetDel = el => del('/aset/' + el.dataset.id, `Hapus <b>${esc(el.dataset.nama)}</b> dari inventaris?`);
+ACT.asetLabels = () => {
+  if (!S.aset.length) return toast('Tidak ada barang untuk dicetak.', 'bad');
+  const lab = r => `<div class="label">${qrImg(r.kode, 84)}<div><b>${esc(r.kode)}</b><br>${esc(r.nama)}<br>${esc(r.lokasi || '')}<br><small>${esc(S.settings.nama_sekolah || '')}</small></div></div>`;
+  const pages = [];
+  for (let i = 0; i < S.aset.length; i += 24) pages.push(`<div class="pg"><div class="labels">${S.aset.slice(i, i + 24).map(lab).join('')}</div></div>`);
+  printDoc(pages.join(''));
+};
+ACT.asetKIB = () => {
+  const groups = {};
+  S.aset.forEach(r => (groups[r.kib] = groups[r.kib] || []).push(r));
+  if (!Object.keys(groups).length) return toast('Tidak ada barang untuk dicetak.', 'bad');
+  const st = S.settings;
+  printDoc(Object.keys(groups).sort().map(k => {
+    const cols = KIB[k][1];
+    const rows = groups[k];
+    const total = rows.reduce((s, r) => s + r.harga * r.jumlah, 0);
+    return `<div class="pg">${schoolHead()}<h3 style="text-align:center;margin:0">KARTU INVENTARIS BARANG (KIB) ${k}</h3><p style="text-align:center;margin:2px 0 10px">${esc(KIB[k][0].toUpperCase())}</p>
+      <table><thead><tr><th>No</th><th>Kode</th><th>Nama barang</th><th>Merk/tipe</th>${cols.map(([, l]) => `<th>${esc(l)}</th>`).join('')}<th>Tahun</th><th>Jml</th><th>Sumber dana</th><th>Harga (Rp)</th><th>Kondisi</th><th>Ket.</th></tr></thead><tbody>
+      ${rows.map((r, i) => `<tr><td>${i + 1}</td><td>${esc(r.kode)}</td><td>${esc(r.nama)}</td><td>${esc(r.merk || '')}</td>${cols.map(([c]) => `<td>${esc((r.detail || {})[c] || '')}</td>`).join('')}
+        <td>${esc(r.tahun || '')}</td><td>${r.jumlah} ${esc(r.satuan || '')}</td><td>${esc(r.sumber_dana || '')}</td><td style="text-align:right">${Math.round(r.harga * r.jumlah).toLocaleString('id-ID')}</td>
+        <td>${esc(KONDISI.find(x => x[0] === r.kondisi)?.[1] || '')}</td><td>${esc(r.keterangan || '')}</td></tr>`).join('')}
+      <tr><td colspan="${8 + cols.length}" style="text-align:right"><b>Jumlah</b></td><td style="text-align:right"><b>${Math.round(total).toLocaleString('id-ID')}</b></td><td colspan="2"></td></tr></tbody></table>
+      <div class="sign"><div>Mengetahui,<br>Kepala Sekolah<br><br><br><br><b><u>${esc(st.kepala_sekolah || '..............................')}</u></b><br>NIP. ${esc(st.nip_kepala || '')}</div>
+      <div>${fmtDate(today())}<br>Pengurus Barang<br><br><br><br>..............................</div></div></div>`;
+  }).join(''));
+};
+
+// =====================================================================
+// PERPUSTAKAAN — admin
+// =====================================================================
+async function pagePerpus() {
+  if (!isAdm('perpus')) return perpusAnggota();
+  const tab = S.params.tab || 'sirkulasi';
+  const t = tabs([['sirkulasi', 'Sirkulasi'], ['katalog', 'Katalog Buku'], ['pinjaman', 'Peminjaman'], ['atur', 'Pengaturan']], tab);
+  const hd = head('Perpustakaan', 'Pinjam & kembalikan dengan scan kartu siswa dan label buku (scanner USB atau kamera).');
+  if (tab === 'katalog') return hd + t + await perpusKatalog();
+  if (tab === 'pinjaman') return hd + t + await perpusPinjaman();
+  if (tab === 'atur') return hd + t + await perpusAtur();
+  return hd + t + perpusSirkulasi();
+}
+
+S.circ = { member: null, log: [] };
+function perpusSirkulasi() {
+  S.after = () => {
+    const m = $('#circMember'), b = $('#circBook');
+    (S.circ.member ? b : m)?.focus();
+    m?.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); const v = m.value.trim(); m.value = ''; if (v) circMember(v); } });
+    b?.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); const v = b.value.trim(); b.value = ''; if (v) circBorrow(v); } });
+  };
+  const mb = S.circ.member;
+  return `<div class="cols"><section class="card scan-box">
+      <label class="f"><span>1. Anggota</span><input class="scan-input" id="circMember" placeholder="Scan kartu siswa / ketik NIS" autocomplete="off"></label>
+      <div id="circMemberBox">${mb ? memberBox(mb) : '<p class="muted">Belum ada anggota dipilih.</p>'}</div>
+      <label class="f"><span>2. Buku yang dipinjam</span><input class="scan-input" id="circBook" placeholder="Scan label buku / ketik kode" autocomplete="off" ${mb ? '' : 'disabled'}></label>
+      <div class="acts" style="justify-content:flex-start">${btn('Pakai kamera', 'circCam', {}, 'ghost sm', 'eye')}${btn('Matikan kamera', 'camStop', {}, 'ghost sm')}${mb ? btn('Ganti anggota', 'circReset', {}, 'ghost sm') : ''}</div>
+      <video class="scan-video" id="scanVideo" playsinline muted hidden></video></section>
+    <section class="card"><div class="card-head"><h3>Riwayat sesi ini</h3></div>${S.circ.log.length ? S.circ.log.slice(0, 15).map(l => `<div class="li"><div><b>${esc(l.t)}</b><small class="muted">${esc(l.s)}</small></div><small>${l.at}</small></div>`).join('') : empty('Belum ada transaksi.', 'book')}</section></div>`;
+}
+function memberBox(d) {
+  const a = d.anggota;
+  return `<div class="scan-result ok">${avatar(a.foto, a.nama_lengkap, 56)}<div style="flex:1"><b>${esc(a.nama_lengkap)}</b>${esc(a.kelas_nama || (a.role === 'guru' ? 'Guru' : ''))} · ${esc(a.username)}</div></div>
+    ${d.pinjaman.length ? `<div style="margin-top:8px">${d.pinjaman.map(l => { const late = l.jatuh_tempo < today();
+      return `<div class="li"><div><b>${esc(l.judul)}</b><small class="muted">${esc(l.kode)} · kembali ${fmtDate(l.jatuh_tempo)} ${late ? tag('Terlambat', 'bad') : ''}</small></div>${btn('Kembalikan', 'circReturn', { id: l.id, judul: l.judul }, 'sm')}</div>`; }).join('')}</div>`
+      : '<p class="muted" style="margin-top:8px">Tidak ada pinjaman aktif.</p>'}`;
+}
+const circLog = (t, s) => S.circ.log.unshift({ t, s, at: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) });
+// Saat kamera aktif, perbarui bagian halaman saja (refresh penuh akan mematikan kamera).
+function circUpdate() {
+  if (!Scanner.stream || !$('#circMemberBox')) return refresh(true);
+  const mb = S.circ.member;
+  $('#circMemberBox').innerHTML = mb ? memberBox(mb) : '<p class="muted">Belum ada anggota dipilih.</p>';
+  const b = $('#circBook'); if (b) b.disabled = !mb;
+  const log = $('#main .cols > section:last-child');
+  if (log) log.innerHTML = `<div class="card-head"><h3>Riwayat sesi ini</h3></div>${S.circ.log.length ? S.circ.log.slice(0, 15).map(l => `<div class="li"><div><b>${esc(l.t)}</b><small class="muted">${esc(l.s)}</small></div><small>${l.at}</small></div>`).join('') : empty('Belum ada transaksi.', 'book')}`;
+}
+async function circMember(q) {
+  try { S.circ.member = await GET('/perpus/anggota?q=' + encodeURIComponent(q)); beep(); }
+  catch (e) { beep(false); toast(e.message, 'bad'); return; }
+  circUpdate();
+}
+async function circBorrow(kode) {
+  const m = S.circ.member;
+  if (!m) return;
+  try {
+    const r = await POST('/perpus/pinjam', { user_id: m.anggota.id, buku: kode });
+    beep(); circLog('Pinjam: ' + r.judul, `${m.anggota.nama_lengkap} · kembali ${fmtDate(r.jatuh_tempo)}`);
+    toast(`Dipinjam: ${r.judul}`);
+    S.circ.member = await GET('/perpus/anggota?q=' + encodeURIComponent(m.anggota.username));
+  } catch (e) { beep(false); toast(e.message, 'bad'); }
+  circUpdate();
+}
+ACT.circReturn = async el => {
+  const r = await POST('/perpus/kembali/' + el.dataset.id);
+  circLog('Kembali: ' + el.dataset.judul, r.denda ? `terlambat ${r.terlambat_hari} hari · denda ${rupiah(r.denda)}` : 'tepat waktu');
+  toast(r.denda ? `Dikembalikan. Terlambat ${r.terlambat_hari} hari, denda ${rupiah(r.denda)}.` : 'Buku dikembalikan.');
+  if (S.circ.member) S.circ.member = await GET('/perpus/anggota?q=' + encodeURIComponent(S.circ.member.anggota.username));
+  if (S.page === 'perpus' && (S.params.tab || 'sirkulasi') === 'sirkulasi') circUpdate(); else refresh(true);
+};
+ACT.circReset = () => { S.circ.member = null; refresh(true); };
+ACT.circCam = async () => {
+  const v = $('#scanVideo');
+  v.hidden = false;
+  try { await Scanner.start(v, code => (S.circ.member && !code.startsWith('S1.') ? circBorrow(code) : circMember(code))); }
+  catch (e) { v.hidden = true; toast(e.message, 'bad'); }
+};
+
+async function perpusKatalog() {
+  const pg = await GETpage('/buku?' + new URLSearchParams(Object.entries({ q: S.params.q || '', limit: S.params.lim || 300 }).filter(([, v]) => v !== '')).toString());
+  const bs = pg.rows;
+  S.buku = Object.fromEntries(bs.map(b => [b.id, b]));
+  S.bukuList = bs;
+  return `<div class="card-head"><p class="muted">${bs.length} judul · ${bs.reduce((s, b) => s + b.stok, 0)} eksemplar</p>
+    <div class="acts">${btn('Cetak label buku', 'bukuLabels', {}, 'ghost sm', 'print')}${btn('Tambah buku', 'bukuForm', {}, 'sm', 'plus')}</div></div>` +
+    (bs.length ? `${pagerBar('perpus', pg.total, bs.length, 'Cari judul, pengarang, kode, ISBN… (Enter)')}
+    <div class="tw"><table id="tblB"><thead><tr><th>Buku</th><th>Kategori</th><th>Rak</th><th class="n">Tersedia</th><th></th></tr></thead><tbody>
+    ${bs.map(b => `<tr><td><div class="cell-user">${b.cover ? `<img class="avatar" src="${esc(b.cover)}" alt="" style="height:52px;width:40px">` : `<span class="avatar">${ico('book')}</span>`}
+      <div><b>${esc(b.judul)}</b><small class="muted"><code>${esc(b.kode)}</code> ${esc(b.pengarang || '')}${b.tahun ? ' · ' + esc(b.tahun) : ''}</small>${b.ebook ? tag('E-book', 'info') : ''}</div></div></td>
+      <td>${esc(b.kategori || '–')}</td><td>${esc(b.rak || '–')}</td><td class="n">${b.tersedia}/${b.stok}</td>
+      <td><div class="acts">${iconBtn('edit', 'bukuForm', { id: b.id }, 'Ubah')}${iconBtn('trash', 'bukuDel', { id: b.id, judul: b.judul }, 'Hapus', 'danger')}</div></td></tr>`).join('')}
+    </tbody></table></div>${moreBtn('perpus', pg.total, bs.length)}` : `<div class="card">${empty('Belum ada buku.', 'book')}</div>`);
+}
+ACT.bukuForm = async el => {
+  const [kat, rak, pen] = await Promise.all([saran('buku.kategori', ['Pelajaran', 'Fiksi', 'Nonfiksi', 'Referensi', 'Sains', 'Agama', 'Sejarah', 'Biografi', 'Kamus/Ensiklopedia']),
+    saran('buku.rak'), saran('buku.penerbit')]);
+  const b = el.dataset.id ? S.buku[el.dataset.id] : { stok: 1 };
+  openForm({
+    title: b.id ? 'Ubah buku' : 'Tambah buku', values: b, wide: true,
+    fields: [[{ n: 'kode', l: 'Kode buku', req: true, ph: 'BK-0001', hint: 'Dicetak sebagai QR pada label buku.' }, { n: 'isbn', l: 'ISBN' }],
+      { n: 'judul', l: 'Judul', req: true }, [{ n: 'pengarang', l: 'Pengarang' }, { n: 'penerbit', l: 'Penerbit', t: 'combo', o: pen }],
+      [{ n: 'tahun', l: 'Tahun terbit', t: 'select', o: yearOpts(80).map(y => [y, y]), blank: '—' }, { n: 'kategori', l: 'Kategori', t: 'combo', o: kat }],
+      [{ n: 'rak', l: 'Rak', t: 'combo', o: rak }, { n: 'stok', l: 'Jumlah eksemplar', t: 'number', min: 0, req: true }],
+      [{ n: 'cover', l: 'Sampul', t: 'file', accept: 'image/*' }, { n: 'ebook', l: 'File e-book (PDF)', t: 'file', accept: 'application/pdf', hint: 'Maks 30 MB. Siswa bisa membaca langsung.' }],
+      { n: 'sinopsis', l: 'Sinopsis', t: 'textarea', rows: 3 }],
+    onSubmit: v => { const body = { ...v, stok: v.stok ?? 0 }; return b.id ? PUT('/buku/' + b.id, body) : POST('/buku', body); },
+  });
+};
+ACT.bukuDel = el => del('/buku/' + el.dataset.id, `Hapus buku <b>${esc(el.dataset.judul)}</b> beserta riwayat peminjamannya?`);
+ACT.bukuLabels = () => {
+  if (!S.bukuList.length) return toast('Belum ada buku.', 'bad');
+  const lab = b => `<div class="label">${qrImg(b.kode, 84)}<div><b>${esc(b.kode)}</b><br>${esc(b.judul.slice(0, 50))}<br>${esc(b.rak ? 'Rak ' + b.rak : '')}<br><small>Perpustakaan ${esc(S.settings.nama_sekolah || '')}</small></div></div>`;
+  const items = S.bukuList.flatMap(b => Array.from({ length: Math.max(1, b.stok) }, () => b));
+  const pages = [];
+  for (let i = 0; i < items.length; i += 24) pages.push(`<div class="pg"><div class="labels">${items.slice(i, i + 24).map(lab).join('')}</div></div>`);
+  printDoc(pages.join(''));
+};
+
+async function perpusPinjaman() {
+  const f = ['aktif', 'terlambat', 'semua'].includes(S.params.status) ? S.params.status : 'aktif';
+  const ls = await GET('/perpus/pinjaman?status=' + f);
+  return `<div class="bar"><select data-change="loanFilter" aria-label="Saring">${opts([['aktif', 'Sedang dipinjam'], ['terlambat', 'Terlambat'], ['semua', 'Semua (500 terakhir)']], f)}</select>
+    <input class="search" type="search" placeholder="Cari peminjam atau judul…" data-filter="tblL" aria-label="Cari"></div>` +
+    (ls.length ? `<div class="tw"><table id="tblL"><thead><tr><th>Peminjam</th><th>Buku</th><th>Pinjam</th><th>Jatuh tempo</th><th>Status</th><th></th></tr></thead><tbody>
+    ${ls.map(l => { const late = !l.tgl_kembali && l.jatuh_tempo < today();
+      return `<tr><td><b>${esc(l.nama_lengkap)}</b><small class="muted">${esc(l.kelas_nama || l.username)}</small></td><td>${esc(l.judul)}<small class="muted">${esc(l.kode)}</small></td>
+      <td>${fmtDate(l.tgl_pinjam)}</td><td>${fmtDate(l.jatuh_tempo)}</td>
+      <td>${l.tgl_kembali ? tag('Kembali ' + fmtDate(l.tgl_kembali), 'ok') + (l.denda ? ' ' + tag(rupiah(l.denda), 'warn') : '') : late ? tag('Terlambat', 'bad') : tag('Dipinjam', 'info')}</td>
+      <td>${l.tgl_kembali ? '' : btn('Kembalikan', 'circReturn', { id: l.id, judul: l.judul }, 'ghost sm')}</td></tr>`; }).join('')}
+    </tbody></table></div>` : `<div class="card">${empty('Tidak ada data.', 'book')}</div>`);
+}
+CHG.loanFilter = el => go('perpus', { tab: 'pinjaman', status: el.value });
+
+async function perpusAtur() {
+  const c = await GET('/config/perpus');
+  const fields = [{ n: 'lama_pinjam', l: 'Lama peminjaman (hari)', t: 'number', min: 1, req: true }, { n: 'denda_per_hari', l: 'Denda keterlambatan per hari (Rp)', t: 'number', min: 0, req: true },
+    { n: 'maks_pinjam', l: 'Maksimal buku dipinjam per anggota', t: 'number', min: 1, req: true }];
+  const id = registerForm(fields, async v => { await PUT('/config/perpus', v); toast('Pengaturan perpustakaan tersimpan.'); });
+  return `<section class="card" style="max-width:520px">${formHtml(id, fields, c, { cancel: false })}</section>`;
+}
+
+// =====================================================================
+// PERPUSTAKAAN — siswa & guru
+// =====================================================================
+async function perpusAnggota() {
+  const [pg, ls] = await Promise.all([GETpage('/buku?' + new URLSearchParams(Object.entries({ q: S.params.q || '', limit: S.params.lim || 300 }).filter(([, v]) => v !== '')).toString()), GET('/perpus/me')]);
+  const bs = pg.rows;
+  const aktif = ls.filter(l => !l.tgl_kembali);
+  return head('Perpustakaan', 'Cari buku, baca e-book, dan lihat pinjaman Anda.') +
+    (aktif.length ? `<section class="card" style="margin-bottom:16px"><div class="card-head"><h3>Sedang Anda pinjam</h3></div>${aktif.map(l => { const late = l.jatuh_tempo < today();
+      return `<div class="li"><div><b>${esc(l.judul)}</b><small class="muted">${esc(l.pengarang || '')} · kembalikan ${fmtDate(l.jatuh_tempo)}</small></div>${late ? tag('Terlambat', 'bad') : tag('Dipinjam', 'info')}</div>`; }).join('')}</section>` : '') +
+    `${pagerBar('perpus', pg.total, bs.length, 'Cari judul, pengarang, kategori… (Enter)')}
+    ${bs.length ? `<div class="grid" id="bookGrid">${bs.map(b => `<section class="card" data-text="${esc((b.judul + ' ' + (b.pengarang || '') + ' ' + (b.kategori || '')).toLowerCase())}" style="display:flex;gap:12px">
+      ${b.cover ? `<img src="${esc(b.cover)}" alt="" style="width:64px;height:90px;object-fit:cover;border-radius:10px;flex:none">` : `<span class="avatar" style="width:64px;height:90px">${ico('book')}</span>`}
+      <div style="min-width:0;display:flex;flex-direction:column;gap:4px"><b>${esc(b.judul)}</b><small class="muted">${esc(b.pengarang || '')}${b.tahun ? ' · ' + esc(b.tahun) : ''}</small>
+        <div>${b.tersedia > 0 ? tag(`Tersedia ${b.tersedia}`, 'ok') : tag('Sedang dipinjam', 'warn')} ${b.rak ? tag('Rak ' + b.rak) : ''}</div>
+        ${b.ebook ? `<a class="btn sm" href="${esc(b.ebook)}" target="_blank" rel="noopener" style="align-self:flex-start;margin-top:4px">${ico('file')} Baca e-book</a>` : ''}</div></section>`).join('')}</div>`
+      : `<div class="card">${empty('Katalog perpustakaan masih kosong.', 'book')}</div>`}`;
+}
+document.addEventListener('input', e => {
+  const el = e.target.closest('[data-filter2]');
+  if (!el) return;
+  const q = el.value.trim().toLowerCase();
+  $$('#' + el.dataset.filter2 + ' > [data-text]').forEach(c => { c.hidden = q && !c.dataset.text.includes(q); });
+});
+
+Object.assign(PAGES.admin, { aset: pageAset, perpus: pagePerpus });
+Object.assign(PAGES.guru, { perpus: pagePerpus });
+Object.assign(PAGES.siswa, { perpus: pagePerpus });

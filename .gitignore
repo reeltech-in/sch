@@ -1,0 +1,30 @@
+# data & rahasia (jangan pernah di-commit)
+data/
+demo-data/
+*.db
+*.db-wal
+*.db-shm
+*.db.tmp
+ADMIN-PASSWORD.txt
+*.pem
+*.key
+
+# hasil build
+/sch
+/sch-server*
+dist/*
+!dist/jalankan.bat
+*.new
+
+# referensi pihak ketiga (template asli edudigital, tidak dipakai saat berjalan)
+template-lms/
+
+# status lokal graphify (lihat AGENTS.md)
+.graphify/branch.json
+.graphify/worktree.json
+.graphify/needs_update
+.graphify/cache/
+
+# lain-lain
+.DS_Store
+.graphify/.graphify_*
