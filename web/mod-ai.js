@@ -85,19 +85,18 @@ const AI_TPL = {
 
 async function pageAI() {
   const tab = S.params.tab || 'buat';
-  const items = [['buat', 'Buat dokumen'], ['riwayat', 'Riwayat']];
-  if (S.user.role === 'admin') items.push(['atur', 'Pengaturan']);
-  const t = tabs(items, tab);
+  // pengaturan penyedia AI kini ada di menu Pengaturan → Asisten AI (tautan lama tetap diarahkan ke sana)
+  if (tab === 'atur' && S.user.role === 'admin') { go('pengaturan', { tab: 'ai' }); return ''; }
+  const t = tabs([['buat', 'Buat dokumen'], ['riwayat', 'Riwayat']], tab);
   const hd = head('Asisten AI', 'Buat RPM, LKPD, soal, dan surat dengan AI. Selalu periksa ulang hasilnya sebelum dipakai.');
   if (tab === 'riwayat') return hd + t + await aiRiwayat();
-  if (tab === 'atur' && S.user.role === 'admin') return hd + t + await aiAtur();
   const st = await GET('/ai/status');
   S.aiStatus = st;
   const tpl = AI_TPL[S.params.jenis] ? S.params.jenis : null;
   // info model hanya untuk admin; guru cukup memakai asisten tanpa detail teknis
   const info = st.siap ? (st.admin ? `<p class="muted" style="margin-bottom:12px">Model: <b>${esc(st.model)}</b></p>`
       : st.kuota ? `<p class="muted" style="margin-bottom:12px">Terpakai hari ini: <b>${st.terpakai}/${st.kuota}</b> dokumen</p>` : '')
-    : `<div class="hint" style="margin-bottom:14px">Asisten AI belum diatur. ${st.admin ? 'Buka tab <b>Pengaturan</b> untuk mengisi endpoint, API key, dan model.' : 'Hubungi admin sekolah.'}</div>`;
+    : `<div class="hint" style="margin-bottom:14px">Asisten AI belum diatur. ${st.admin ? `Isi endpoint, API key, dan model di ${btn('Pengaturan → Asisten AI', 'go', { page: 'pengaturan', params: JSON.stringify({ tab: 'ai' }) }, 'ghost sm', 'spark')}` : 'Hubungi admin sekolah.'}</div>`;
   if (!tpl) {
     return hd + t + info + `<div class="grid">${Object.entries(AI_TPL).map(([k, x]) => `<section class="card course-card tpl-card" data-act="go" data-page="ai" data-params='${esc(JSON.stringify({ jenis: k }))}' role="button" tabindex="0">
       <div class="tpl-head"><div class="ic">${ico(x.icon)}</div><b>${esc(x.judul)}</b></div><small class="muted">${esc(x.desc)}</small></section>`).join('')}</div>`;
@@ -177,7 +176,7 @@ ACT.aiImport = async () => {
   openModal({ title: `Masukkan ${qs.length} soal`, body: '<p class="muted" style="margin-bottom:10px">Soal ditambahkan di akhir daftar soal tujuan. Periksa kembali kunci jawabannya.</p>' + formHtml(id, fields, {}, { submit: 'Masukkan' }) });
 };
 
-// ---------- Pengaturan penyedia AI (admin) ----------
+// ---------- Pengaturan penyedia AI (admin; tampil di Pengaturan → Asisten AI) ----------
 const AI_PRESETS = [['', '— Pilih contoh penyedia —'], ['https://api.openai.com/v1', 'OpenAI'], ['https://generativelanguage.googleapis.com/v1beta/openai', 'Google Gemini'],
   ['https://api.anthropic.com/v1', 'Anthropic (Claude)'], ['https://openrouter.ai/api/v1', 'OpenRouter'], ['http://localhost:11434/v1', 'Ollama (lokal)']];
 async function aiAtur() {
@@ -189,7 +188,7 @@ async function aiAtur() {
     toast('Pengaturan AI tersimpan.');
     refresh(true);
   });
-  return `<section class="card" style="max-width:640px"><form class="form" data-form="${id}">
+  return `<form class="form" data-form="${id}" style="max-width:640px">
     <label class="f"><span>Contoh penyedia</span><select data-change="aiPreset">${opts(AI_PRESETS, '')}</select><small class="muted">Hanya mengisi URL. Model tetap dipilih dari daftar penyedia.</small></label>
     <label class="f"><span>URL endpoint (base URL, kompatibel OpenAI)</span><input name="base_url" type="url" value="${esc(c.base_url || '')}" placeholder="https://…/v1" required></label>
     <label class="f"><span>API key</span><input name="api_key" type="password" autocomplete="new-password" placeholder="${c.key_hint ? 'Tersimpan ' + esc(c.key_hint) + ' — kosongkan bila tidak diganti' : 'Tempel API key'}">
@@ -199,7 +198,7 @@ async function aiAtur() {
       ${btn('Refresh model', 'aiRefresh', {}, 'ghost', 'refresh')}</div><small class="muted" id="aiModelInfo">Daftar diambil langsung dari endpoint /models penyedia.</small></label>
     <div class="row2"><label class="f"><span>Kuota per guru per hari</span><input name="kuota_harian" type="number" min="0" value="${esc(c.kuota_harian ?? 30)}"><small class="muted">0 = tanpa batas. Admin tidak dibatasi.</small></label>
       <label class="f"><span>Kreativitas (temperature)</span><input name="suhu" type="number" min="0" max="2" step="0.1" value="${esc(c.suhu ?? 0.7)}"></label></div>
-    <div class="form-err" role="alert"></div><div class="sheet-foot"><button class="btn" type="submit">Simpan</button></div></form></section>`;
+    <div class="form-err" role="alert"></div><div class="sheet-foot"><button class="btn" type="submit">Simpan</button></div></form>`;
 }
 CHG.aiPreset = el => { if (el.value) el.closest('form').base_url.value = el.value; };
 ACT.aiRefresh = async el => {

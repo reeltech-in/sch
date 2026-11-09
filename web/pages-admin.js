@@ -299,7 +299,7 @@ const SET_PAGES = {
   async waktu() { return tzCard(); },
   async ai() {
     return setCard('Asisten AI', 'Isi URL endpoint (kompatibel OpenAI), API key, dan pilih model untuk generator RPM, LKPD, soal, surat, Prota/Promes, dan KKTP. Hanya admin yang bisa melihat pengaturan ini.',
-      btn('Buka pengaturan AI', 'go', { page: 'ai', params: JSON.stringify({ tab: 'atur' }) }, '', 'spark'));
+      await aiAtur());
   },
   async penyimpanan() { return storageCard(); },
   whatsapp: waSettings,
