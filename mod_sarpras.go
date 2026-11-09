@@ -198,6 +198,13 @@ func apiBooks(c *Ctx) error {
 		like := "%" + s + "%"
 		args = append(args, like, like, like, like, like)
 	}
+	if c.R.URL.Query().Get("ebook") == "1" {
+		where += ` AND (b.ebook IS NOT NULL OR b.ebook_url IS NOT NULL)`
+	}
+	if j := c.R.URL.Query().Get("jenjang"); j != "" {
+		where += ` AND b.jenjang=?`
+		args = append(args, j)
+	}
 	limit, offset := pageParams(c, 300)
 	var total int
 	c.A.db.QueryRow(`SELECT COUNT(*) FROM books b WHERE `+where, args...).Scan(&total)

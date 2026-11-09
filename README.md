@@ -15,7 +15,7 @@ Satu login dan satu data siswa/guru/kelas dipakai bersama oleh semua modul.
 | **Manajemen Ujian** | ruang, bagi peserta otomatis (silang kelas), cetak kartu peserta, denah, daftar hadir, berita acara |
 | **Kelulusan** | pengumuman online dengan NISN + tanggal lahir, terbuka otomatis pada waktu yang ditentukan |
 | **Inventaris Sarpras** | KIB A–F lengkap, foto, kondisi, nilai aset, cetak KIB & label QR |
-| **Perpustakaan** | katalog, e-book PDF, pinjam/kembali dengan scan kartu & label buku, denda otomatis |
+| **Perpustakaan** | katalog, pinjam/kembali dengan scan kartu & label buku, denda otomatis, rak **E-book**: unggah PDF sendiri atau impor gratis dari Buku Kemendikbud (±1.600 judul; PDF disimpan di server saat pertama dibaca) |
 | **Asisten AI** | generator RPM, LKPD, soal (langsung masuk CBT/Kuis), surat, tanya bebas; penyedia apa pun yang kompatibel OpenAI |
 | **PPDB Online** | formulir publik + unggah berkas, nomor & PIN cek status, verifikasi, "jadikan siswa" sekali klik |
 | **Buku Tamu** | mode kiosk untuk tablet di meja piket, foto opsional, rekap & CSV |

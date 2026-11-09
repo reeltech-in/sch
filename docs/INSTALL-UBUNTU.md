@@ -165,6 +165,7 @@ sudo rm -rf /opt/sch && sudo userdel sch
 | `/opt/sch/data/sch.db` | database (SQLite) |
 | `/opt/sch/data/uploads/` | file unggahan |
 | `/opt/sch/data/backups/` | backup otomatis harian & sebelum update |
+| `/opt/sch/data/ebook-cache/` | salinan e-book Kemendikbud yang pernah dibuka (boleh dihapus; diunduh lagi saat dibuka) |
 | `/opt/sch/src/` | kode sumber (bila dipasang lewat `curl`) |
 | `/etc/systemd/system/sch.service` | layanan systemd |
 | `/usr/local/go/` | Go (hanya untuk build; boleh dihapus, akan dipasang lagi saat update) |

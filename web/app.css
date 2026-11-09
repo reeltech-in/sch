@@ -586,3 +586,20 @@ input, select, textarea { font-weight: 500; }
 .dot.tugas, .ev.tugas { background: var(--info-bg); color: var(--info); } .dot.tugas { background: var(--info); }
 .cal .ev-more { display: block; margin-top: 2px; font-size: 11px; font-weight: 600; color: var(--text-2); }
 @media (max-width: 700px) { .cal .ev-more { display: none; } }
+
+/* ---- Perpustakaan: kartu buku & impor e-book Kemendikbud */
+.book-card { display: flex; gap: 12px; }
+.book-card > img, .book-card > .book-ph { width: 64px; height: 90px; object-fit: cover; border-radius: 10px; flex: none; background: var(--surface-2); }
+.book-info { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.book-info b { overflow-wrap: anywhere; }
+.sibi-filter { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin-bottom: 10px; }
+.sibi-filter input[type=search] { grid-column: 1 / -1; }
+.sibi-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.sibi-list { max-height: min(52vh, 520px); overflow: auto; border: 1px solid var(--border); border-radius: 12px; }
+.sibi-item { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border-bottom: 1px solid var(--border); cursor: pointer; }
+.sibi-item:last-child { border-bottom: 0; }
+.sibi-item:hover { background: var(--brand-50); }
+.sibi-item input { margin-top: 3px; flex: none; width: 18px; height: 18px; }
+.sibi-item > span { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.sibi-item.done { opacity: .6; cursor: default; }
+.book-info small { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }

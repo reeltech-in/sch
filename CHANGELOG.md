@@ -8,7 +8,18 @@ Format versi: `MAYOR.MINOR.PERBAIKAN`
 Versi yang sedang berjalan terlihat di menu kiri aplikasi (bawah nama pengguna), di `GET /api/version`,
 di header respons `X-SCH-Version`, dan dengan perintah `sch-server -version`.
 
-## v1.18.1 — 2026-11-09 (Pengaturan AI pindah ke menu Pengaturan)
+## v1.19.0 — 2026-11-09 (E-book dari Buku Kemendikbud)
+- **Impor e-book gratis dari Buku Kemendikbud** (buku.kemendikdasmen.go.id): Perpustakaan → Katalog/E-book →
+  *Impor e-book Kemendikbud*. Pilih dari ±1.600 judul (Kurikulum Merdeka, Kurikulum 2013, buku bacaan), saring per
+  jenjang, kelas, buku siswa/guru, atau cari judul/mapel, lalu impor sekaligus. Buku yang sudah ada ditandai.
+- **PDF disimpan saat pertama dibuka**: impor hanya menyimpan data buku. File PDF diunduh server satu kali saat ada
+  yang pertama membacanya, lalu disajikan dari server sekolah untuk pembaca berikutnya (cepat, hemat kuota internet).
+  Sampul juga disimpan. Alamat sumber tidak pernah dibuka langsung oleh browser siswa; hanya pengguna yang login bisa membaca.
+- **Rak E-book**: tab *E-book* untuk pengelola, tombol *Semua buku / E-book* untuk siswa & guru. E-book tanpa buku
+  fisik berlabel **Digital** (bukan "Sedang dipinjam") dan tidak ikut dicetak labelnya.
+- Pemeliharaan harian membersihkan salinan e-book yang bukunya sudah dihapus dari katalog.
+
+ (Pengaturan AI pindah ke menu Pengaturan)
 - **Pengaturan Asisten AI** (URL endpoint, API key, model, kuota, kreativitas) kini diisi langsung di
   **Pengaturan → Asisten AI**, tidak lagi lewat tab terpisah di halaman Asisten AI. Tautan lama otomatis diarahkan.
 - Halaman Asisten AI tinggal *Buat dokumen* dan *Riwayat*; bila AI belum diatur, admin mendapat tombol langsung ke pengaturannya.

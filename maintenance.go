@@ -152,6 +152,11 @@ func (a *App) maintain() (string, bool) {
 	// 3. file yatim
 	orphans, err := a.removeOrphans(24 * time.Hour)
 	trash := a.emptyTrash(30 * 24 * time.Hour)
+	if n, err := a.pruneEbookCache(); err != nil {
+		notes = append(notes, "pembersihan salinan e-book dilewati: "+err.Error())
+	} else if n > 0 {
+		notes = append(notes, fmt.Sprintf("%d salinan e-book yang bukunya sudah dihapus dibersihkan", n))
+	}
 	uploadSize.Lock()
 	uploadSize.at = time.Time{} // hitung ulang pemakaian
 	uploadSize.Unlock()

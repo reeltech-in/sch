@@ -102,9 +102,10 @@ ACT.asetKIB = () => {
 async function pagePerpus() {
   if (!isAdm('perpus')) return perpusAnggota();
   const tab = S.params.tab || 'sirkulasi';
-  const t = tabs([['sirkulasi', 'Sirkulasi'], ['katalog', 'Katalog Buku'], ['pinjaman', 'Peminjaman'], ['atur', 'Pengaturan']], tab);
+  const t = tabs([['sirkulasi', 'Sirkulasi'], ['katalog', 'Katalog Buku'], ['ebook', 'E-book'], ['pinjaman', 'Peminjaman'], ['atur', 'Pengaturan']], tab);
   const hd = head('Perpustakaan', 'Pinjam & kembalikan dengan scan kartu siswa dan label buku (scanner USB atau kamera).');
   if (tab === 'katalog') return hd + t + await perpusKatalog();
+  if (tab === 'ebook') return hd + t + await perpusRak(true);
   if (tab === 'pinjaman') return hd + t + await perpusPinjaman();
   if (tab === 'atur') return hd + t + await perpusAtur();
   return hd + t + perpusSirkulasi();
@@ -181,12 +182,12 @@ async function perpusKatalog() {
   S.buku = Object.fromEntries(bs.map(b => [b.id, b]));
   S.bukuList = bs;
   return `<div class="card-head"><p class="muted">${bs.length} judul · ${bs.reduce((s, b) => s + b.stok, 0)} eksemplar</p>
-    <div class="acts">${btn('Cetak label buku', 'bukuLabels', {}, 'ghost sm', 'print')}${btn('Tambah buku', 'bukuForm', {}, 'sm', 'plus')}</div></div>` +
+    <div class="acts">${btn('Impor e-book Kemendikbud', 'sibiOpen', {}, 'ghost sm', 'download')}${btn('Cetak label buku', 'bukuLabels', {}, 'ghost sm', 'print')}${btn('Tambah buku', 'bukuForm', {}, 'sm', 'plus')}</div></div>` +
     (bs.length ? `${pagerBar('perpus', pg.total, bs.length, 'Cari judul, pengarang, kode, ISBN… (Enter)')}
     <div class="tw"><table id="tblB"><thead><tr><th>Buku</th><th>Kategori</th><th>Rak</th><th class="n">Tersedia</th><th></th></tr></thead><tbody>
-    ${bs.map(b => `<tr><td><div class="cell-user">${b.cover ? `<img class="avatar" src="${esc(b.cover)}" alt="" style="height:52px;width:40px">` : `<span class="avatar">${ico('book')}</span>`}
-      <div><b>${esc(b.judul)}</b><small class="muted"><code>${esc(b.kode)}</code> ${esc(b.pengarang || '')}${b.tahun ? ' · ' + esc(b.tahun) : ''}</small>${b.ebook ? tag('E-book', 'info') : ''}</div></div></td>
-      <td>${esc(b.kategori || '–')}</td><td>${esc(b.rak || '–')}</td><td class="n">${b.tersedia}/${b.stok}</td>
+    ${bs.map(b => `<tr><td><div class="cell-user">${bookCover(b) ? `<img class="avatar" src="${esc(bookCover(b))}" alt="" loading="lazy" style="height:52px;width:40px;object-fit:cover">` : `<span class="avatar">${ico('book')}</span>`}
+      <div><b>${esc(b.judul)}</b><small class="muted"><code>${esc(b.kode)}</code> ${esc(b.pengarang || '')}${b.tahun ? ' · ' + esc(b.tahun) : ''}</small>${hasEbook(b) ? tag(b.ebook_url ? 'E-book Kemendikbud' : 'E-book', 'info') : ''}</div></div></td>
+      <td>${esc(b.kategori || '–')}</td><td>${esc(b.rak || '–')}</td><td class="n">${!b.stok && hasEbook(b) ? 'Digital' : `${b.tersedia}/${b.stok}`}</td>
       <td><div class="acts">${iconBtn('edit', 'bukuForm', { id: b.id }, 'Ubah')}${iconBtn('trash', 'bukuDel', { id: b.id, judul: b.judul }, 'Hapus', 'danger')}</div></td></tr>`).join('')}
     </tbody></table></div>${moreBtn('perpus', pg.total, bs.length)}` : `<div class="card">${empty('Belum ada buku.', 'book')}</div>`);
 }
@@ -209,7 +210,7 @@ ACT.bukuDel = el => del('/buku/' + el.dataset.id, `Hapus buku <b>${esc(el.datase
 ACT.bukuLabels = () => {
   if (!S.bukuList.length) return toast('Belum ada buku.', 'bad');
   const lab = b => `<div class="label">${qrImg(b.kode, 84)}<div><b>${esc(b.kode)}</b><br>${esc(b.judul.slice(0, 50))}<br>${esc(b.rak ? 'Rak ' + b.rak : '')}<br><small>Perpustakaan ${esc(S.settings.nama_sekolah || '')}</small></div></div>`;
-  const items = S.bukuList.flatMap(b => Array.from({ length: Math.max(1, b.stok) }, () => b));
+  const items = S.bukuList.filter(b => b.stok > 0 || !hasEbook(b)).flatMap(b => Array.from({ length: Math.max(1, b.stok) }, () => b));
   const pages = [];
   for (let i = 0; i < items.length; i += 24) pages.push(`<div class="pg"><div class="labels">${items.slice(i, i + 24).map(lab).join('')}</div></div>`);
   printDoc(pages.join(''));
@@ -241,21 +242,87 @@ async function perpusAtur() {
 // =====================================================================
 // PERPUSTAKAAN — siswa & guru
 // =====================================================================
-async function perpusAnggota() {
-  const [pg, ls] = await Promise.all([GETpage('/buku?' + new URLSearchParams(Object.entries({ q: S.params.q || '', limit: S.params.lim || 300 }).filter(([, v]) => v !== '')).toString()), GET('/perpus/me')]);
+// sampul & e-book: lewat server sekolah (file unggahan sendiri atau salinan dari Buku Kemendikbud)
+const hasEbook = b => !!(b.ebook || b.ebook_url);
+const bookCover = b => b.cover || b.cover_url ? `/api/buku/${b.id}/sampul` : '';
+const bookRead = b => `/api/buku/${b.id}/baca`;
+const bookCard = b => `<section class="card book-card">
+      ${bookCover(b) ? `<img src="${esc(bookCover(b))}" alt="" loading="lazy" data-ph="book">` : `<span class="avatar book-ph">${ico('book')}</span>`}
+      <div class="book-info"><b>${esc(b.judul)}</b><small class="muted">${esc(b.pengarang || '')}${b.tahun ? ' · ' + esc(b.tahun) : ''}</small>
+        <div>${!b.stok && hasEbook(b) ? tag('Digital', 'info') : b.tersedia > 0 ? tag(`Tersedia ${b.tersedia}`, 'ok') : tag('Sedang dipinjam', 'warn')}
+          ${b.rak ? tag('Rak ' + b.rak) : ''}${b.jenjang ? tag(b.jenjang) : ''}${b.kelas ? tag('Kelas ' + b.kelas) : ''}</div>
+        ${hasEbook(b) ? `<a class="btn sm" href="${esc(bookRead(b))}" target="_blank" rel="noopener" style="align-self:flex-start;margin-top:4px">${ico('file')} Baca e-book</a>` : ''}</div></section>`;
+// sampul gagal dimuat (sumber tidak bisa dihubungi): ganti ikon buku. CSP melarang onerror inline, jadi lewat listener.
+document.addEventListener('error', e => {
+  const img = e.target;
+  if (img.tagName === 'IMG' && img.dataset.ph === 'book') { const s = document.createElement('span'); s.className = 'avatar book-ph'; s.innerHTML = ico('book'); img.replaceWith(s); }
+}, true);
+
+// rak buku: siswa/guru (semua buku atau e-book saja) dan tab E-book pengelola
+async function perpusRak(adminEbook = false) {
+  const ebook = adminEbook || S.params.rak === 'ebook';
+  const qs = new URLSearchParams(Object.entries({ q: S.params.q || '', limit: S.params.lim || 300, ebook: ebook ? 1 : '' }).filter(([, v]) => v !== '')).toString();
+  const pg = await GETpage('/buku?' + qs);
   const bs = pg.rows;
+  const chips = adminEbook ? '' : `<div class="acts" style="justify-content:flex-start;margin-bottom:10px">${[['', 'Semua buku'], ['ebook', 'E-book']].map(([k, l]) =>
+    btn(l, 'go', { page: 'perpus', params: JSON.stringify({ rak: k }) }, (S.params.rak || '') === k ? 'sm' : 'ghost sm')).join('')}</div>`;
+  const tools = adminEbook ? `<div class="card-head"><p class="muted">E-book dibaca lewat server sekolah. Buku dari Kemendikbud diunduh sekali saat pertama dibuka, lalu tersimpan untuk pembaca berikutnya.</p>
+    <div class="acts">${btn('Impor e-book Kemendikbud', 'sibiOpen', {}, 'sm', 'download')}</div></div>` : '';
+  return tools + chips + `${pagerBar('perpus', pg.total, bs.length, 'Cari judul, pengarang, kategori… (Enter)')}
+    ${bs.length ? `<div class="grid" id="bookGrid">${bs.map(bookCard).join('')}</div>${moreBtn('perpus', pg.total, bs.length)}`
+      : `<div class="card">${empty(ebook ? 'Belum ada e-book.' + (isAdm('perpus') ? ' Klik "Impor e-book Kemendikbud".' : '') : 'Katalog perpustakaan masih kosong.', 'book')}</div>`}`;
+}
+async function perpusAnggota() {
+  const ls = await GET('/perpus/me');
   const aktif = ls.filter(l => !l.tgl_kembali);
   return head('Perpustakaan', 'Cari buku, baca e-book, dan lihat pinjaman Anda.') +
     (aktif.length ? `<section class="card" style="margin-bottom:16px"><div class="card-head"><h3>Sedang Anda pinjam</h3></div>${aktif.map(l => { const late = l.jatuh_tempo < today();
       return `<div class="li"><div><b>${esc(l.judul)}</b><small class="muted">${esc(l.pengarang || '')} · kembalikan ${fmtDate(l.jatuh_tempo)}</small></div>${late ? tag('Terlambat', 'bad') : tag('Dipinjam', 'info')}</div>`; }).join('')}</section>` : '') +
-    `${pagerBar('perpus', pg.total, bs.length, 'Cari judul, pengarang, kategori… (Enter)')}
-    ${bs.length ? `<div class="grid" id="bookGrid">${bs.map(b => `<section class="card" data-text="${esc((b.judul + ' ' + (b.pengarang || '') + ' ' + (b.kategori || '')).toLowerCase())}" style="display:flex;gap:12px">
-      ${b.cover ? `<img src="${esc(b.cover)}" alt="" style="width:64px;height:90px;object-fit:cover;border-radius:10px;flex:none">` : `<span class="avatar" style="width:64px;height:90px">${ico('book')}</span>`}
-      <div style="min-width:0;display:flex;flex-direction:column;gap:4px"><b>${esc(b.judul)}</b><small class="muted">${esc(b.pengarang || '')}${b.tahun ? ' · ' + esc(b.tahun) : ''}</small>
-        <div>${b.tersedia > 0 ? tag(`Tersedia ${b.tersedia}`, 'ok') : tag('Sedang dipinjam', 'warn')} ${b.rak ? tag('Rak ' + b.rak) : ''}</div>
-        ${b.ebook ? `<a class="btn sm" href="${esc(b.ebook)}" target="_blank" rel="noopener" style="align-self:flex-start;margin-top:4px">${ico('file')} Baca e-book</a>` : ''}</div></section>`).join('')}</div>`
-      : `<div class="card">${empty('Katalog perpustakaan masih kosong.', 'book')}</div>`}`;
+    await perpusRak();
 }
+
+// ---- Impor e-book dari Buku Kemendikbud (SIBI). Yang disimpan hanya data & alamat; PDF diunduh saat pertama dibaca.
+const SIBI_JENIS = [['kurmer', 'Kurikulum Merdeka'], ['k13', 'Kurikulum 2013'], ['nonteks', 'Buku bacaan (nonteks)']];
+S.sibi = { jenis: 'kurmer', jenjang: '', kelas: '', tipe: '', q: '', sel: new Set() };
+ACT.sibiOpen = () => { S.sibi.sel = new Set(); S.sibiModal = openModal({ title: 'Impor e-book dari Buku Kemendikbud', wide: true, builder: sibiBody }); };
+async function sibiBody() {
+  const f = S.sibi;
+  const r = await GET('/perpus/sibi?' + new URLSearchParams(Object.entries({ jenis: f.jenis, jenjang: f.jenjang, kelas: f.kelas, tipe: f.tipe, q: f.q }).filter(([, v]) => v)).toString());
+  const kelasOpt = [['', 'Semua kelas'], ...Array.from({ length: 12 }, (_, i) => [String(i + 1), 'Kelas ' + (i + 1)])];
+  const tipeOpt = [['', 'Siswa & guru'], ['Buku siswa', 'Buku siswa'], ['Buku guru', 'Buku guru']];
+  const sel = (k, label, o, v) => `<select data-change="sibiSet" data-k="${k}" aria-label="${label}">${opts(o, v)}</select>`;
+  return `<p class="muted" style="margin:0 0 12px">Sumber: <b>buku.kemendikdasmen.go.id</b> (gratis, lisensi terbuka). Buku masuk katalog sebagai e-book digital; file PDF diunduh server sekali saat pertama dibuka lalu disimpan.</p>
+    <div class="sibi-filter">${sel('jenis', 'Jenis buku', SIBI_JENIS, f.jenis)}${sel('jenjang', 'Jenjang', [['', 'Semua jenjang'], ...r.jenjang.map(j => [j, j])], f.jenjang)}
+      ${f.jenis === 'nonteks' ? '' : sel('kelas', 'Kelas', kelasOpt, f.kelas) + sel('tipe', 'Buku siswa atau guru', tipeOpt, f.tipe)}
+      <input type="search" id="sibiQ" placeholder="Cari judul, mapel, penulis… (Enter)" value="${esc(f.q)}" aria-label="Cari buku Kemendikbud"></div>
+    <div class="sibi-bar"><small class="muted">${r.total > r.rows.length ? `Menampilkan ${r.rows.length} dari ${r.total} — persempit dengan filter/pencarian` : `${r.total} buku`}</small>
+      <span class="acts">${r.rows.some(b => !b.sudah_impor) ? btn('Pilih semua di daftar', 'sibiAll', {}, 'ghost sm') : ''}
+      <button class="btn sm" type="button" data-act="sibiImport" id="sibiGo" ${f.sel.size ? '' : 'disabled'}>${ico('download')} Impor terpilih (<span id="sibiN">${f.sel.size}</span>)</button></span></div>
+    ${r.rows.length ? `<div class="sibi-list">${r.rows.map(b => `<label class="sibi-item ${b.sudah_impor ? 'done' : ''}">
+      <input type="checkbox" data-change="sibiPick" value="${esc(b.id)}" ${b.sudah_impor ? 'disabled checked' : f.sel.has(b.id) ? 'checked' : ''}>
+      <span><b>${esc(b.judul)}</b><small class="muted">${[b.tipe, b.jenjang, b.kelas && 'Kelas ' + b.kelas, b.mapel, b.tahun].filter(Boolean).map(esc).join(' · ')}</small></span>
+      ${b.sudah_impor ? tag('Sudah ada', 'ok') : ''}</label>`).join('')}</div>` : empty('Tidak ada buku yang cocok.', 'book')}`;
+}
+CHG.sibiSet = el => {
+  S.sibi[el.dataset.k] = el.value;
+  if (el.dataset.k === 'jenis') Object.assign(S.sibi, { jenjang: '', kelas: '', tipe: '', sel: new Set() }); // pilihan berlaku per jenis
+  refreshModal(S.sibiModal);
+};
+CHG.sibiPick = el => { el.checked ? S.sibi.sel.add(el.value) : S.sibi.sel.delete(el.value); sibiCount(); };
+function sibiCount() { const n = S.sibi.sel.size; $('#sibiN').textContent = n; $('#sibiGo').disabled = !n; }
+ACT.sibiAll = () => { $$('.sibi-item input:not(:disabled)').forEach(i => { i.checked = true; S.sibi.sel.add(i.value); }); sibiCount(); };
+ACT.sibiImport = async el => {
+  el.disabled = true;
+  try {
+    const r = await POST('/perpus/sibi/impor', { jenis: S.sibi.jenis, ids: [...S.sibi.sel] });
+    toast(`${r.baru} e-book masuk katalog${r.dilewati ? `, ${r.dilewati} dilewati (sudah ada)` : ''}.`);
+    S.sibi.sel = new Set();
+    closeModal(); refresh(true);
+  } finally { el.disabled = false; }
+};
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.target.id === 'sibiQ') { e.preventDefault(); S.sibi.q = e.target.value.trim(); refreshModal(S.sibiModal); }
+});
 document.addEventListener('input', e => {
   const el = e.target.closest('[data-filter2]');
   if (!el) return;
