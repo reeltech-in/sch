@@ -25,13 +25,15 @@ async function pageAudit() {
   const p = S.params;
   const lim = Number(p.lim || 100);
   const qs = new URLSearchParams({ q: p.q || '', dari: p.dari || '', sampai: p.sampai || '', gagal: p.gagal || '', limit: lim }).toString();
-  const { rows, total } = await GETpage('/audit?' + qs);
+  const { rows, total, headers } = await GETpage('/audit?' + qs);
+  const dariOtomatis = headers.get('X-Audit-Dari'); // pencarian tanpa tanggal "dari": server membatasi 90 hari
   return head('Log Aktivitas', 'Catatan otomatis setiap perubahan data: siapa, kapan, dari mana. Disimpan sesuai pengaturan (bawaan 365 hari).') +
     `<div class="bar"><input class="search" type="search" placeholder="Cari nama, aksi, IP, keterangan… (Enter)" value="${esc(p.q || '')}" data-srv="audit" aria-label="Cari">
       <input type="date" value="${esc(p.dari || '')}" data-change="auDari" aria-label="Dari tanggal" style="min-width:0">
       <input type="date" value="${esc(p.sampai || '')}" data-change="auSampai" aria-label="Sampai tanggal" style="min-width:0">
       <label class="chk"><input type="checkbox" data-change="auGagal" ${p.gagal === '1' ? 'checked' : ''}> Hanya gagal</label>
       <small class="muted">${rows.length < total ? `Menampilkan ${rows.length} dari ${total}` : `${total} catatan`}</small></div>` +
+    (dariOtomatis ? `<p class="muted" style="margin:-4px 0 10px;font-size:13px">Pencarian dibatasi 90 hari terakhir (sejak ${esc(fmtDate(dariOtomatis))}). Isi tanggal <b>Dari</b> untuk mencari catatan yang lebih lama.</p>` : '') +
     (rows.length ? `<div class="tw"><table><thead><tr><th>Waktu</th><th>Pengguna</th><th>Aksi</th><th>Status</th><th>IP</th><th>Keterangan</th></tr></thead><tbody>
     ${rows.map(r => { const lbl = auditLabel(r.aksi); return `<tr><td><small>${fmtDT(r.waktu)}</small></td><td>${r.nama ? `<b>${esc(r.nama)}</b><small class="muted">${esc(r.role || '')}</small>` : '<small class="muted">publik</small>'}</td>
       <td>${lbl ? `<b>${esc(lbl)}</b>` : ''}<small class="muted"><code>${esc(r.aksi)}</code></small></td>

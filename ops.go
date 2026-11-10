@@ -139,12 +139,19 @@ func (a *App) audit(r *http.Request, u *User, aksi string, status int, detail st
 func apiAudit(c *Ctx) error {
 	q := c.R.URL.Query()
 	where, args := []string{"1=1"}, []any{}
+	dari := q.Get("dari")
 	if s := strings.TrimSpace(q.Get("q")); s != "" {
 		where = append(where, "(aksi LIKE ? OR nama LIKE ? OR detail LIKE ? OR ip LIKE ?)")
 		like := "%" + s + "%"
 		args = append(args, like, like, like, like)
+		// pencarian teks (LIKE '%x%') tidak bisa memakai indeks: tanpa tanggal "dari", batasi 90 hari terakhir
+		// agar memakai indeks waktu dan tidak memindai seluruh log bertahun-tahun
+		if _, err := cleanDate(dari); err != nil {
+			dari = time.Now().AddDate(0, 0, -90).Format("2006-01-02")
+			c.W.Header().Set("X-Audit-Dari", dari)
+		}
 	}
-	if d, err := cleanDate(q.Get("dari")); err == nil {
+	if d, err := cleanDate(dari); err == nil {
 		lo, _ := dayRangeUTC(d, d)
 		where = append(where, "waktu >= ?")
 		args = append(args, lo)
@@ -161,7 +168,8 @@ func apiAudit(c *Ctx) error {
 	w := strings.Join(where, " AND ")
 	var total int
 	c.A.reader().QueryRow(`SELECT COUNT(*) FROM (SELECT 1 FROM audit_log WHERE `+w+` LIMIT 10001)`, args...).Scan(&total)
-	rows, err := c.list(`SELECT * FROM audit_log WHERE `+w+` ORDER BY id DESC LIMIT ? OFFSET ?`, append(args, limit, offset)...)
+	// urut waktu (bukan id): rencana query memakai idx_audit_waktu untuk rentang tanggal sekaligus urutan
+	rows, err := c.list(`SELECT * FROM audit_log WHERE `+w+` ORDER BY waktu DESC, id DESC LIMIT ? OFFSET ?`, append(args, limit, offset)...)
 	if err != nil {
 		return err
 	}

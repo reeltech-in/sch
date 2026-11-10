@@ -288,3 +288,111 @@ func TestAsistenAIStreamingDanKuota(t *testing.T) {
 		t.Errorf("galat penyedia: %d %q", code, out)
 	}
 }
+
+// Kuis mapel: jawaban tersimpan ke server selama dikerjakan; kiriman terlambat menilai jawaban tersimpan (bukan 0);
+// kuis yang tidak dikirim dinilai otomatis; kirim ulang setelah selesai mengembalikan nilai.
+func TestKuisSimpanOtomatisDanTerlambat(t *testing.T) {
+	e := newEnv(t)
+	quiz := e.id(`SELECT id FROM quizzes LIMIT 1`)
+	kunci := map[string]string{}
+	rows, _ := e.app.db.Query(`SELECT id, jawaban_benar FROM quiz_questions WHERE quiz_id=?`, quiz)
+	for rows.Next() {
+		var id int64
+		var k string
+		rows.Scan(&id, &k)
+		kunci[fmt.Sprint(id)] = k
+	}
+	rows.Close()
+	var start struct {
+		Answers map[string]string `json:"answers"`
+	}
+	run := func(user string) *client {
+		s := e.login(user, "siswa123")
+		if code := s.json("POST", fmt.Sprintf("/api/quizzes/%d/start", quiz), nil, &start); code != 200 {
+			t.Fatalf("%s mulai kuis: %d", user, code)
+		}
+		if code, b := s.do("POST", fmt.Sprintf("/api/quizzes/%d/save", quiz), map[string]any{"answers": kunci}); code != 200 {
+			t.Fatalf("%s simpan: %d %s", user, code, b)
+		}
+		return s
+	}
+	mundur := func(user string) {
+		old := time.Now().Add(-3 * time.Hour).UTC().Format(time.RFC3339)
+		e.app.db.Exec(`UPDATE quiz_attempts SET started_at=? WHERE quiz_id=? AND siswa_id=(SELECT id FROM users WHERE username=?)`, old, quiz, user)
+	}
+	skor := func(user string) (int, float64) {
+		var sel int
+		var sk float64
+		e.app.db.QueryRow(`SELECT selesai, skor FROM quiz_attempts WHERE quiz_id=? AND siswa_id=(SELECT id FROM users WHERE username=?)`, quiz, user).Scan(&sel, &sk)
+		return sel, sk
+	}
+
+	// 1. melanjutkan: jawaban tersimpan kembali dari server
+	s1 := run("siswa001")
+	s1.json("POST", fmt.Sprintf("/api/quizzes/%d/start", quiz), nil, &start)
+	if len(start.Answers) != len(kunci) {
+		t.Errorf("jawaban tersimpan tidak kembali saat melanjutkan: %v", start.Answers)
+	}
+	// 2. kirim terlambat (jawaban kosong dari HP) → yang dinilai jawaban tersimpan
+	mundur("siswa001")
+	var out struct {
+		Skor float64 `json:"skor"`
+	}
+	if code := s1.json("POST", fmt.Sprintf("/api/quizzes/%d/submit", quiz), map[string]any{"answers": map[string]string{}}, &out); code != 200 || out.Skor != 100 {
+		t.Errorf("kiriman terlambat: status %d skor %v, harusnya 200 & 100", code, out.Skor)
+	}
+	// 3. kirim ulang setelah selesai → nilai tersimpan, bukan galat
+	if code := s1.json("POST", fmt.Sprintf("/api/quizzes/%d/submit", quiz), map[string]any{"answers": map[string]string{}}, &out); code != 200 || out.Skor != 100 {
+		t.Errorf("kirim ulang: status %d skor %v", code, out.Skor)
+	}
+	// 4. tidak pernah dikirim → dinilai otomatis setelah waktu habis; simpan setelah waktu habis ditolak
+	s2 := run("siswa003")
+	mundur("siswa003")
+	if code, _ := s2.do("POST", fmt.Sprintf("/api/quizzes/%d/save", quiz), map[string]any{"answers": kunci}); code != 400 {
+		t.Errorf("simpan setelah waktu habis: %d, harusnya 400", code)
+	}
+	e.app.finalizeQuiz()
+	if sel, sk := skor("siswa003"); sel != 1 || sk != 100 {
+		t.Errorf("kuis tidak dinilai otomatis: selesai=%d skor=%v", sel, sk)
+	}
+}
+
+// Pengaturan: hanya kolom yang dikirim yang berubah; balasan berisi pengaturan terbaru.
+func TestPengaturanSimpanSebagian(t *testing.T) {
+	e := newEnv(t)
+	a := e.login("admin", testAdminPW)
+	var before map[string]any
+	a.json("GET", "/api/settings", nil, &before)
+	var after map[string]any
+	if code := a.json("PUT", "/api/settings", map[string]any{"telepon": "0211234"}, &after); code != 200 {
+		t.Fatalf("simpan sebagian: %d", code)
+	}
+	if after["telepon"] != "0211234" || after["nama_sekolah"] != before["nama_sekolah"] || after["kepala_sekolah"] != before["kepala_sekolah"] {
+		t.Errorf("kolom lain ikut berubah: sebelum %v, sesudah %v", before, after)
+	}
+	if code, _ := a.do("PUT", "/api/settings", map[string]any{"nama_sekolah": "  "}); code != 400 {
+		t.Error("nama sekolah kosong diterima")
+	}
+	var ak map[string]any
+	a.json("PUT", "/api/settings", map[string]any{"akses_guru": map[string]bool{"tugas": false}}, &ak)
+	if m, _ := ak["akses_guru"].(map[string]any); m == nil || m["tugas"] != false || m["materi"] != true {
+		t.Errorf("hak akses guru: %v", ak["akses_guru"])
+	}
+}
+
+// Log Aktivitas: pencarian teks tanpa tanggal dibatasi 90 hari (memakai indeks waktu), dengan tanggal mengikuti pilihan.
+func TestLogAktivitasPencarianDibatasi(t *testing.T) {
+	e := newEnv(t)
+	a := e.login("admin", testAdminPW)
+	lama := time.Now().AddDate(0, 0, -200).UTC().Format(time.RFC3339)
+	e.app.db.Exec(`INSERT INTO audit_log (waktu, aksi, status, nama, detail) VALUES (?,?,?,?,?)`, lama, "POST /api/uji", 200, "Penanda Lama", "catatan-lama-unik")
+	code, b := a.raw("GET", "/api/audit?q=catatan-lama-unik", nil, true)
+	if code != 200 || strings.Contains(string(b), "catatan-lama-unik") {
+		t.Errorf("pencarian tanpa tanggal ikut memindai >90 hari: %d %s", code, b)
+	}
+	dari := time.Now().AddDate(0, 0, -365).Format("2006-01-02")
+	code, b = a.raw("GET", "/api/audit?q=catatan-lama-unik&dari="+dari, nil, true)
+	if code != 200 || !strings.Contains(string(b), "catatan-lama-unik") {
+		t.Errorf("pencarian dengan tanggal dari: %d %s", code, b)
+	}
+}

@@ -8,6 +8,17 @@ Format versi: `MAYOR.MINOR.PERBAIKAN`
 Versi yang sedang berjalan terlihat di menu kiri aplikasi (bawah nama pengguna), di `GET /api/version`,
 di header respons `X-SCH-Version`, dan dengan perintah `sch-server -version`.
 
+## v1.21.1 — 2026-11-10 (Kuis tersimpan otomatis, menu lebih ringan)
+- **Kuis mapel tersimpan ke server selama dikerjakan** (seperti CBT): jawaban tidak hilang bila HP mati, bisa dilanjutkan
+  dari perangkat lain, kiriman terlambat menilai jawaban yang sudah tersimpan (sebelumnya nilainya 0), kuis yang tidak
+  dikirim dinilai otomatis setelah waktunya habis, dan kirim ulang setelah koneksi putus menampilkan nilai tersimpan.
+- **Log Aktivitas**: pencarian teks tanpa tanggal "Dari" dibatasi 90 hari terakhir dan memakai indeks waktu
+  (pada 300 ribu catatan: dari ±57 ms + 57 ms menjadi ±0,1 ms). Isi tanggal "Dari" untuk mencari lebih lama.
+- **Pengaturan**: menyimpan cukup satu permintaan (server hanya mengubah kolom yang dikirim dan membalas dengan
+  pengaturan terbaru); sebelumnya ambil–simpan–ambil–ambil.
+- **Menu Siswa**: saring kelas berjalan langsung di browser tanpa memuat ulang daftar dari server; bisa digabung
+  dengan kotak cari.
+
 ## v1.21.0 — 2026-11-10 (Perbaikan bertahap: konsistensi, kerapian kode, aksesibilitas)
 **Perbaikan untuk pengguna**
 - **Input LJK** kini juga menampilkan siswa yang sudah naik kelas/lulus, sama seperti daftar hasil CBT

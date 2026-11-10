@@ -131,7 +131,7 @@ async function siswaUjian(p) {
   const qid = Number(p.id);
   const r = await POST(`/quizzes/${qid}/start`);
   const key = 'sch_quiz_' + S.user.id + '_' + qid + '_' + (r.started_at || '');
-  const saved = store.get(key) || {};
+  const saved = { ...(store.get(key) || {}), ...(r.answers || {}) }; // jawaban di server menang (dikerjakan di HP lain)
   const letters = 'abcde'.slice(0, r.quiz.jumlah_opsi).split('');
   const end = Date.now() + r.sisa_detik * 1000;
   S.ujian = { qid, key, end, total: r.questions.length, sent: false };
@@ -157,13 +157,23 @@ function updateAnswered() {
   const el = $('#answered');
   if (el) el.textContent = `${n} dari ${S.ujian.total} soal dijawab`;
 }
-CHG.ujianPick = () => { store.set(S.ujian.key, ujianAnswers()); updateAnswered(); };
+// tiap jawaban: simpan di perangkat sekaligus ke server (ditunda 1,2 detik agar klik beruntun cukup sekali kirim)
+let kuisSaveT = null;
+CHG.ujianPick = () => {
+  const ans = ujianAnswers();
+  store.set(S.ujian.key, ans);
+  updateAnswered();
+  clearTimeout(kuisSaveT);
+  const qid = S.ujian.qid;
+  kuisSaveT = setTimeout(() => POST(`/quizzes/${qid}/save`, { answers: ans }).catch(() => { /* dicoba lagi pada jawaban berikutnya */ }), 1200);
+};
 ACT.ujianSubmit = async () => {
   const n = Object.keys(ujianAnswers()).length;
   const msg = n < S.ujian.total ? `Masih ada <b>${S.ujian.total - n} soal</b> yang belum dijawab. Tetap kirim?` : 'Kirim semua jawaban sekarang? Jawaban tidak bisa diubah lagi.';
   if (await confirmBox(msg, 'Kirim', '')) await submitUjian(false);
 };
 function submitUjian(auto) {
+  clearTimeout(kuisSaveT); // semua jawaban ikut terkirim
   return examSubmit(S.ujian, { url: `/quizzes/${S.ujian.qid}/submit`, answers: ujianAnswers(), auto, title: 'Jawaban terkirim', back: ['kuis', 'Kembali ke daftar kuis'] });
 }
 

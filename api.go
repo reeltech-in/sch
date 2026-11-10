@@ -73,6 +73,7 @@ func (a *App) routes(m *http.ServeMux) {
 	m.HandleFunc("DELETE /api/attempts/{id}", a.h("admin,guru", apiDeleteAttempt))
 	m.HandleFunc("POST /api/quizzes/{id}/start", a.h("siswa", apiQuizStart))
 	m.HandleFunc("POST /api/quizzes/{id}/submit", a.h("siswa", apiQuizSubmit))
+	m.HandleFunc("POST /api/quizzes/{id}/save", a.h("siswa", apiQuizSave))
 
 	// Absensi & rekap
 	m.HandleFunc("GET /api/attendance", a.h("admin,guru", apiAttendance))
@@ -259,57 +260,80 @@ func (a *App) settingsData() (map[string]any, error) {
 	return s, nil
 }
 
+// apiPutSettings menyimpan identitas sekolah / hak akses guru. Hanya kolom yang DIKIRIM yang diubah (kolom lain
+// tetap nilai tersimpan), lalu mengembalikan pengaturan terbaru — halaman tidak perlu mengambil ulang sebelum/sesudah
+// menyimpan, dan perubahan admin lain pada kolom berbeda tidak tertimpa.
 func apiPutSettings(c *Ctx) error {
-	var in struct {
-		NamaSekolah                                                     string
-		LogoURL, Alamat, Telepon, TahunAjaran, KepalaSekolah, NIPKepala *string
-		AksesGuru                                                       map[string]bool
-	}
 	var raw map[string]json.RawMessage
 	if err := c.Bind(&raw); err != nil {
 		return err
 	}
-	get := func(k string) *string {
-		var s *string
-		if v, ok := raw[k]; ok {
-			json.Unmarshal(v, &s)
-		}
-		return s
+	var cur struct {
+		nama                                                string
+		logo, alamat, telepon, tahun, kepsek, nip, aksesRaw sql.NullString
 	}
-	if n := get("nama_sekolah"); n != nil {
-		in.NamaSekolah = *n
-	}
-	in.LogoURL, in.Alamat, in.Telepon = get("logo_url"), get("alamat"), get("telepon")
-	in.TahunAjaran, in.KepalaSekolah, in.NIPKepala = get("tahun_ajaran"), get("kepala_sekolah"), get("nip_kepala")
-	json.Unmarshal(raw["akses_guru"], &in.AksesGuru)
-
-	nama, err := required(in.NamaSekolah, "Nama sekolah")
-	if err != nil {
+	if err := c.A.db.QueryRow(`SELECT nama_sekolah, logo_url, alamat, telepon, tahun_ajaran, kepala_sekolah, nip_kepala, akses_guru FROM settings WHERE id=1`).
+		Scan(&cur.nama, &cur.logo, &cur.alamat, &cur.telepon, &cur.tahun, &cur.kepsek, &cur.nip, &cur.aksesRaw); err != nil {
 		return err
 	}
+	// nilai kolom: dari kiriman bila ada (null/"" = kosongkan), selain itu nilai tersimpan
+	val := func(k string, old sql.NullString) *string {
+		if v, ok := raw[k]; ok {
+			var s *string
+			json.Unmarshal(v, &s)
+			return s
+		}
+		if old.Valid {
+			return &old.String
+		}
+		return nil
+	}
+	nama := cur.nama
+	if v := val("nama_sekolah", sql.NullString{}); v != nil || raw["nama_sekolah"] != nil {
+		n, err := required(deref(v), "Nama sekolah")
+		if err != nil {
+			return err
+		}
+		nama = n
+	}
+	logoIn := val("logo_url", cur.logo)
 	var logo any
-	if v := str(in.LogoURL); v != nil && strings.HasPrefix(v.(string), "/files/") {
+	var err error
+	if v := str(logoIn); v != nil && strings.HasPrefix(v.(string), "/files/") {
 		if !fileNameRe.MatchString(strings.TrimPrefix(v.(string), "/files/")) {
 			return bad("Logo tidak valid.")
 		}
 		logo = v
-	} else if logo, err = cleanURL(in.LogoURL); err != nil {
+	} else if logo, err = cleanURL(logoIn); err != nil {
 		return err
 	}
 	akses := map[string]bool{}
+	json.Unmarshal([]byte(cur.aksesRaw.String), &akses)
+	if v, ok := raw["akses_guru"]; ok {
+		in := map[string]bool{}
+		json.Unmarshal(v, &in)
+		akses = in
+	}
 	for _, k := range []string{"materi", "tugas", "kuis", "absensi", "hapus_absen"} {
-		v, ok := in.AksesGuru[k]
+		v, ok := akses[k]
 		akses[k] = !ok || v
 	}
 	ab, _ := json.Marshal(akses)
-	_, err = c.A.db.Exec(`UPDATE settings SET nama_sekolah=?, logo_url=?, alamat=?, telepon=?, tahun_ajaran=?,
+	if _, err = c.A.db.Exec(`UPDATE settings SET nama_sekolah=?, logo_url=?, alamat=?, telepon=?, tahun_ajaran=?,
 		kepala_sekolah=?, nip_kepala=?, akses_guru=? WHERE id=1`,
-		nama, logo, str(in.Alamat), str(in.Telepon), str(in.TahunAjaran), str(in.KepalaSekolah), str(in.NIPKepala), string(ab))
-	if err != nil {
+		nama, logo, str(val("alamat", cur.alamat)), str(val("telepon", cur.telepon)), str(val("tahun_ajaran", cur.tahun)),
+		str(val("kepala_sekolah", cur.kepsek)), str(val("nip_kepala", cur.nip)), string(ab)); err != nil {
 		return err
 	}
 	aksesGuruCache.Store(nil)
-	return c.OK()
+	return apiGetSettings(c)
+}
+
+func deref(p *string) string {
+	if p == nil {
+		return ""
+	}
+	return *p
 }
 
 func apiDashboard(c *Ctx) error {

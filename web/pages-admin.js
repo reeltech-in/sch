@@ -61,7 +61,10 @@ ACT.kelasDel = el => del('/classes/' + el.dataset.id, `Hapus kelas <b>${esc(el.d
 async function adminUsers(role) {
   const [us, ks] = await Promise.all([GET('/users?role=' + role), GET('/classes')]);
   const fk = S.params.kelas || '';
-  const rows = role === 'siswa' && fk ? us.filter(u => String(u.kelas_id) === fk || (fk === 'none' && !u.kelas_id)) : us;
+  // semua baris dirender sekali; saringan kelas berjalan di browser (tanpa memuat ulang daftar dari server)
+  const rows = us;
+  S.usersById = Object.fromEntries(us.map(u => [u.id, u]));
+  if (role === 'siswa') S.after = () => applyKelasFilter(fk);
   const title = role === 'siswa' ? 'Siswa' : 'Guru';
   const filter = role === 'siswa' ? `<select data-change="fKelas" aria-label="Saring kelas"><option value="">Semua kelas</option>${opts(ks.map(k => [k.id, k.nama]), fk)}<option value="none" ${fk === 'none' ? 'selected' : ''}>Belum punya kelas</option></select>` : '';
   const cols = role === 'siswa'
@@ -70,17 +73,29 @@ async function adminUsers(role) {
   return head(title, `${us.length} akun ${role}.`, btn('Impor CSV', 'importForm', { role }, 'ghost', 'upload') + btn('Tambah ' + role, 'userForm', { role }, '', 'plus')) +
     `<div class="bar"><input class="search" type="search" placeholder="Cari nama atau username…" data-filter="tblU" aria-label="Cari">${filter}</div>` +
     (rows.length ? `<div class="tw"><table id="tblU"><thead><tr>${cols.map(c => `<th${c === 'Mapel' ? ' class="n"' : ''}>${c}</th>`).join('')}<th></th></tr></thead><tbody>
-    ${rows.map(u => `<tr><td><b>${esc(u.nama_lengkap)}</b>${u.email ? `<small class="muted">${esc(u.email)}</small>` : ''}</td><td>${esc(u.username)}</td>
+    ${rows.map(u => `<tr data-kelas="${u.kelas_id || 'none'}"><td><b>${esc(u.nama_lengkap)}</b>${u.email ? `<small class="muted">${esc(u.email)}</small>` : ''}</td><td>${esc(u.username)}</td>
       ${role === 'siswa' ? `<td>${u.kelas_nama ? esc(u.kelas_nama) : tag('Belum ada', 'warn')}</td>` : `<td>${esc(u.nip || '–')}${(u.akses || []).length ? `<small class="muted">Kelola: ${esc(u.akses.map(a => (STAFF_MODS.find(m => m[0] === a) || [a, a])[1]).join(', '))}</small>` : ''}</td><td class="n">${u.jumlah_mapel}</td>`}
       <td>${u.status === 'aktif' ? tag('Aktif', 'ok') : tag('Nonaktif')}</td>
-      <td><div class="acts">${iconBtn('edit', 'userForm', { role, u: JSON.stringify(u) }, 'Ubah')}${iconBtn('trash', 'userDel', { id: u.id, nama: u.nama_lengkap }, 'Hapus', 'danger')}</div></td></tr>`).join('')}
-    </tbody></table></div>` : `<div class="card">${empty(us.length ? 'Tidak ada data untuk saringan ini.' : `Belum ada ${role}. Tambah satu per satu atau impor dari file CSV.`, 'users')}</div>`);
+      <td><div class="acts">${iconBtn('edit', 'userForm', { role, id: u.id }, 'Ubah')}${iconBtn('trash', 'userDel', { id: u.id, nama: u.nama_lengkap }, 'Hapus', 'danger')}</div></td></tr>`).join('')}
+    </tbody></table></div><div class="card" id="uKosong" hidden>${empty('Tidak ada siswa di kelas ini.', 'users')}</div>`
+      : `<div class="card">${empty(`Belum ada ${role}. Tambah satu per satu atau impor dari file CSV.`, 'users')}</div>`);
 }
-CHG.fKelas = el => go('siswa', { kelas: el.value });
+// saring kelas di browser: baris kelas lain disembunyikan (kelas CSS terpisah dari [hidden] milik kotak cari,
+// jadi keduanya bisa dipakai bersamaan)
+function applyKelasFilter(fk) {
+  let n = 0;
+  $$('#tblU tbody tr').forEach(tr => { const off = !!fk && tr.dataset.kelas !== fk; tr.classList.toggle('f-off', off); if (!off) n++; });
+  const k = $('#uKosong'); if (k) k.hidden = n > 0;
+}
+CHG.fKelas = el => {
+  S.params.kelas = el.value; // dipakai juga sebagai kelas bawaan saat menambah siswa
+  history.replaceState(null, '', '#/siswa' + (el.value ? '?kelas=' + encodeURIComponent(el.value) : '')); // tanpa memuat ulang
+  applyKelasFilter(el.value);
+};
 
 ACT.userForm = async el => {
   const role = el.dataset.role;
-  const u = el.dataset.u ? JSON.parse(el.dataset.u) : { status: 'aktif', kelas_id: S.params.kelas && S.params.kelas !== 'none' ? S.params.kelas : '' };
+  const u = el.dataset.id ? { ...S.usersById[el.dataset.id] } : { status: 'aktif', kelas_id: S.params.kelas && S.params.kelas !== 'none' ? S.params.kelas : '' };
   const ks = role === 'siswa' ? await GET('/classes') : [];
   const fields = [
     { n: 'nama_lengkap', l: 'Nama lengkap', req: true },
@@ -245,16 +260,13 @@ async function adminPengaturan() {
     <div class="set-body">${body}</div></div>`;
 }
 const setCard = (title, sub, inner) => `<section class="card"><div class="card-head"><h3>${esc(title)}</h3></div>${sub ? `<p class="muted" style="margin:-4px 0 12px">${sub}</p>` : ''}${inner}</section>`;
-// simpan identitas/hak akses: endpoint /settings butuh semua kolom, jadi gabungkan dengan nilai yang ada
+// simpan identitas/hak akses: cukup kirim kolom yang berubah; server membalas dengan pengaturan terbaru
 async function saveSettings(patch) {
-  const s = await GET('/settings');
-  await PUT('/settings', { nama_sekolah: s.nama_sekolah, alamat: s.alamat, telepon: s.telepon, tahun_ajaran: s.tahun_ajaran, kepala_sekolah: s.kepala_sekolah,
-    nip_kepala: s.nip_kepala, logo_url: s.logo_url, akses_guru: s.akses_guru || {}, ...patch });
-  S.settings = await GET('/settings');
+  S.settings = await PUT('/settings', patch); // server mengubah kolom yang dikirim saja & mengembalikan pengaturan terbaru
 }
 const SET_PAGES = {
   async sekolah() {
-    const [s, tas] = await Promise.all([GET('/settings'), tahunAjaranOpts()]);
+    const [s, tas] = [S.settings, await tahunAjaranOpts()];
     const fields = [
       { n: 'nama_sekolah', l: 'Nama sekolah', req: true },
       { n: 'alamat', l: 'Alamat', t: 'textarea', rows: 2 },
@@ -265,8 +277,7 @@ const SET_PAGES = {
     return setCard('Identitas sekolah', 'Tampil di halaman login, kop dokumen cetak, dan tanda tangan laporan.', formHtml(id, fields, s, { cancel: false }));
   },
   async akses() {
-    const s = await GET('/settings');
-    const ak = s.akses_guru || {};
+    const ak = S.settings.akses_guru || {};
     const keys = [['materi', 'Guru boleh mengelola materi'], ['tugas', 'Guru boleh mengelola tugas'], ['kuis', 'Guru boleh mengelola kuis & soal'],
       ['absensi', 'Guru boleh mengisi absensi mapel'], ['hapus_absen', 'Guru boleh menghapus absensi mapel']];
     const fields = keys.map(([n, l]) => ({ n, l, t: 'check' }));

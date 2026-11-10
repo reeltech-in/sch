@@ -635,3 +635,5 @@ select[multiple] { background-image: none; padding-right: 11px; }
 }
 /* layar sentuh (termasuk HP besar posisi mendatar): isian 16px agar iPhone tidak memperbesar halaman */
 @media (pointer: coarse) { input, select, textarea { font-size: 16px; } }
+/* saringan kelas (menu Siswa) — terpisah dari [hidden] milik kotak cari */
+tr.f-off { display: none !important; }

@@ -112,6 +112,7 @@ func (a *App) cleanupLoop() {
 		}
 		if i%5 == 0 {
 			a.finalizeCBT(0) // ujian yang waktunya habis tapi tidak dikumpulkan
+			a.finalizeQuiz() // kuis mapel yang tidak dikirim
 		}
 		if a.sleep(time.Minute) {
 			return
