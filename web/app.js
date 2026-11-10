@@ -793,7 +793,9 @@ const ACT = {
   confirmYes: () => { const r = confirmResolve; confirmResolve = null; closeModal(); r && r(true); },
   confirmNo: () => { const r = confirmResolve; confirmResolve = null; closeModal(); r && r(false); },
   async logout() {
-    if ((S.page === 'ujian' || S.page === 'cbtujian') && !(await confirmBox('Ujian/kuis sedang berjalan. Jawaban yang belum dikirim akan hilang dari perangkat ini. Tetap keluar?', 'Keluar'))) return;
+    // peringatan hanya bila ujian/kuis BELUM terkirim (di layar hasil tidak perlu)
+    const berjalan = (S.page === 'ujian' && S.ujian && !S.ujian.sent) || (S.page === 'cbtujian' && S.cbt && !S.cbt.sent);
+    if (berjalan && !(await confirmBox('Ujian/kuis sedang berjalan. Jawaban yang belum dikirim akan hilang dari perangkat ini. Tetap keluar?', 'Keluar'))) return;
     try { await POST('/logout'); } catch { /* abaikan */ }
     resetClient();
   },
