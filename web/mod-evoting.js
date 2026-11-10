@@ -67,8 +67,11 @@ async function evoteVoter() {
   const els = await GET('/evote-aktif');
   S.myEls = Object.fromEntries(els.map(e => [e.id, e]));
   if (!els.length) return head('E-Voting') + `<div class="card">${empty('Tidak ada pemilihan untuk Anda.', 'vote')}</div>`;
+  // hasil semua pemilihan yang sudah boleh dilihat diambil bersamaan
+  const lihatHasil = e => !(e.status === 'berlangsung' && !e.sudah) && !(e.sudah && e.status !== 'selesai') && e.status !== 'belum' && e.tampil_hasil;
+  const hasil = await Promise.all(els.map(e => lihatHasil(e) ? GET(`/evote/${e.id}/hasil`).catch(() => ({ kandidat: [], memilih: 0, pemilih: 0 })) : null));
   const parts = [];
-  for (const e of els) {
+  for (const [i, e] of els.entries()) {
     let body;
     if (e.status === 'berlangsung' && !e.sudah) body = `<div class="grid">${e.kandidat.map(c => `<div class="card" style="box-shadow:none;background:var(--surface-2);text-align:center;display:flex;flex-direction:column;gap:8px;align-items:center">
         ${c.foto ? `<img src="${esc(c.foto)}" alt="" style="width:120px;height:150px;object-fit:cover;border-radius:16px">` : avatar(null, c.nama, 96)}
@@ -77,7 +80,7 @@ async function evoteVoter() {
         ${btn('Pilih', 'votePick', { el: e.id, id: c.id }, 'block')}</div>`).join('')}</div>`;
     else if (e.sudah && e.status !== 'selesai') body = `<div class="scan-result ok"><div><b>Terima kasih</b>Suara Anda sudah tercatat. Pilihan Anda rahasia.</div></div>`;
     else if (e.status === 'belum') body = `<p class="muted">Pemungutan suara dibuka ${fmtDT(e.mulai)}.</p>`;
-    else if (e.tampil_hasil) body = hasilHtml(await GET(`/evote/${e.id}/hasil`).catch(() => ({ kandidat: [], memilih: 0, pemilih: 0 })));
+    else if (e.tampil_hasil) body = hasilHtml(hasil[i]);
     else body = '<p class="muted">Pemilihan selesai. Hasil diumumkan oleh sekolah.</p>';
     parts.push(`<section class="card"><div class="card-head"><div><h2>${esc(e.judul)}</h2><small class="muted">${fmtDT(e.mulai)} – ${fmtDT(e.selesai)}</small></div>${tag(...elStatus(e))}</div>${e.deskripsi ? `<p class="muted" style="margin-bottom:12px">${esc(e.deskripsi)}</p>` : ''}${body}</section>`);
   }

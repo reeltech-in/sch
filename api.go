@@ -334,15 +334,15 @@ func apiDashboard(c *Ctx) error {
 			k.nama AS kelas_nama, u.nama_lengkap
 		FROM submissions s JOIN assignments a ON a.id=s.assignment_id JOIN courses co ON co.id=a.course_id
 		JOIN classes k ON k.id=co.kelas_id JOIN users u ON u.id=s.siswa_id
-		WHERE co.guru_id=? AND s.nilai IS NULL ORDER BY s.submitted_at LIMIT 20`, c.U.ID)
+		WHERE co.guru_id=? AND s.nilai IS NULL AND k.tahun_id=(SELECT id FROM academic_years WHERE aktif=1) ORDER BY s.submitted_at LIMIT 20`, c.U.ID) // tahun ajaran aktif saja
 	if err != nil {
 		return err
 	}
 	return c.JSON(map[string]any{
 		"mapel":   count(`SELECT COUNT(*) FROM courses co JOIN classes k ON k.id=co.kelas_id WHERE co.guru_id=? AND k.tahun_id=(SELECT id FROM academic_years WHERE aktif=1)`, c.U.ID),
-		"materi":  count(`SELECT COUNT(*) FROM materials m JOIN courses co ON co.id=m.course_id WHERE co.guru_id=?`, c.U.ID),
-		"tugas":   count(`SELECT COUNT(*) FROM assignments a JOIN courses co ON co.id=a.course_id WHERE co.guru_id=?`, c.U.ID),
-		"kuis":    count(`SELECT COUNT(*) FROM quizzes q JOIN courses co ON co.id=q.course_id WHERE co.guru_id=?`, c.U.ID),
+		"materi":  count(`SELECT COUNT(*) FROM materials m JOIN courses co ON co.id=m.course_id JOIN classes k ON k.id=co.kelas_id WHERE co.guru_id=? AND k.tahun_id=(SELECT id FROM academic_years WHERE aktif=1)`, c.U.ID),
+		"tugas":   count(`SELECT COUNT(*) FROM assignments a JOIN courses co ON co.id=a.course_id JOIN classes k ON k.id=co.kelas_id WHERE co.guru_id=? AND k.tahun_id=(SELECT id FROM academic_years WHERE aktif=1)`, c.U.ID),
+		"kuis":    count(`SELECT COUNT(*) FROM quizzes q JOIN courses co ON co.id=q.course_id JOIN classes k ON k.id=co.kelas_id WHERE co.guru_id=? AND k.tahun_id=(SELECT id FROM academic_years WHERE aktif=1)`, c.U.ID),
 		"siswa":   count(`SELECT COUNT(DISTINCT u.id) FROM users u JOIN courses co ON co.kelas_id=u.kelas_id WHERE co.guru_id=? AND u.role='siswa' AND u.status='aktif'`, c.U.ID),
 		"pending": pending,
 	})

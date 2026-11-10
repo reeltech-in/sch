@@ -33,6 +33,8 @@ func init() {
 			`CREATE INDEX IF NOT EXISTS idx_books_isbn ON books(isbn) WHERE isbn IS NOT NULL`,
 			// jumlah peserta selesai per ujian (daftar CBT guru/admin) tanpa membaca baris jawaban
 			`CREATE INDEX IF NOT EXISTS idx_exam_att_done ON exam_attempts(exam_id) WHERE selesai=1`,
+			// tugas yang belum dinilai (dasbor guru)
+			`CREATE INDEX IF NOT EXISTS idx_subs_ungraded ON submissions(assignment_id) WHERE nilai IS NULL`,
 		} {
 			if _, err := db.Exec(q); err != nil {
 				return fmt.Errorf("%s: %w", q, err)

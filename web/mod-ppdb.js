@@ -62,6 +62,7 @@ ACT.ppdbSiswa = async el => {
 
 PUBLIC_PAGES.ppdb = async () => {
   const info = await GET('/ppdb/info').catch(e => ({ error: e.message }));
+  if (S.user || parseHash().page !== 'ppdb') return; // sudah pindah halaman selama menunggu (WiFi lambat)
   const jalur = String(info.jalur || '').split(',').map(s => s.trim()).filter(Boolean);
   const fid = registerForm([], async (v, form) => {
     const d = Object.fromEntries([...new FormData(form)].filter(([k]) => !k.startsWith('f_')).map(([k, x]) => [k, String(x).trim()]));

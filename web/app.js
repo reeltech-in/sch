@@ -129,12 +129,15 @@ function GET(p) {
   if (hit && Date.now() - hit.t < CACHE_TTL) return Promise.resolve(clone(hit.v));
   // permintaan yang sama yang sedang berjalan dipakai bersama (mis. dua bagian halaman butuh /courses)
   if (GET_INFLIGHT.has(p)) return GET_INFLIGHT.get(p).then(clone);
-  const pr = api('GET', p).then(v => { if (cacheable(p)) GET_CACHE.set(p, { t: Date.now(), v }); return v; })
+  // generasi: jawaban yang berangkat SEBELUM ada perubahan data tidak disimpan (bisa sudah basi)
+  const gen = CACHE_GEN;
+  const pr = api('GET', p).then(v => { if (cacheable(p) && gen === CACHE_GEN) GET_CACHE.set(p, { t: Date.now(), v }); return v; })
     .finally(() => GET_INFLIGHT.delete(p));
   GET_INFLIGHT.set(p, pr);
   return pr.then(clone);
 }
-const mutate = (m, p, b) => api(m, p, b).finally(() => GET_CACHE.clear());
+let CACHE_GEN = 0;
+const mutate = (m, p, b) => { CACHE_GEN++; return api(m, p, b).finally(() => { CACHE_GEN++; GET_CACHE.clear(); GET_INFLIGHT.clear(); }); };
 const POST = (p, b = {}) => mutate('POST', p, b);
 const PUT = (p, b = {}) => mutate('PUT', p, b);
 const DEL = p => mutate('DELETE', p);

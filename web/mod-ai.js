@@ -90,9 +90,10 @@ async function pageAI() {
   const t = tabs([['buat', 'Buat dokumen'], ['riwayat', 'Riwayat']], tab);
   const hd = head('Asisten AI', 'Buat RPM, LKPD, soal, dan surat dengan AI. Selalu periksa ulang hasilnya sebelum dipakai.');
   if (tab === 'riwayat') return hd + t + await aiRiwayat();
-  const st = await GET('/ai/status');
-  S.aiStatus = st;
   const tpl = AI_TPL[S.params.jenis] ? S.params.jenis : null;
+  // status AI dan daftar pilihan formulir diambil bersamaan (sebelumnya berurutan)
+  const [st, pilihan] = await Promise.all([GET('/ai/status'), tpl ? Promise.all([mapelOpts(), kelasOpts(), tahunAjaranOpts()]) : null]);
+  S.aiStatus = st;
   // info model hanya untuk admin; guru cukup memakai asisten tanpa detail teknis
   const info = st.siap ? (st.admin ? `<p class="muted" style="margin-bottom:12px">Model: <b>${esc(st.model)}</b></p>`
       : st.kuota ? `<p class="muted" style="margin-bottom:12px">Terpakai hari ini: <b>${st.terpakai}/${st.kuota}</b> dokumen</p>` : '')
@@ -102,7 +103,7 @@ async function pageAI() {
       <div class="tpl-head"><div class="ic">${ico(x.icon)}</div><b>${esc(x.judul)}</b></div><small class="muted">${esc(x.desc)}</small></section>`).join('')}</div>`;
   }
   const x = AI_TPL[tpl];
-  [S.aiMapel, S.aiKelas, S.aiTahun] = await Promise.all([mapelOpts(), kelasOpts(), tahunAjaranOpts()]);
+  [S.aiMapel, S.aiKelas, S.aiTahun] = pilihan;
   const id = registerForm(x.fields, async v => aiRun(tpl, v));
   return hd + t + `<div style="margin-bottom:10px">${btn('Semua jenis', 'go', { page: 'ai', params: '{}' }, 'ghost sm', 'back')}</div>` + info +
     `<div class="cols cols-ai"><section class="card"><div class="card-head"><h3>${esc(x.judul)}</h3></div>

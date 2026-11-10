@@ -36,11 +36,12 @@ func apiLJKInfo(c *Ctx) error {
 		return notFound()
 	}
 	ids, _ := ex[0]["kelas_ids"].(string)
+	// sama dengan daftar hasil CBT: termasuk siswa yang sudah naik kelas (ujian tahun lalu tetap bisa diinput)
 	rows, err := c.list(`SELECT u.id, u.nama_lengkap, u.username, k.nama AS kelas_nama, t.selesai, t.skor, t.metode
-		FROM users u JOIN classes k ON k.id=u.kelas_id
+		FROM users u LEFT JOIN classes k ON k.id=u.kelas_id
 		LEFT JOIN exam_attempts t ON t.exam_id=? AND t.siswa_id=u.id
-		WHERE u.role='siswa' AND u.status='aktif' AND u.kelas_id IN (SELECT value FROM json_each(?))
-		ORDER BY k.nama, u.nama_lengkap`, id, ids)
+		WHERE u.role='siswa' AND `+pesertaSQL+`
+		ORDER BY k.nama, u.nama_lengkap`, id, ids, ids)
 	if err != nil {
 		return err
 	}
@@ -68,10 +69,7 @@ func apiLJKSave(c *Ctx) error {
 	if c.A.db.QueryRow(`SELECT jumlah_opsi, kelas_ids FROM exams WHERE id=?`, id).Scan(&jopsi, &kelasIDs) != nil {
 		return notFound()
 	}
-	var kelas sql.NullInt64
-	var role, status string
-	if c.A.db.QueryRow(`SELECT role, status, kelas_id FROM users WHERE id=?`, in.SiswaID).Scan(&role, &status, &kelas) != nil ||
-		role != "siswa" || status != "aktif" || !kelas.Valid || !kelasIn(kelasIDs, kelas.Int64) {
+	if _, ok := c.exists(`SELECT u.id FROM users u WHERE u.id=? AND u.role='siswa' AND `+pesertaSQL, in.SiswaID, kelasIDs, kelasIDs); !ok {
 		return bad("Siswa ini bukan peserta ujian.")
 	}
 	// soal berurutan sesuai nomor di lembar (urutan id, sama seperti CBT tanpa acak)

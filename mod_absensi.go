@@ -12,7 +12,43 @@ import (
 
 // Modul: Buku Induk Siswa, Absensi Harian (QR / ceklist / selfie), Kalender Akademik.
 
+// jamValid menormalkan "7:15" → "07:15". Jam dibandingkan sebagai teks ("07:15" < "07:30"), jadi format harus tetap.
+func jamValid(v any) (string, bool) {
+	s, _ := v.(string)
+	s = strings.TrimSpace(strings.ReplaceAll(s, ".", ":"))
+	t, err := time.Parse("15:04", s)
+	if err != nil {
+		return "", false
+	}
+	return t.Format("15:04"), true
+}
+
 func init() {
+	configHooks["absen"] = func(db *sql.DB, cfg map[string]any) error {
+		for _, k := range []string{"jam_masuk", "jam_pulang"} {
+			if cfg[k] == nil || cfg[k] == "" {
+				continue
+			}
+			j, ok := jamValid(cfg[k])
+			if !ok {
+				return bad("Format jam harus JJ:MM, contoh 07:15.")
+			}
+			cfg[k] = j
+		}
+		if m, p := cfg["jam_masuk"], cfg["jam_pulang"]; m != nil && p != nil && m != "" && p != "" && m.(string) >= p.(string) {
+			return bad("Jam pulang harus setelah batas jam masuk.")
+		}
+		if r, ok := cfg["radius_m"].(float64); ok && (r < 20 || r > 5000) {
+			return bad("Radius area sekolah antara 20 dan 5000 meter.")
+		}
+		if lat, ok := cfg["lat"].(float64); ok && (lat < -90 || lat > 90) {
+			return bad("Lintang tidak valid.")
+		}
+		if lng, ok := cfg["lng"].(float64); ok && (lng < -180 || lng > 180) {
+			return bad("Bujur tidak valid.")
+		}
+		return nil
+	}
 	moduleSchemas = append(moduleSchemas, `
 CREATE TABLE IF NOT EXISTS student_profiles (
   siswa_id       INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,

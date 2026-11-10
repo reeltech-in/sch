@@ -147,6 +147,12 @@ func (c *Ctx) ownsExam(id int64) bool {
 	return c.U.Role == "admin" || (by.Valid && by.Int64 == c.U.ID)
 }
 
+// pesertaSQL: "u adalah peserta ujian" untuk kelas_ids (JSON) — siswa aktif di kelas itu, ATAU siswa yang dulu
+// tercatat di kelas itu (sudah naik kelas/lulus, lewat class_members). Butuh dua argumen: kelas_ids, kelas_ids.
+// Dipakai daftar hasil CBT dan input LJK agar keduanya selalu sama.
+const pesertaSQL = `((u.status='aktif' AND u.kelas_id IN (SELECT value FROM json_each(?)))
+	OR EXISTS (SELECT 1 FROM class_members m WHERE m.siswa_id=u.id AND m.kelas_id IN (SELECT value FROM json_each(?))))`
+
 func kelasIn(list string, kelas int64) bool {
 	var ids []int64
 	json.Unmarshal([]byte(list), &ids)
@@ -182,14 +188,14 @@ func apiCBTList(c *Ctx) error {
 		return c.JSON(out)
 	case "guru":
 		rows, err := c.list(base+`, (SELECT COUNT(*) FROM exam_attempts t WHERE t.exam_id=e.id AND t.selesai=1) AS jumlah_selesai, e.token
-			FROM exams e LEFT JOIN users g ON g.id=e.created_by WHERE e.created_by=? ORDER BY e.mulai DESC`, c.U.ID)
+			FROM exams e LEFT JOIN users g ON g.id=e.created_by WHERE e.created_by=? ORDER BY e.mulai DESC LIMIT 500`, c.U.ID)
 		if err != nil {
 			return err
 		}
 		return c.JSON(rows)
 	}
 	rows, err := c.list(base + `, (SELECT COUNT(*) FROM exam_attempts t WHERE t.exam_id=e.id AND t.selesai=1) AS jumlah_selesai, e.token
-		FROM exams e LEFT JOIN users g ON g.id=e.created_by ORDER BY e.mulai DESC`)
+		FROM exams e LEFT JOIN users g ON g.id=e.created_by ORDER BY e.mulai DESC LIMIT 500`)
 	if err != nil {
 		return err
 	}
@@ -377,25 +383,11 @@ func apiCBTHasil(c *Ctx) error {
 	c.A.finalizeCBT(id) // nilai langsung terlihat untuk siswa yang tidak sempat mengumpulkan
 	var kelas string
 	c.A.db.QueryRow(`SELECT kelas_ids FROM exams WHERE id=?`, id).Scan(&kelas)
-	var ids []int64
-	json.Unmarshal([]byte(kelas), &ids)
-	ph := strings.TrimSuffix(strings.Repeat("?,", len(ids)), ",")
-	args := []any{id}
-	for _, k := range ids {
-		args = append(args, k)
-	}
-	if ph == "" {
-		ph = "NULL"
-	}
 	// peserta = siswa kelas tersebut, termasuk yang sudah naik kelas (riwayat), atau siapa pun yang punya attempt
-	args = append(args, args[1:]...)
-	args = append(args, id)
 	rows, err := c.list(`SELECT u.id AS siswa_id, u.username, u.nama_lengkap, k.nama AS kelas_nama, t.id AS attempt_id, t.selesai, t.skor, t.started_at, t.submitted_at
 		FROM users u LEFT JOIN classes k ON k.id=u.kelas_id LEFT JOIN exam_attempts t ON t.siswa_id=u.id AND t.exam_id=?
-		WHERE u.role='siswa' AND ((u.status='aktif' AND u.kelas_id IN (`+ph+`))
-		   OR EXISTS (SELECT 1 FROM class_members m WHERE m.siswa_id=u.id AND m.kelas_id IN (`+ph+`))
-		   OR EXISTS (SELECT 1 FROM exam_attempts x WHERE x.siswa_id=u.id AND x.exam_id=?))
-		ORDER BY k.nama, u.nama_lengkap`, args...)
+		WHERE u.role='siswa' AND (`+pesertaSQL+` OR EXISTS (SELECT 1 FROM exam_attempts x WHERE x.siswa_id=u.id AND x.exam_id=?))
+		ORDER BY k.nama, u.nama_lengkap`, id, kelas, kelas, id)
 	if err != nil {
 		return err
 	}

@@ -48,6 +48,7 @@ ACT.gradOpenPublic = () => window.open('/#/kelulusan', '_blank', 'noopener');
 PUBLIC_PAGES.kelulusan = async () => {
   let info;
   try { info = await GET('/kelulusan/info'); } catch (e) { info = { error: e.message }; }
+  if (S.user || parseHash().page !== 'kelulusan') return; // sudah pindah halaman selama menunggu (WiFi lambat)
   const id = registerForm([{ n: 'nisn' }, { n: 'tgl_lahir' }], async v => {
     const r = await POST('/kelulusan/cek', v);
     const ok = r.status === 'lulus';
