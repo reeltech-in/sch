@@ -1,11 +1,11 @@
 {
   "api.go": {
-    "mtime": 1794301083088.2095,
-    "hash": "337ce7150a0c48febdc3aafd759bca41"
+    "mtime": 1794301873080.4348,
+    "hash": "11c8a66ec69422b5ff6cf58d9441ea21"
   },
   "api_lms.go": {
-    "mtime": 1794301061266.9724,
-    "hash": "df543cb0af73790510cffa06275f28fa"
+    "mtime": 1794301879047.357,
+    "hash": "50d2e63950d72578f1b158fb69c1def4"
   },
   "api_users.go": {
     "mtime": 1794301108312.7673,
@@ -32,16 +32,16 @@
     "hash": "d24765980f18e69c833635705a08b590"
   },
   "mod_absensi.go": {
-    "mtime": 1794270170900.936,
-    "hash": "9a8f508df61197f3a4d5e2c742851c68"
+    "mtime": 1794301859588.3403,
+    "hash": "158e827a73225168b3eb58a3c6f9aad9"
   },
   "mod_ai.go": {
     "mtime": 1794285592742.09,
     "hash": "a1643e2b257ba1660c1fff41a79a0599"
   },
   "mod_layanan.go": {
-    "mtime": 1794269477947.9412,
-    "hash": "58b009fed710882564f3031f105bcf4b"
+    "mtime": 1794301848690.0608,
+    "hash": "5423277e606fe3e5b298d9c91dce6b6c"
   },
   "mod_osis_kasir.go": {
     "mtime": 1794214723814.4785,
@@ -56,8 +56,8 @@
     "hash": "228a39da23f592456675ed18bab57471"
   },
   "mod_ujian.go": {
-    "mtime": 1794299091494.1035,
-    "hash": "da0ae1c13bc668fe3d294980cc336652"
+    "mtime": 1794301873087.4521,
+    "hash": "43a60e4fc6816689e90f4fee46a52f9d"
   },
   "modules.go": {
     "mtime": 1794301036963.5466,
@@ -80,8 +80,8 @@
     "hash": "cb1e14e2eb27ebabfd99397a8fe5120d"
   },
   "web/app.js": {
-    "mtime": 1794301083088.899,
-    "hash": "94452f9717222cd652bb5ed697a74781"
+    "mtime": 1794301953674.9092,
+    "hash": "bc661fba8fbe4cf0937daa2ba783ef55"
   },
   "web/mod-ai.js": {
     "mtime": 1794285706818.7947,
@@ -108,20 +108,20 @@
     "hash": "5a7bcae7ac560e84698a2d86c3ec794b"
   },
   "web/pages-guru.js": {
-    "mtime": 1794299104959.201,
-    "hash": "ac92058b125d7826d3d96da22b39ac0f"
+    "mtime": 1794301941162.9963,
+    "hash": "df8f1561dd7205481cc897404f6675fd"
   },
   "web/pages-siswa.js": {
-    "mtime": 1794287292082.4153,
-    "hash": "c0553d528d4184085e410d184a3c8385"
+    "mtime": 1794301941163.238,
+    "hash": "8d8a0cbe11867946fa7e5b96689106c6"
   },
   "web/theme.js": {
     "mtime": 1794211758886.5298,
     "hash": "e23343d8c9827b32230cc0d7b142ab21"
   },
   "CHANGELOG.md": {
-    "mtime": 1794301740309.8518,
-    "hash": "07517e6077b478202d5081d71bbe3610"
+    "mtime": 1794302038020.884,
+    "hash": "1f62570657f3f896210bf2d3c5c2abf0"
   },
   "README.md": {
     "mtime": 1794284325950.1606,
@@ -156,8 +156,8 @@
     "hash": "4258e49c9d9a01ec5212488de85d16c2"
   },
   "mod_wa.go": {
-    "mtime": 1794269464732.9226,
-    "hash": "2ba1ebf5134f690171f1335d9018bbf7"
+    "mtime": 1794301844298.4905,
+    "hash": "b38f6b8bea98ea7d6d649e3de7e149ad"
   },
   "mod_ljk.go": {
     "mtime": 1794270132375.2444,
@@ -180,12 +180,12 @@
     "hash": "65089f4cda8135f5bfecafd561e8deb6"
   },
   "api_absensi_mapel.go": {
-    "mtime": 1794214723809.018,
-    "hash": "8ac314293226d49e0b64581ded37feab"
+    "mtime": 1794301946318.2817,
+    "hash": "08b47106fd8bb67445638a5889182222"
   },
   "api_kuis.go": {
-    "mtime": 1794300993090.328,
-    "hash": "2544f3c694fab7cb427ddc2af0d2aab6"
+    "mtime": 1794301873090.1187,
+    "hash": "816b6c1fb62ced5cb9dff48100b4dc23"
   },
   "app.go": {
     "mtime": 1794278749677.7292,
@@ -224,8 +224,8 @@
     "hash": "50e3f4ad08700b52514f51d0071bfd7f"
   },
   "mod_kelulusan.go": {
-    "mtime": 1794269229046.716,
-    "hash": "956a026883823fe33d29c9564573dfc8"
+    "mtime": 1794301879050.6948,
+    "hash": "1bed904c59881925079b1adabd3fd6c5"
   },
   "mod_ppdb.go": {
     "mtime": 1794301036964.612,
@@ -288,8 +288,8 @@
     "hash": "659cf2388215daebdbc71f62c2c866a9"
   },
   ".graphify/GRAPH_REPORT.md": {
-    "mtime": 1794301443860.3726,
-    "hash": "c6d00e492bf2eaea26359baec7da66d1"
+    "mtime": 1794301742831.5408,
+    "hash": "ea713075a4b3c8fbf78c91e7ec7381a2"
   },
   "docs/INSTALL-UBUNTU.md": {
     "mtime": 1794267381424.0015,
@@ -314,5 +314,17 @@
   "tahap2_test.go": {
     "mtime": 1794301695212.864,
     "hash": "935a64d2626d033dec1d49bd6b69d5b5"
+  },
+  "nilai.go": {
+    "mtime": 1794301921234.385,
+    "hash": "5aaa8f17557a1d235373ea24fb3995d2"
+  },
+  "nilai_test.go": {
+    "mtime": 1794301974153.8618,
+    "hash": "a8346b6a4be19a7ec8e225ca89b858f1"
+  },
+  "util.go": {
+    "mtime": 1794301859587.6982,
+    "hash": "bf69478b69644c0434f08731c0174596"
   }
 }
