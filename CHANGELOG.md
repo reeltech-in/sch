@@ -22,6 +22,10 @@ di header respons `X-SCH-Version`, dan dengan perintah `sch-server -version`.
   melihat rekap "Suara lewat bilik per petugas", dan jeda antar-suara per petugas menjadi 10 detik (kartu yang ditolak
   tidak memicu jeda).
 - Penolakan hapus yang boleh dilewati admin kini ditandai jelas oleh server; tes baru untuk semua perbaikan di atas.
+- **Audit tahap 2 (tes):** alur yang sebelumnya tidak pernah dites kini dijaga tes otomatis — absensi mapel (simpan,
+  ubah, rekap, hapus, siswa luar kelas, guru lain), tugas (buat, kumpul, ubah, nilai dalam batas, guru lain ditolak),
+  impor pengguna, aktivasi tahun ajaran, PPDB → akun siswa, pinjam/kembali buku, serta penolakan per peran untuk
+  kasir, sarpras, PPDB, acara ujian, perpustakaan, bilik e-voting, impor, dan cadangan. Cakupan tes 52 % → 58 %.
 
 ## v1.24.0 — 2026-11-10 (Header baru & sudut kartu lebih tegas)
 - **Header di bagian atas** (desktop): di kanan ada hari, tanggal, dan jam menurut waktu server (WIB/WITA/WIT), lalu **menu akun**
