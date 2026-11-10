@@ -8,6 +8,15 @@ Format versi: `MAYOR.MINOR.PERBAIKAN`
 Versi yang sedang berjalan terlihat di menu kiri aplikasi (bawah nama pengguna), di `GET /api/version`,
 di header respons `X-SCH-Version`, dan dengan perintah `sch-server -version`.
 
+## v1.26.1 — 2026-11-10 (Pindah tab tanpa kedip)
+- **Pindah tab, submenu, saringan, dan halaman** di dalam halaman yang sama (mis. Pengaturan, e-Rapor, Perpustakaan,
+  Inventaris KIB, Surat, Kasir, Absensi harian, pilihan mapel/kelas) tidak lagi mengganti layar dengan kerangka abu-abu
+  dan tidak melompat ke atas: isi lama tetap tampil (sedikit redup bila > 120 ms) sampai isi baru siap.
+- Tab/submenu yang diklik **langsung tersorot**, sebelum datanya selesai dimuat.
+- Data pengaturan (absensi, zona waktu, Asisten AI, WhatsApp, dll.) disimpan sementara 2 menit di browser dan dikosongkan
+  setiap ada perubahan; data siswa (Beranda, Mapel, Tugas, Kuis, Nilai) 30 detik. Uji dengan jeda jaringan 300 ms:
+  tab Pengaturan 330 → 16 ms, pindah menu siswa 310 → 11 ms; 40 tab/saringan admin, guru, siswa tanpa kedip.
+
 ## v1.26.0 — 2026-11-10 (Pagination bernomor di semua daftar besar)
 - **Pagination bernomor** seragam di 7 daftar: Siswa/Guru, Kelulusan, Catatan siswa, Log aktivitas, PPDB,
   Inventaris, dan Perpustakaan (katalog & rak). Info "Menampilkan 51–100 dari 2.886 siswa", tombol ‹ Sebelumnya ·

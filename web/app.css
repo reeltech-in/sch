@@ -785,3 +785,7 @@ tr.f-off { display: none !important; }
   .pg-nav { min-width: 36px; padding: 0 10px; }
   .pg-n { min-width: 34px; padding: 0 6px; }
 }
+
+/* memuat di halaman yang sama (pindah tab/halaman): isi lama sedikit redup hanya bila lebih dari 120 ms, tanpa kedip */
+#main[aria-busy="true"] .set-body, #main[aria-busy="true"] .tw, #main[aria-busy="true"] .grid, #main[aria-busy="true"] .cols {
+  opacity: .55; transition: opacity .15s ease .12s; }

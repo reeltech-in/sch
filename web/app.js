@@ -135,11 +135,14 @@ function checkVersion(v) {
 }
 const GET_CACHE = new Map(), GET_INFLIGHT = new Map();
 const CACHE_TTL = 120000;
-const cacheable = p => /^\/(courses|classes|tahun|rapor\/periode|rapor\/tugas|catatan\/siswa)(\?|$)/.test(p);
+// data rujukan & pengaturan yang jarang berubah: disimpan 2 menit, dikosongkan setiap ada perubahan (POST/PUT/DELETE)
+const cacheable = p => /^\/(courses|classes|tahun|rapor\/periode|rapor\/tugas|catatan\/siswa|config\/[a-z]+|ai\/config|wa\/config|rekap\/me)(\?|$)/.test(p);
+// data siswa (/rekap/me: mapel, tugas, kuis, nilai) dipakai 5 menu siswa: cukup 30 detik agar nilai baru dari guru cepat terlihat
+const cacheTTL = p => (p.startsWith('/rekap/me') ? 30000 : CACHE_TTL);
 const clone = v => (v == null ? v : JSON.parse(JSON.stringify(v)));
 function GET(p) {
   const hit = GET_CACHE.get(p);
-  if (hit && Date.now() - hit.t < CACHE_TTL) return Promise.resolve(clone(hit.v));
+  if (hit && Date.now() - hit.t < cacheTTL(p)) return Promise.resolve(clone(hit.v));
   // permintaan yang sama yang sedang berjalan dipakai bersama (mis. dua bagian halaman butuh /courses)
   if (GET_INFLIGHT.has(p)) return GET_INFLIGHT.get(p).then(clone);
   // generasi: jawaban yang berangkat SEBELUM ada perubahan data tidak disimpan (bisa sudah basi)
@@ -667,6 +670,7 @@ async function route() {
   for (const id of Object.keys(COMBO)) if (!document.querySelector(`[data-cb="${id}"]`)) delete COMBO[id];
   if (S.user && S.user.ganti_pw) return renderGantiPW();
   const { page, params } = parseHash();
+  const prevPage = S.page;
   const navItem = navFor(S.user.role).find(n => n[0] === (PAGE_PARENT[page] || page)) || NAV[S.user.role].find(n => n[0] === (PAGE_PARENT[page] || page));
   S.page = pageFn(S.user.role, page) && (!navItem || modOn(navItem[3])) ? page : 'dash';
   S.params = params;
@@ -674,8 +678,11 @@ async function route() {
   const active = PAGE_PARENT[S.page] || S.page;
   $$('.nav button').forEach(b => b.classList.toggle('on', b.dataset.page === active));
   $('#shell').classList.remove('menu-open');
-  window.scrollTo(0, 0);
-  await refresh(false);
+  // pindah tab / saringan / halaman di dalam halaman yang sama: isi lama tetap tampil sampai isi baru siap (tanpa
+  // kerangka abu-abu yang membuat layar berkedip) dan posisi gulir tidak melompat ke atas
+  const samePage = prevPage === S.page && !!$('#main')?.dataset.seq;
+  if (!samePage) window.scrollTo(0, 0);
+  await refresh(samePage);
 }
 
 async function refresh(quiet) {
@@ -685,6 +692,7 @@ async function refresh(quiet) {
   const seq = S.seq = (S.seq || 0) + 1;
   // kerangka loading hanya muncul bila halaman butuh >150 ms; yang cepat langsung berganti tanpa kedip
   if (!quiet) setTimeout(() => { if (seq === S.seq && main.dataset.seq !== String(seq)) main.innerHTML = '<div class="skel" style="width:40%;height:26px"></div><div class="skel"></div><div class="skel"></div><div class="skel" style="width:70%"></div>'; }, 150);
+  else main.setAttribute('aria-busy', 'true'); // tanda sedang memuat yang halus (redup sedikit bila >120 ms), bukan kedip
   S.after = null;
   try {
     // ambil S.after tepat saat halaman ini selesai dibuat, supaya halaman lama yang selesai belakangan
@@ -703,11 +711,13 @@ async function refresh(quiet) {
       if (i) { i.value = v; i.dispatchEvent(new Event('input', { bubbles: true })); }
     }
     judulKeHeader(page);
+    main.removeAttribute('aria-busy');
     if (after) after();
   } catch (e) {
     if (seq !== S.seq) return;
     main.dataset.seq = seq;
     main.innerHTML = head('Terjadi kendala') + errBox(e);
+    main.removeAttribute('aria-busy');
     judulKeHeader(page);
   }
 }
@@ -888,7 +898,7 @@ function renderLogin() {
 // =====================================================================
 const ACT = {
   nav: el => go(el.dataset.page),
-  go: el => go(el.dataset.page, JSON.parse(el.dataset.params || '{}')),
+  go: el => { tandaiTab(el); go(el.dataset.page, JSON.parse(el.dataset.params || '{}')); },
   openMenu: () => $('#shell').classList.add('menu-open'),
   closeMenu: () => $('#shell').classList.remove('menu-open'),
   closeModal: () => { if (confirmResolve) { confirmResolve(false); confirmResolve = null; } closeModal(); },
@@ -1088,7 +1098,15 @@ const monthNow = () => today().slice(0, 7);
 const MONTHS = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
 const monthLabel = ym => { const [y, m] = ym.split('-'); return MONTHS[Number(m) - 1] + ' ' + y; };
 const tabs = (items, cur, act = 'tab') => `<div class="tabs no-print" role="tablist">${items.map(([k, l]) => `<button type="button" role="tab" class="${k === cur ? 'on' : ''}" aria-selected="${k === cur}" data-act="${act}" data-tab="${k}">${esc(l)}</button>`).join('')}</div>`;
-ACT.tab = el => go(S.page, { ...S.params, tab: el.dataset.tab });
+ACT.tab = el => { tandaiTab(el); go(S.page, { ...S.params, tab: el.dataset.tab }); };
+// tombol tab/submenu yang diklik langsung tersorot, sebelum isi bagian itu selesai dimuat
+function tandaiTab(el) {
+  const g = el.closest('.subnav, .tabs');
+  if (!g) return;
+  g.querySelectorAll('.on').forEach(b => { b.classList.remove('on'); b.removeAttribute('aria-current'); b.setAttribute('aria-selected', 'false'); });
+  el.classList.add('on');
+  el.setAttribute(g.classList.contains('tabs') ? 'aria-selected' : 'aria-current', g.classList.contains('tabs') ? 'true' : 'page');
+}
 
 // =====================================================================
 // Bagian bersama (dipakai beberapa modul; dulu tersebar di file halaman)
