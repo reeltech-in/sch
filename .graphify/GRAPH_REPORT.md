@@ -1,25 +1,25 @@
 # Graph Report - .  (2026-11-10)
 
 ## Corpus Check
-- 83 files · ~143,214 words
+- 83 files · ~143,441 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 1222 nodes · 2341 edges · 65 communities detected
+- 1225 nodes · 2349 edges · 65 communities detected
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS
 - Token cost: 0 input · 0 output
-- Edge kinds: contains: 944 · calls: 902 · MODIFIES: 240 · method: 160 · ON_BRANCH: 48 · PARENT_OF: 47
+- Edge kinds: contains: 945 · calls: 902 · MODIFIES: 243 · method: 160 · ON_BRANCH: 50 · PARENT_OF: 49
 
 
 ## Input Scope
 - Requested: auto
 - Resolved: committed (source: default-auto)
 - Included files: 83 · Candidates: 97
-- Excluded: 0 untracked · 399 ignored · 0 sensitive · 0 missing committed
+- Excluded: 0 untracked · 405 ignored · 0 sensitive · 0 missing committed
 - Recommendation: Use --scope all or graphify.yaml inputs.corpus for a knowledge-base folder.
 
 ## Graph Freshness
-- Built from Git commit: `d53112a`
+- Built from Git commit: `c05aceb`
 - Compare this hash to `git rev-parse HEAD` before trusting freshness-sensitive graph output.
 ## God Nodes (most connected - your core abstractions)
 1. `App` - 69 edges
@@ -34,16 +34,16 @@
 10. `api()` - 10 edges
 
 ## Surprising Connections (you probably didn't know these)
+- `01cf6c7 Perbarui peta kode graphify` --ON_BRANCH--> `main`  [EXTRACTED]
+  git → git  _Bridges community 23 → community 9_
 - `09479bb Perbarui peta kode graphify` --ON_BRANCH--> `main`  [EXTRACTED]
-  git → git  _Bridges community 30 → community 6_
+  git → git  _Bridges community 31 → community 9_
 - `1bb9e1e v1.20.0: perbaikan hasil audit keamanan, ujian, query, dan tampilan` --ON_BRANCH--> `main`  [EXTRACTED]
-  git → git  _Bridges community 1 → community 6_
+  git → git  _Bridges community 1 → community 9_
 - `1bb9e1e v1.20.0: perbaikan hasil audit keamanan, ujian, query, dan tampilan` --PARENT_OF--> `3a5fb3d Perbarui peta kode graphify`  [EXTRACTED]
-  git → git  _Bridges community 1 → community 39_
+  git → git  _Bridges community 1 → community 32_
 - `1e19524 Tahap 1: peserta LJK ikut riwayat kelas, validasi jam absensi, dasbor guru per tahun aktif, cache & halaman publik lebih aman, muat paralel` --ON_BRANCH--> `main`  [EXTRACTED]
-  git → git  _Bridges community 39 → community 6_
-- `3550bcd v1.24.1: audit tahap 1 - kuis dinilai dari soal yang ditampilkan, batas unggahan publik, tugas dinilai tak tertimpa, buku berriwayat tak dihapus, putus sesi atomik, petugas bilik e-voting tercatat` --ON_BRANCH--> `main`  [EXTRACTED]
-  git → git  _Bridges community 35 → community 6_
+  git → git  _Bridges community 46 → community 9_
 
 ## Communities
 
@@ -72,20 +72,20 @@ Cohesion: 0.09
 Nodes (36): applyTheme(), avatar(), brandHtml(), btn(), cycleTheme(), empty(), ensureThemeFloat(), esc() (+28 more)
 
 ### Community 6 - "Community 6"
-Cohesion: 0.11
-Nodes (30): main, 01cf6c7 Perbarui peta kode graphify, 044f2aa v1.23.1: kerapian menu guru & siswa di HP: tombol absensi lebih besar + simpan menempel, kolom nama tetap terlihat di tabel rekap, kehadiran ditulis lengkap, 'Belum ada materi', 1119b6b Tahap 3: mesin ujian kuis & CBT memakai hitung mundur, kirim otomatis, dan kartu hasil bersama, 137792c Tahap 4: hapus 57 deklarasi CSS yang selalu ditimpa (tampilan terverifikasi identik di desktop & HP); peringatan keluar hanya saat ujian belum terkirim, 306dce2 Perbarui peta kode graphify, 3cd8909 Perbarui peta kode graphify, 443a389 Perbarui peta kode graphify (+22 more)
-
-### Community 7 - "Community 7"
 Cohesion: 0.10
 Nodes (13): apiElectionResult(), apiElections(), apiElectionsForMe(), apiVote(), castVote(), apiElectionResult(), apiElections(), apiElectionsForMe() (+5 more)
 
-### Community 8 - "Community 8"
+### Community 7 - "Community 7"
 Cohesion: 0.09
 Nodes (24): absenCeklist(), absenRekap(), absenScanHtml(), AKSI, autoTag(), canEditEv(), doScan(), evRow() (+16 more)
 
-### Community 9 - "Community 9"
+### Community 8 - "Community 8"
 Cohesion: 0.11
 Nodes (1): App
+
+### Community 9 - "Community 9"
+Cohesion: 0.12
+Nodes (27): main, 1119b6b Tahap 3: mesin ujian kuis & CBT memakai hitung mundur, kirim otomatis, dan kartu hasil bersama, 137792c Tahap 4: hapus 57 deklarasi CSS yang selalu ditimpa (tampilan terverifikasi identik di desktop & HP); peringatan keluar hanya saat ujian belum terkirim, 306dce2 Perbarui peta kode graphify, 3cd8909 Perbarui peta kode graphify, 3e27651 Perbarui peta kode graphify, 443a389 Perbarui peta kode graphify, 6fd6bb0 Tahap 5: pecah fungsi server panjang (kenaikan kelas, mulai CBT, Asisten AI) + tes baru; rilis v1.21.0 (+19 more)
 
 ### Community 10 - "Community 10"
 Cohesion: 0.12
@@ -140,72 +140,72 @@ Cohesion: 0.17
 Nodes (8): apiJournal(), apiNoteDelete(), apiNotes(), apiNoteSave(), apiNoteStudents(), apiWaliClasses(), apiWaliDetail(), str2()
 
 ### Community 23 - "Community 23"
-Cohesion: 0.18
-Nodes (7): apiWAConfigSave(), cfgOn(), cfgStr(), waFill(), waHost(), waNumber(), waSend()
+Cohesion: 0.15
+Nodes (12): 01cf6c7 Perbarui peta kode graphify, 044f2aa v1.23.1: kerapian menu guru & siswa di HP: tombol absensi lebih besar + simpan menempel, kolom nama tetap terlihat di tabel rekap, kehadiran ditulis lengkap, 'Belum ada materi', 6cf5813 Perbarui peta kode graphify, 9ced819 Perbarui peta kode graphify, ca7c373 Perbarui peta kode graphify, d578b62 v1.23.2: ujian CBT, kuis, dan tugas yang sudah ada nilai siswa tidak bisa dihapus guru; admin dengan konfirmasi kedua, e0c0e61 v1.23.2: pesan jelas saat ujian CBT tidak bisa dibuka (dihapus, ditutup, sudah dikerjakan), f8135d2 v1.23.3: sudut kartu, tabel, jendela, tombol, dan isian tidak terlalu membulat (+4 more)
 
 ### Community 24 - "Community 24"
 Cohesion: 0.18
-Nodes (10): addColumn(), apiGetConfig(), apiPutConfig(), apiPutModules(), getConfig(), init(), kvForget(), kvGet() (+2 more)
+Nodes (7): apiWAConfigSave(), cfgOn(), cfgStr(), waFill(), waHost(), waNumber(), waSend()
 
 ### Community 25 - "Community 25"
 Cohesion: 0.18
-Nodes (12): pageRapor(), raporHtml(), RP_EKSKUL, RP_KOKU, rpAtur(), rpEkskul(), rpGetRapor(), rpMapel() (+4 more)
+Nodes (10): addColumn(), apiGetConfig(), apiPutConfig(), apiPutModules(), getConfig(), init(), kvForget(), kvGet() (+2 more)
 
 ### Community 26 - "Community 26"
+Cohesion: 0.18
+Nodes (12): pageRapor(), raporHtml(), RP_EKSKUL, RP_KOKU, rpAtur(), rpEkskul(), rpGetRapor(), rpMapel() (+4 more)
+
+### Community 27 - "Community 27"
 Cohesion: 0.15
 Nodes (4): kunciUjian(), TestCBTDinilaiOtomatisSetelahWaktuHabis(), TestCBTSoalTambahanTidakMenurunkanNilai(), TestKirimUlangSetelahDinilaiOtomatis()
 
-### Community 27 - "Community 27"
+### Community 28 - "Community 28"
 Cohesion: 0.19
 Nodes (5): hashToken(), apiVersion(), bad(), hashToken(), limitKey()
 
-### Community 28 - "Community 28"
+### Community 29 - "Community 29"
 Cohesion: 0.22
 Nodes (12): clientIP(), isHTTPS(), main(), newLoginLimiter(), newStaticHandler(), notFound(), printAddresses(), securityHeaders() (+4 more)
 
-### Community 29 - "Community 29"
+### Community 30 - "Community 30"
 Cohesion: 0.19
 Nodes (8): JAM_KE, JENIS_CAT, KATEGORI_CAT, monthInput(), pageCatatan(), pageJurnal(), pageWaliKelas(), validBulan()
 
-### Community 30 - "Community 30"
+### Community 31 - "Community 31"
 Cohesion: 0.16
 Nodes (6): 09479bb Perbarui peta kode graphify, 2c481ea v1.22.1: perangkat ajar AI per jenjang (SD/SMP/SMA/SMK): kelas & fase, saran mapel, validasi server, instruksi jenjang ke AI, 4f7bbc2 Perbarui peta kode graphify, 69d9920 Perbarui peta kode graphify, 792dd82 v1.23.0: jenjang sekolah diatur sekali di Pengaturan; tingkat kelas, saran mapel, kenaikan kelas, filter e-book, dan Asisten AI mengikuti jenjang, c3fe8fe v1.22.0: RPP Kurikulum Merdeka terbaru (RPM/Modul Ajar/RPP 1 lembar, fase & alokasi waktu otomatis, cek waktu), sunting, cetak resmi berkop & tanda tangan, unduh Word
 
-### Community 31 - "Community 31"
+### Community 32 - "Community 32"
+Cohesion: 0.14
+Nodes (4): 3550bcd v1.24.1: audit tahap 1 - kuis dinilai dari soal yang ditampilkan, batas unggahan publik, tugas dinilai tak tertimpa, buku berriwayat tak dihapus, putus sesi atomik, petugas bilik e-voting tercatat, 3a5fb3d Perbarui peta kode graphify, 450a912 v1.20.0: perbaiki sisa temuan audit dan risiko baru dari tinjauan ulang, cfgInt()
+
+### Community 33 - "Community 33"
 Cohesion: 0.14
 Nodes (2): 5720746 SCH v1.18.0: sistem informasi sekolah (Go + SQLite), GRAD
 
-### Community 32 - "Community 32"
+### Community 34 - "Community 34"
 Cohesion: 0.23
 Nodes (10): findMarkers(), homography(), LJK, ljkPos(), ljkProcess(), ljkRead(), ljkRedraw(), ljkSheet() (+2 more)
 
-### Community 33 - "Community 33"
+### Community 35 - "Community 35"
 Cohesion: 0.29
 Nodes (11): noKelas(), siswaCourse(), siswaDash(), siswaData(), siswaKuis(), siswaMapel(), siswaNilai(), siswaTugas() (+3 more)
 
-### Community 34 - "Community 34"
+### Community 36 - "Community 36"
 Cohesion: 0.27
 Nodes (8): apiGetSettings(), apiPutSettings(), apiSaveClass(), cleanDeadline(), cleanURL(), deref(), required(), str()
 
-### Community 35 - "Community 35"
-Cohesion: 0.15
-Nodes (5): 3550bcd v1.24.1: audit tahap 1 - kuis dinilai dari soal yang ditampilkan, batas unggahan publik, tugas dinilai tak tertimpa, buku berriwayat tak dihapus, putus sesi atomik, petugas bilik e-voting tercatat, 3e27651 Perbarui peta kode graphify, 8b22357 Perbarui peta kode graphify, 9247f21 Audit tahap 2: tes absensi mapel, tugas, impor pengguna, tahun ajaran, PPDB jadi siswa, perpustakaan, dan penolakan per peran modul, aa3061c v1.24.2: audit tahap 3 - nilai akhir di server + tes, penilaian CBT/kuis digabung, util.go, nama fungsi diperjelas
-
-### Community 36 - "Community 36"
+### Community 37 - "Community 37"
 Cohesion: 0.37
 Nodes (11): apiAIDocDocx(), buildDocx(), docxBody(), docxKop(), docxPara(), docxRuns(), docxTable(), docxTTD() (+3 more)
 
-### Community 37 - "Community 37"
+### Community 38 - "Community 38"
 Cohesion: 0.26
 Nodes (13): api(), apiFetch(), apiJSON(), checkVersion(), confirmBox(), DEL(), examSubmit(), GETpage() (+5 more)
 
-### Community 38 - "Community 38"
+### Community 39 - "Community 39"
 Cohesion: 0.38
 Nodes (11): courseBar(), guruAbsensi(), guruCourses(), guruKuis(), guruMapel(), guruMateri(), guruRekap(), guruTugas() (+3 more)
-
-### Community 39 - "Community 39"
-Cohesion: 0.18
-Nodes (7): 1e19524 Tahap 1: peserta LJK ikut riwayat kelas, validasi jam absensi, dasbor guru per tahun aktif, cache & halaman publik lebih aman, muat paralel, 3a5fb3d Perbarui peta kode graphify, 450a912 v1.20.0: perbaiki sisa temuan audit dan risiko baru dari tinjauan ulang, ae5fa1f Perbarui peta kode graphify, cfgInt(), BERKAS, PPDB_ST
 
 ### Community 40 - "Community 40"
 Cohesion: 0.18
@@ -229,23 +229,23 @@ Nodes (6): aiJenjang(), rppFase(), rppMenitJP(), rppNum(), rppPrompt(), rppWaktu
 
 ### Community 45 - "Community 45"
 Cohesion: 0.24
-Nodes (3): pngDataURL(), TestPPDBDitolakTidakMenyimpanBerkas(), TestUnggahanPublikDibatasiHarian()
-
-### Community 46 - "Community 46"
-Cohesion: 0.27
 Nodes (4): siswaID(), TestAbsensiMapelAlurLengkap(), TestPinjamKembaliBuku(), TestTugasBuatKumpulNilai()
 
+### Community 46 - "Community 46"
+Cohesion: 0.20
+Nodes (5): 1e19524 Tahap 1: peserta LJK ikut riwayat kelas, validasi jam absensi, dasbor guru per tahun aktif, cache & halaman publik lebih aman, muat paralel, ae5fa1f Perbarui peta kode graphify, bcd8537 Tahap 2: inti permintaan bersama + batal saat pindah menu, helper kamera/scan/password bersama, jendela dialog aksesibel, BERKAS, PPDB_ST
+
 ### Community 47 - "Community 47"
+Cohesion: 0.24
+Nodes (3): pngDataURL(), TestPPDBDitolakTidakMenyimpanBerkas(), TestUnggahanPublikDibatasiHarian()
+
+### Community 48 - "Community 48"
 Cohesion: 0.33
 Nodes (8): bilikHtml(), bilikOpen(), bilikScan(), elStatus(), evoteVoter(), hasilHtml(), hasilUtama(), pageEvoting()
 
-### Community 48 - "Community 48"
+### Community 49 - "Community 49"
 Cohesion: 0.31
 Nodes (6): apiEkskulAnggota(), apiEkskulAnggotaSave(), apiEkskulCalon(), apiEkskulList(), apiRaporPeriode(), rentangSemester()
-
-### Community 50 - "Community 50"
-Cohesion: 0.28
-Nodes (4): cbtTimeText(), pageCBT(), renderCbt(), siswaCBT()
 
 ### Community 51 - "Community 51"
 Cohesion: 0.36
@@ -310,9 +310,9 @@ Nodes (2): KODE_SURAT, SURAT_ST
 ## Knowledge Gaps
 - **97 isolated node(s):** `lampiran`, `userIn`, `docxOpts`, `migration`, `absenResult` (+92 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **Thin community `Community 9`** (1 nodes): `App`
+- **Thin community `Community 8`** (1 nodes): `App`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 31`** (2 nodes): `5720746 SCH v1.18.0: sistem informasi sekolah (Go + SQLite)`, `GRAD`
+- **Thin community `Community 33`** (2 nodes): `5720746 SCH v1.18.0: sistem informasi sekolah (Go + SQLite)`, `GRAD`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 40`** (2 nodes): `apiReturn()`, `perpusCfg()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
@@ -330,11 +330,11 @@ Nodes (2): KODE_SURAT, SURAT_ST
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `App` connect `Community 9` to `Community 66`, `Community 17`, `Community 19`, `Community 40`, `Community 16`, `Community 27`, `Community 10`, `Community 7`, `Community 23`, `Community 21`, `Community 4`, `Community 2`, `Community 43`, `Community 36`, `Community 24`, `Community 12`, `Community 34`, `Community 28`?**
+- **Why does `App` connect `Community 8` to `Community 66`, `Community 17`, `Community 19`, `Community 40`, `Community 16`, `Community 28`, `Community 10`, `Community 6`, `Community 24`, `Community 21`, `Community 4`, `Community 2`, `Community 43`, `Community 37`, `Community 25`, `Community 12`, `Community 36`, `Community 29`?**
   _High betweenness centrality (0.090) - this node is a cross-community bridge._
-- **Why does `Ctx` connect `Community 12` to `Community 43`, `Community 55`, `Community 11`, `Community 10`, `Community 1`, `Community 27`, `Community 16`, `Community 57`, `Community 24`, `Community 7`, `Community 22`, `Community 42`, `Community 21`, `Community 17`, `Community 4`, `Community 48`, `Community 2`, `Community 18`, `Community 28`?**
+- **Why does `Ctx` connect `Community 12` to `Community 43`, `Community 55`, `Community 11`, `Community 10`, `Community 1`, `Community 28`, `Community 16`, `Community 57`, `Community 25`, `Community 6`, `Community 22`, `Community 42`, `Community 21`, `Community 17`, `Community 4`, `Community 49`, `Community 2`, `Community 18`, `Community 29`?**
   _High betweenness centrality (0.086) - this node is a cross-community bridge._
-- **Why does `loginLimiter` connect `Community 21` to `Community 27`, `Community 28`?**
+- **Why does `loginLimiter` connect `Community 21` to `Community 28`, `Community 29`?**
   _High betweenness centrality (0.013) - this node is a cross-community bridge._
 - **What connects `lampiran`, `userIn`, `docxOpts` to the rest of the system?**
   _97 weakly-connected nodes found - possible documentation gaps or missing edges._
