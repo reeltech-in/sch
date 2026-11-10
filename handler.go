@@ -116,7 +116,14 @@ func (a *App) h(roles string, fn func(*Ctx) error) http.HandlerFunc {
 	}
 }
 
+// bisaDipaksa: penolakan hapus (409) yang boleh dilewati admin dengan ?paksa=1 (dikirim sebagai "paksa": true)
+type bisaDipaksa struct{ apiErr }
+
+func (e bisaDipaksa) Unwrap() error { return e.apiErr }
+
 func writeErr(w http.ResponseWriter, err error) {
+	var bp bisaDipaksa
+	paksa := errors.As(err, &bp)
 	var ae apiErr
 	if !errors.As(err, &ae) {
 		msg := err.Error()
@@ -136,5 +143,9 @@ func writeErr(w http.ResponseWriter, err error) {
 	}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(ae.code)
-	json.NewEncoder(w).Encode(map[string]string{"error": ae.msg})
+	out := map[string]any{"error": ae.msg}
+	if paksa {
+		out["paksa"] = true
+	}
+	json.NewEncoder(w).Encode(out)
 }

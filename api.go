@@ -259,7 +259,7 @@ func (c *Ctx) lindungiHasil(table string, id int64) error {
 	if table == "exams" {
 		saran = "Ujian otomatis tertutup setelah jadwal selesai. Bila memang harus dihapus, hapus dulu pekerjaan siswa di Hasil ujian, atau minta admin."
 	}
-	return apiErr{409, fmt.Sprintf("%s ini sudah %s %d siswa. Menghapusnya ikut menghapus nilai mereka secara permanen, jadi tidak bisa dihapus. %s", h.apa, h.kerja, n, saran)}
+	return bisaDipaksa{apiErr{409, fmt.Sprintf("%s ini sudah %s %d siswa. Menghapusnya ikut menghapus nilai mereka secara permanen, jadi tidak bisa dihapus. %s", h.apa, h.kerja, n, saran)}}
 }
 
 // ---------------------------------------------------------------------

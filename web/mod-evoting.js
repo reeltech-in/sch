@@ -47,7 +47,13 @@ ACT.kandForm = el => {
   });
 };
 ACT.kandDel = el => del('/evote-kandidat/' + el.dataset.id, 'Hapus kandidat ini?');
-const hasilHtml = r => {
+// rekap bilik per petugas: jumlah besar dalam waktu singkat patut diperiksa
+const bilikHtml = r => r.bilik && r.bilik.length ? `<div class="card-head" style="margin-top:16px"><h3>Suara lewat bilik per petugas</h3></div>
+  <div class="tw"><table><thead><tr><th>Petugas</th><th class="n">Suara</th><th>Pertama</th><th>Terakhir</th></tr></thead><tbody>
+  ${r.bilik.map(b => `<tr><td>${esc(b.petugas)}</td><td class="n">${b.jumlah}</td><td>${fmtDT(b.pertama)}</td><td>${fmtDT(b.terakhir)}</td></tr>`).join('')}</tbody></table></div>
+  <p class="muted" style="font-size:12px;margin-top:6px">Hanya terlihat oleh pengelola e-voting. Pilihan tiap pemilih tetap rahasia.</p>` : '';
+const hasilHtml = r => bilikHtml(r) ? hasilUtama(r) + bilikHtml(r) : hasilUtama(r);
+const hasilUtama = r => {
   if (r.kandidat.some(k => k.suara == null)) {
     return `<div class="stats">${stat('users', `${r.memilih}/${r.pemilih}`, 'Sudah memilih')}${stat('chart', r.pemilih ? fmtN(r.memilih / r.pemilih * 100) + '%' : '–', 'Partisipasi')}</div>
       <div class="hint">Perolehan suara dirahasiakan sampai pemungutan suara selesai, supaya pilihan tiap pemilih di bilik tidak bisa ditebak.</div>`;

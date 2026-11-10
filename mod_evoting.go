@@ -228,7 +228,13 @@ func apiElectionsForMe(c *Ctx) error {
 }
 
 // castVote mencatat bahwa pemilih sudah memilih dan menambah suara kandidat, dalam satu transaksi.
-func castVote(db *sql.DB, e *election, userID, candID int64, metode string) error {
+func init() {
+	moduleMigrations = append(moduleMigrations, func(db *sql.DB) error { return addColumn(db, "election_voters", "petugas_id", "INTEGER") })
+}
+
+// castVote mencatat satu suara. petugasID = petugas bilik yang memindai kartu (0 bila pemilih memilih sendiri);
+// dicatat di daftar hadir pemilih (bukan pada pilihannya), agar pencoblosan massal oleh petugas bisa dilacak.
+func castVote(db *sql.DB, e *election, userID, candID int64, metode string, petugasID int64) error {
 	if e.state() != "berlangsung" {
 		return bad("Pemungutan suara tidak sedang berlangsung.")
 	}
@@ -242,7 +248,11 @@ func castVote(db *sql.DB, e *election, userID, candID int64, metode string) erro
 	if ok == 0 {
 		return bad("Kandidat tidak valid.")
 	}
-	if _, err := tx.Exec(`INSERT INTO election_voters (election_id, user_id, voted_at, metode) VALUES (?,?,?,?)`, e.id, userID, nowStr(), metode); err != nil {
+	var petugas any
+	if petugasID > 0 {
+		petugas = petugasID
+	}
+	if _, err := tx.Exec(`INSERT INTO election_voters (election_id, user_id, voted_at, metode, petugas_id) VALUES (?,?,?,?,?)`, e.id, userID, nowStr(), metode, petugas); err != nil {
 		if strings.Contains(err.Error(), "UNIQUE") {
 			return bad("Pemilih ini sudah menggunakan hak suaranya.")
 		}
@@ -268,11 +278,14 @@ func apiVote(c *Ctx) error {
 	if !e.eligible(c.A.db, c.U.ID) {
 		return forbidden()
 	}
-	if err := castVote(c.A.db, e, c.U.ID, in.CandidateID, "online"); err != nil {
+	if err := castVote(c.A.db, e, c.U.ID, in.CandidateID, "online", 0); err != nil {
 		return err
 	}
 	return c.OK()
 }
+
+// jeda minimum antar-suara per petugas bilik (pemilih sungguhan butuh waktu memindai kartu & memilih)
+var boothJeda = 10 * time.Second
 
 // apiVoteBooth: mode bilik suara. Petugas scan kartu, lalu pemilih memilih di layar yang sama.
 func (a *App) apiVoteBooth(c *Ctx) error {
@@ -291,16 +304,24 @@ func (a *App) apiVoteBooth(c *Ctx) error {
 	if uid == 0 {
 		return bad("Kartu tidak valid.")
 	}
+	tercatat := false
 	if in.CandidateID != 0 {
 		// jeda antar-suara per petugas bilik: mencegah pencoblosan massal dengan skrip
 		boothMu.Lock()
 		last := boothLast[c.U.ID]
-		if time.Since(last) < 5*time.Second {
+		if time.Since(last) < boothJeda {
 			boothMu.Unlock()
 			return bad("Tunggu sebentar sebelum pemilih berikutnya.")
 		}
-		boothLast[c.U.ID] = time.Now()
+		boothLast[c.U.ID] = time.Now() // dipesan dulu (dua kiriman bersamaan tidak lolos); dibatalkan bila suara gagal
 		boothMu.Unlock()
+		defer func() {
+			if !tercatat { // kartu ditolak / sudah memilih: pemilih berikutnya tidak perlu menunggu
+				boothMu.Lock()
+				boothLast[c.U.ID] = last // kembali ke waktu suara sah terakhir
+				boothMu.Unlock()
+			}
+		}()
 	}
 	var nama string
 	var kelas sql.NullString
@@ -316,9 +337,10 @@ func (a *App) apiVoteBooth(c *Ctx) error {
 	if in.CandidateID == 0 {
 		return c.JSON(map[string]any{"nama": nama, "kelas": kelas.String, "siap": true})
 	}
-	if err := castVote(a.db, e, uid, in.CandidateID, "bilik"); err != nil {
+	if err := castVote(a.db, e, uid, in.CandidateID, "bilik", c.U.ID); err != nil {
 		return err
 	}
+	tercatat = true
 	return c.JSON(map[string]any{"nama": nama, "tercatat": true})
 }
 
@@ -361,5 +383,14 @@ func apiElectionResult(c *Ctx) error {
 			c.A.db.QueryRow(`SELECT COUNT(*) FROM users WHERE status='aktif' AND role='siswa' AND kelas_id IN (`+ph+`)`, args...).Scan(&total)
 		}
 	}
-	return c.JSON(map[string]any{"judul": e.judul, "status": e.state(), "kandidat": kand, "memilih": voted, "pemilih": total})
+	out := map[string]any{"judul": e.judul, "status": e.state(), "kandidat": kand, "memilih": voted, "pemilih": total}
+	if c.U.Has("evoting") {
+		bilik, err := c.list(`SELECT COALESCE(u.nama_lengkap, '(tidak tercatat)') AS petugas, COUNT(*) AS jumlah, MIN(v.voted_at) AS pertama, MAX(v.voted_at) AS terakhir
+			FROM election_voters v LEFT JOIN users u ON u.id=v.petugas_id WHERE v.election_id=? AND v.metode='bilik' GROUP BY v.petugas_id ORDER BY jumlah DESC`, e.id)
+		if err != nil {
+			return err
+		}
+		out["bilik"] = bilik
+	}
+	return c.JSON(out)
 }

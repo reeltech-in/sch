@@ -141,10 +141,15 @@ func (a *App) apiPassword(c *Ctx) error {
 	if err != nil {
 		return err
 	}
-	if _, err := c.A.db.Exec(`UPDATE users SET password_hash=?, ganti_pw=0 WHERE id=?`, h, c.U.ID); err != nil {
+	tx, err := c.A.db.Begin()
+	if err != nil {
 		return err
 	}
-	// keluarkan sesi lain milik pengguna ini
+	defer tx.Rollback()
+	if _, err := tx.Exec(`UPDATE users SET password_hash=?, ganti_pw=0 WHERE id=?`, h, c.U.ID); err != nil {
+		return err
+	}
+	// keluarkan sesi lain milik pengguna ini (perangkat yang mungkin dipakai orang lain)
 	keep := []any{c.U.ID}
 	ph := ""
 	for _, ck := range c.R.Cookies() {
@@ -153,7 +158,12 @@ func (a *App) apiPassword(c *Ctx) error {
 			ph += ",?"
 		}
 	}
-	c.A.db.Exec(`DELETE FROM sessions WHERE user_id=? AND token_hash NOT IN (''`+ph+`)`, keep...)
+	if _, err := tx.Exec(`DELETE FROM sessions WHERE user_id=? AND token_hash NOT IN (''`+ph+`)`, keep...); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return err
+	}
 	return c.OK()
 }
 

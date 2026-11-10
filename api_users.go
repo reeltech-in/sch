@@ -96,19 +96,7 @@ func apiSaveUser(c *Ctx) error {
 		akses = string(b)
 	}
 	if id > 0 {
-		_, err = c.A.db.Exec(`UPDATE users SET username=?, nama_lengkap=?, role=?, email=?, status=?, kelas_id=?, nip=?, akses=? WHERE id=?`,
-			uname, nama, in.Role, str(in.Email), in.Status, kelas, str(in.NIP), akses, id)
-		if err == nil && in.Password != "" {
-			var h string
-			if h, err = hashPassword(in.Password); err == nil {
-				// password direset admin: pemilik akun wajib menggantinya saat login berikutnya
-				_, err = c.A.db.Exec(`UPDATE users SET password_hash=?, ganti_pw=? WHERE id=?`, h, b2i(id != c.U.ID), id)
-				c.A.db.Exec(`DELETE FROM sessions WHERE user_id=?`, id)
-			}
-		}
-		if err == nil && in.Status == "nonaktif" {
-			c.A.db.Exec(`DELETE FROM sessions WHERE user_id=?`, id)
-		}
+		err = c.updateUser(id, uname, nama, in.Role, str(in.Email), in.Status, kelas, str(in.NIP), akses, in.Password)
 	} else {
 		var h string
 		if h, err = hashPassword(in.Password); err == nil {
@@ -120,6 +108,39 @@ func apiSaveUser(c *Ctx) error {
 		return err
 	}
 	return c.OK()
+}
+
+// updateUser: ubah data akun; bila password direset atau akun dinonaktifkan, semua sesinya diputus di transaksi
+// yang sama, jadi tidak mungkin password sudah berganti tetapi orang lain masih login dengan sesi lama.
+func (c *Ctx) updateUser(id int64, uname, nama, role string, email any, status string, kelas any, nip any, akses any, password string) error {
+	var h string
+	if password != "" {
+		var err error
+		if h, err = hashPassword(password); err != nil { // bcrypt di luar transaksi: tidak menahan koneksi tulis
+			return err
+		}
+	}
+	tx, err := c.A.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if _, err := tx.Exec(`UPDATE users SET username=?, nama_lengkap=?, role=?, email=?, status=?, kelas_id=?, nip=?, akses=? WHERE id=?`,
+		uname, nama, role, email, status, kelas, nip, akses, id); err != nil {
+		return err
+	}
+	if h != "" {
+		// password direset admin: pemilik akun wajib menggantinya saat login berikutnya
+		if _, err := tx.Exec(`UPDATE users SET password_hash=?, ganti_pw=? WHERE id=?`, h, b2i(id != c.U.ID), id); err != nil {
+			return err
+		}
+	}
+	if h != "" || status == "nonaktif" {
+		if _, err := tx.Exec(`DELETE FROM sessions WHERE user_id=?`, id); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
 }
 
 func b2i(b bool) int {

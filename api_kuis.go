@@ -219,7 +219,8 @@ func apiQuizStart(c *Ctx) error {
 	}
 	var started string
 	var selesai int
-	err := c.A.db.QueryRow(`SELECT started_at, selesai FROM quiz_attempts WHERE quiz_id=? AND siswa_id=?`, id, c.U.ID).Scan(&started, &selesai)
+	var soal sql.NullString
+	err := c.A.db.QueryRow(`SELECT started_at, selesai, soal FROM quiz_attempts WHERE quiz_id=? AND siswa_id=?`, id, c.U.ID).Scan(&started, &selesai, &soal)
 	if err == nil && selesai == 1 {
 		return bad("Kuis ini sudah Anda kerjakan.")
 	}
@@ -230,16 +231,41 @@ func apiQuizStart(c *Ctx) error {
 	}
 	if err == sql.ErrNoRows {
 		started = nowStr()
-		if _, err := c.A.db.Exec(`INSERT INTO quiz_attempts (quiz_id, siswa_id, started_at) VALUES (?,?,?)`, id, c.U.ID, started); err != nil {
+		var ids []int64
+		rows, err := c.A.db.Query(`SELECT id FROM quiz_questions WHERE quiz_id=? ORDER BY id`, id)
+		if err != nil {
 			return err
 		}
+		for rows.Next() {
+			var q int64
+			if rows.Scan(&q) == nil {
+				ids = append(ids, q)
+			}
+		}
+		rows.Close()
+		jb, _ := json.Marshal(ids)
+		soal = sql.NullString{String: string(jb), Valid: true}
+		// klik ganda: attempt yang tersimpan lebih dulu yang dipakai
+		if _, err := c.A.db.Exec(`INSERT INTO quiz_attempts (quiz_id, siswa_id, started_at, soal) VALUES (?,?,?,?) ON CONFLICT (quiz_id, siswa_id) DO NOTHING`, id, c.U.ID, started, soal.String); err != nil {
+			return err
+		}
+		c.A.db.QueryRow(`SELECT started_at, soal FROM quiz_attempts WHERE quiz_id=? AND siswa_id=?`, id, c.U.ID).Scan(&started, &soal)
 	} else if err != nil {
 		return err
 	}
-	// Soal dikirim TANPA kunci jawaban
+	// Soal dikirim TANPA kunci jawaban, hanya soal milik attempt ini
 	qs, err := c.list(`SELECT id, pertanyaan, opsi_a, opsi_b, opsi_c, opsi_d, opsi_e FROM quiz_questions WHERE quiz_id=? ORDER BY id`, id)
 	if err != nil {
 		return err
+	}
+	if dipakai := soalKuis(soal); dipakai != nil {
+		keep := qs[:0]
+		for _, q := range qs {
+			if qid, _ := q["id"].(int64); dipakai[qid] {
+				keep = append(keep, q)
+			}
+		}
+		qs = keep
 	}
 	st, _ := time.Parse(time.RFC3339, started)
 	remaining := time.Duration(durasi)*time.Minute - time.Since(st)
@@ -278,13 +304,32 @@ func quizClean(in map[string]string) map[string]string {
 	return out
 }
 
-// scoreQuiz menilai jawaban atas semua soal kuis (kuis mapel tidak mengacak pilihan).
-func scoreQuiz(tx *sql.Tx, quizID int64, ans map[string]string) (float64, error) {
+func init() {
+	// soal yang ditampilkan ke siswa saat mulai (JSON id). Soal yang ditambahkan guru sesudahnya tidak ikut dinilai.
+	moduleMigrations = append(moduleMigrations, func(db *sql.DB) error { return addColumn(db, "quiz_attempts", "soal", "TEXT") })
+}
+
+// soalKuis: id soal milik attempt; kosong (attempt lama) = semua soal kuis.
+func soalKuis(soal sql.NullString) map[int64]bool {
+	var ids []int64
+	if json.Unmarshal([]byte(soal.String), &ids) != nil || len(ids) == 0 {
+		return nil
+	}
+	m := map[int64]bool{}
+	for _, id := range ids {
+		m[id] = true
+	}
+	return m
+}
+
+// scoreQuiz menilai jawaban atas soal yang ditampilkan ke siswa (kuis mapel tidak mengacak pilihan).
+func scoreQuiz(tx *sql.Tx, quizID int64, ans map[string]string, soal sql.NullString) (float64, error) {
 	rows, err := tx.Query(`SELECT id, jawaban_benar, bobot FROM quiz_questions WHERE quiz_id=?`, quizID)
 	if err != nil {
 		return 0, err
 	}
 	defer rows.Close()
+	dipakai := soalKuis(soal)
 	var total, benar float64
 	for rows.Next() {
 		var qid int64
@@ -292,6 +337,9 @@ func scoreQuiz(tx *sql.Tx, quizID int64, ans map[string]string) (float64, error)
 		var bobot float64
 		if err := rows.Scan(&qid, &kunci, &bobot); err != nil {
 			return 0, err
+		}
+		if dipakai != nil && !dipakai[qid] {
+			continue
 		}
 		total += bobot
 		if ans[strconv.FormatInt(qid, 10)] == kunci {
@@ -344,10 +392,10 @@ func apiQuizSubmit(c *Ctx) error {
 	defer tx.Rollback()
 	var attempt int64
 	var started string
-	var saved sql.NullString
+	var saved, soal sql.NullString
 	var durasi int
-	if err := tx.QueryRow(`SELECT t.id, t.started_at, t.jawaban, q.durasi_menit FROM quiz_attempts t JOIN quizzes q ON q.id=t.quiz_id
-		WHERE t.quiz_id=? AND t.siswa_id=? AND t.selesai=0`, id, c.U.ID).Scan(&attempt, &started, &saved, &durasi); err != nil {
+	if err := tx.QueryRow(`SELECT t.id, t.started_at, t.jawaban, t.soal, q.durasi_menit FROM quiz_attempts t JOIN quizzes q ON q.id=t.quiz_id
+		WHERE t.quiz_id=? AND t.siswa_id=? AND t.selesai=0`, id, c.U.ID).Scan(&attempt, &started, &saved, &soal, &durasi); err != nil {
 		// sudah ditutup (terkirim sebelumnya tapi balasan hilang, atau dinilai otomatis): tampilkan nilai tersimpan
 		var skor float64
 		if tx.QueryRow(`SELECT skor FROM quiz_attempts WHERE quiz_id=? AND siswa_id=? AND selesai=1`, id, c.U.ID).Scan(&skor) == nil {
@@ -362,7 +410,7 @@ func apiQuizSubmit(c *Ctx) error {
 		json.Unmarshal([]byte(saved.String), &ans)
 		ans = quizClean(ans)
 	}
-	skor, err := scoreQuiz(tx, id, ans)
+	skor, err := scoreQuiz(tx, id, ans, soal)
 	if err != nil {
 		return err
 	}
@@ -402,14 +450,14 @@ func (a *App) finalizeQuiz() {
 				return
 			}
 			defer tx.Rollback()
-			var saved sql.NullString
-			if tx.QueryRow(`SELECT jawaban FROM quiz_attempts WHERE id=? AND selesai=0`, x.id).Scan(&saved) != nil {
+			var saved, soal sql.NullString
+			if tx.QueryRow(`SELECT jawaban, soal FROM quiz_attempts WHERE id=? AND selesai=0`, x.id).Scan(&saved, &soal) != nil {
 				return
 			}
 			ans := map[string]string{}
 			json.Unmarshal([]byte(saved.String), &ans)
 			ans = quizClean(ans)
-			skor, err := scoreQuiz(tx, x.quiz, ans)
+			skor, err := scoreQuiz(tx, x.quiz, ans, soal)
 			if err != nil {
 				return
 			}

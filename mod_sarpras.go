@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"math"
 	"net/http"
 	"strconv"
@@ -76,7 +77,7 @@ CREATE INDEX IF NOT EXISTS idx_loans_book ON loans(book_id);
 		m.HandleFunc("GET /api/buku", p("any", apiBooks))
 		m.HandleFunc("POST /api/buku", p("admin", apiBookSave))
 		m.HandleFunc("PUT /api/buku/{id}", p("admin", apiBookSave))
-		m.HandleFunc("DELETE /api/buku/{id}", p("admin", apiDelete("books")))
+		m.HandleFunc("DELETE /api/buku/{id}", p("admin", apiBookDelete))
 		m.HandleFunc("GET /api/perpus/anggota", p("admin", a.apiMember))
 		m.HandleFunc("POST /api/perpus/pinjam", p("admin", a.apiBorrow))
 		m.HandleFunc("POST /api/perpus/kembali/{id}", p("admin", apiReturn))
@@ -432,4 +433,17 @@ func apiMyLoans(c *Ctx) error {
 		return err
 	}
 	return c.JSON(rows)
+}
+
+// Buku yang pernah dipinjam tidak dihapus: riwayat pinjaman & dendanya ikut terhapus berantai.
+func apiBookDelete(c *Ctx) error {
+	var n, aktif int
+	c.A.db.QueryRow(`SELECT COUNT(*), COUNT(*) FILTER (WHERE tgl_kembali IS NULL) FROM loans WHERE book_id=?`, c.ID("id")).Scan(&n, &aktif)
+	if aktif > 0 {
+		return apiErr{409, fmt.Sprintf("Buku ini masih dipinjam (%d eksemplar). Catat pengembaliannya dulu.", aktif)}
+	}
+	if n > 0 {
+		return apiErr{409, fmt.Sprintf("Buku ini punya %d riwayat peminjaman (termasuk denda). Agar riwayat tetap utuh, buku tidak dihapus; ubah stoknya menjadi 0 bila sudah tidak tersedia.", n)}
+	}
+	return apiDelete("books")(c)
 }

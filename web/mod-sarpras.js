@@ -206,7 +206,7 @@ ACT.bukuForm = async el => {
     onSubmit: v => { const body = { ...v, stok: v.stok ?? 0 }; return b.id ? PUT('/buku/' + b.id, body) : POST('/buku', body); },
   });
 };
-ACT.bukuDel = el => del('/buku/' + el.dataset.id, `Hapus buku <b>${esc(el.dataset.judul)}</b> beserta riwayat peminjamannya?`);
+ACT.bukuDel = el => del('/buku/' + el.dataset.id, `Hapus buku <b>${esc(el.dataset.judul)}</b>? Buku yang pernah dipinjam tidak bisa dihapus agar riwayat & dendanya tetap utuh.`);
 ACT.bukuLabels = () => {
   if (!S.bukuList.length) return toast('Belum ada buku.', 'bad');
   const lab = b => `<div class="label">${qrImg(b.kode, 84)}<div><b>${esc(b.kode)}</b><br>${esc(b.judul.slice(0, 50))}<br>${esc(b.rak ? 'Rak ' + b.rak : '')}<br><small>Perpustakaan ${esc(S.settings.nama_sekolah || '')}</small></div></div>`;

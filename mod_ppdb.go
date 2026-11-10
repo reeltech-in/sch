@@ -92,7 +92,7 @@ func (a *App) apiPPDBDaftar(c *Ctx) error {
 	if jk, _ := d["jk"].(string); jk != "" && jk != "L" && jk != "P" {
 		d["jk"] = nil
 	}
-	berkas := map[string]string{}
+	berkasData := map[string][]byte{}
 	for _, k := range []string{"kk", "akta", "foto", "lain"} {
 		s := in.Berkas[k]
 		if s == "" {
@@ -102,13 +102,8 @@ func (a *App) apiPPDBDaftar(c *Ctx) error {
 		if err != nil || len(data) > 2<<20 {
 			return bad("Berkas " + k + " tidak valid atau lebih dari 2 MB.")
 		}
-		url, err := a.saveUpload(data, false)
-		if err != nil {
-			return err
-		}
-		berkas[k] = url
+		berkasData[k] = data
 	}
-	bb, _ := json.Marshal(berkas)
 	pin := randDigits(8)
 	phs, err := hashPassword(pin)
 	if err != nil {
@@ -142,6 +137,23 @@ func (a *App) apiPPDBDaftar(c *Ctx) error {
 			return bad(f.label + " ini sudah terdaftar dengan nomor " + nd + ". Cek status pendaftaran dengan nomor tersebut.")
 		}
 	}
+	// semua pemeriksaan lolos: baru simpan berkas (pendaftaran yang ditolak tidak memakai ruang penyimpanan)
+	berkas := map[string]string{}
+	var tersimpan []string
+	for _, k := range []string{"kk", "akta", "foto", "lain"} {
+		data, ok := berkasData[k]
+		if !ok {
+			continue
+		}
+		url, err := a.savePublicUpload(data, false)
+		if err != nil {
+			a.removeUploads(tersimpan)
+			return err
+		}
+		berkas[k] = url
+		tersimpan = append(tersimpan, url)
+	}
+	bb, _ := json.Marshal(berkas)
 	var no string
 	for i := 0; i < 5; i++ {
 		var n int // urutan terbesar + 1 (aman walau ada pendaftar yang dihapus)
@@ -155,6 +167,7 @@ func (a *App) apiPPDBDaftar(c *Ctx) error {
 		}
 	}
 	if err != nil {
+		a.removeUploads(tersimpan)
 		return err
 	}
 	if hp, _ := d["hp"].(string); hp != "" {

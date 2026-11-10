@@ -384,6 +384,59 @@ func (a *App) saveUpload(data []byte, onlyImage bool) (string, error) {
 	return "/files/" + name, nil
 }
 
+// Unggahan dari halaman publik (buku tamu, PPDB) dibatasi tersendiri: jatah harian bersama, dan tidak boleh
+// memakai cadangan ruang terakhir, agar pengunjung tanpa login tidak bisa memenuhi penyimpanan sekolah
+// (selfie absensi, gambar soal, logo tetap bisa diunggah).
+const publikHarianMaks = 300 << 20 // 300 MB per hari untuk semua unggahan publik
+
+var publikUpl struct {
+	sync.Mutex
+	hari  string
+	bytes int64
+}
+
+func (a *App) savePublicUpload(data []byte, onlyImage bool) (string, error) {
+	cadangan := uploadMaxBytes / 5 // 20% terakhir hanya untuk pengguna yang login
+	if a.uploadUsed()+int64(len(data)) > uploadMaxBytes-cadangan {
+		return "", apiErr{507, "Penyimpanan unggahan sedang penuh. Silakan hubungi sekolah."}
+	}
+	hari := time.Now().Format("2006-01-02")
+	publikUpl.Lock()
+	if publikUpl.hari != hari {
+		publikUpl.hari, publikUpl.bytes = hari, 0
+	}
+	if publikUpl.bytes+int64(len(data)) > publikHarianMaks {
+		publikUpl.Unlock()
+		return "", apiErr{429, "Batas unggahan hari ini sudah tercapai. Silakan coba lagi besok atau hubungi sekolah."}
+	}
+	publikUpl.bytes += int64(len(data))
+	publikUpl.Unlock()
+	url, err := a.saveUpload(data, onlyImage)
+	if err != nil {
+		publikUpl.Lock()
+		if publikUpl.hari == hari {
+			publikUpl.bytes -= int64(len(data))
+		}
+		publikUpl.Unlock()
+	}
+	return url, err
+}
+
+// removeUploads menghapus berkas yang sudah tersimpan bila penyimpanan datanya gagal (tidak meninggalkan file yatim).
+func (a *App) removeUploads(urls []string) {
+	for _, u := range urls {
+		name := strings.TrimPrefix(u, "/files/")
+		if name == "" || strings.ContainsAny(name, "/\\") {
+			continue
+		}
+		if st, err := os.Stat(filepath.Join(a.uploadDir(), name)); err == nil && os.Remove(filepath.Join(a.uploadDir(), name)) == nil {
+			uploadSize.Lock()
+			uploadSize.bytes -= st.Size()
+			uploadSize.Unlock()
+		}
+	}
+}
+
 func (a *App) apiUpload(c *Ctx) error {
 	c.longBody()
 	c.R.Body = http.MaxBytesReader(c.W, c.R.Body, 32<<20)

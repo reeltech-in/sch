@@ -1,7 +1,6 @@
 package main
 
 import (
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -326,16 +325,17 @@ func apiSubmit(c *Ctx) error {
 	if str(in.Jawaban) == nil && link == nil {
 		return bad("Isi jawaban atau tautan file terlebih dahulu.")
 	}
-	var nilai sql.NullFloat64
-	err = c.A.db.QueryRow(`SELECT nilai FROM submissions WHERE assignment_id=? AND siswa_id=?`, id, c.U.ID).Scan(&nilai)
-	if err == nil && nilai.Valid {
-		return bad("Tugas sudah dinilai dan tidak bisa diubah.")
-	}
-	_, err = c.A.db.Exec(`INSERT INTO submissions (assignment_id, siswa_id, jawaban, link_file, submitted_at) VALUES (?,?,?,?,?)
-		ON CONFLICT (assignment_id, siswa_id) DO UPDATE SET jawaban=excluded.jawaban, link_file=excluded.link_file, submitted_at=excluded.submitted_at`,
+	// satu pernyataan atomik: jawaban yang sudah dinilai tidak pernah tertimpa, walau guru menilai
+	// tepat saat siswa mengirim ulang (pemeriksaan terpisah lalu simpan bisa kalah balapan)
+	res, err := c.A.db.Exec(`INSERT INTO submissions (assignment_id, siswa_id, jawaban, link_file, submitted_at) VALUES (?,?,?,?,?)
+		ON CONFLICT (assignment_id, siswa_id) DO UPDATE SET jawaban=excluded.jawaban, link_file=excluded.link_file, submitted_at=excluded.submitted_at
+		WHERE submissions.nilai IS NULL`,
 		id, c.U.ID, str(in.Jawaban), link, nowStr())
 	if err != nil {
 		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return bad("Tugas sudah dinilai dan tidak bisa diubah.")
 	}
 	return c.OK()
 }

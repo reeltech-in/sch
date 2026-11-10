@@ -48,12 +48,15 @@ func (a *App) apiGuestAdd(c *Ctx) error {
 		if err != nil || len(data) > 2<<20 {
 			return bad("Foto tidak valid.")
 		}
-		if foto, err = a.saveUpload(data, true); err != nil {
+		if foto, err = a.savePublicUpload(data, true); err != nil {
 			return err
 		}
 	}
 	if _, err := a.db.Exec(`INSERT INTO guestbook (nama, instansi, hp, keperluan, bertemu, foto, created_at) VALUES (?,?,?,?,?,?,?)`,
 		cut(in.Nama, 100), cut(in.Instansi, 120), cut(in.HP, 30), cut(in.Keperluan, 500), cut(in.Bertemu, 100), foto, nowStr()); err != nil {
+		if u, ok := foto.(string); ok {
+			a.removeUploads([]string{u})
+		}
 		return err
 	}
 	return c.OK()

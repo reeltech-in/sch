@@ -8,6 +8,21 @@ Format versi: `MAYOR.MINOR.PERBAIKAN`
 Versi yang sedang berjalan terlihat di menu kiri aplikasi (bawah nama pengguna), di `GET /api/version`,
 di header respons `X-SCH-Version`, dan dengan perintah `sch-server -version`.
 
+## v1.24.1 — 2026-11-10 (Audit tahap 1: keamanan & integritas data)
+- **Kuis mapel dinilai dari soal yang ditampilkan.** Daftar soal dicatat saat siswa mulai; soal yang ditambahkan guru
+  sesudahnya tidak ikut dihitung salah, dan saat melanjutkan siswa melihat soal yang sama.
+- **Unggahan publik dibatasi.** Buku tamu & PPDB punya jatah bersama 300 MB per hari dan tidak boleh memakai 20 % ruang
+  terakhir, sehingga selfie absensi, gambar soal, dan logo tetap bisa diunggah. PPDB memeriksa semua isian (termasuk
+  NISN/NIK ganda) sebelum menyimpan berkas; berkas dihapus lagi bila penyimpanan gagal.
+- **Tugas yang sudah dinilai tidak bisa ditimpa** walau siswa mengirim ulang tepat saat guru menilai (satu pernyataan atomik).
+- **Buku yang pernah dipinjam tidak bisa dihapus**, agar riwayat pinjaman & dendanya tetap utuh (ubah stok jadi 0).
+- **Reset password / nonaktifkan akun oleh admin** dan **ganti password sendiri** kini mengubah password dan memutus sesi
+  lama dalam satu transaksi.
+- **E-voting bilik:** petugas yang memindai kartu dicatat pada daftar hadir pemilih (pilihan tetap rahasia), pengelola
+  melihat rekap "Suara lewat bilik per petugas", dan jeda antar-suara per petugas menjadi 10 detik (kartu yang ditolak
+  tidak memicu jeda).
+- Penolakan hapus yang boleh dilewati admin kini ditandai jelas oleh server; tes baru untuk semua perbaikan di atas.
+
 ## v1.24.0 — 2026-11-10 (Header baru & sudut kartu lebih tegas)
 - **Header di bagian atas** (desktop): di kanan ada hari, tanggal, dan jam menurut waktu server (WIB/WITA/WIT), lalu **menu akun**
   berisi nama & peran, Akun Saya (profil & kata sandi), Pengaturan (admin), pilihan **tema Sistem / Terang / Gelap**,
