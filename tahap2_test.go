@@ -335,3 +335,42 @@ func TestTahunAjaranSatuSumber(t *testing.T) {
 		t.Fatalf("setelah aktivasi, tahun ajaran harus 2027/2028, dapat %v", s["tahun_ajaran"])
 	}
 }
+
+// Semester diatur di form Tahun Ajaran (satu tempat) dan dipakai e-Rapor.
+func TestSemesterDiTahunAjaran(t *testing.T) {
+	e := newEnv(t)
+	a := e.login("admin", testAdminPW)
+	body := func(ag any) map[string]any {
+		return map[string]any{"nama": "2026/2027", "mulai": "2026-07-13", "selesai": "2027-06-26", "akhir_ganjil": ag}
+	}
+	if code, _ := a.do("PUT", "/api/tahun/1", body("2027-08-01")); code != 400 {
+		t.Fatalf("akhir ganjil di luar tahun ajaran harus ditolak")
+	}
+	if code, b := a.do("PUT", "/api/tahun/1", body("2026-12-19")); code != 200 {
+		t.Fatalf("simpan semester: %d %s", code, b)
+	}
+	var ys []map[string]any
+	a.json("GET", "/api/tahun", nil, &ys)
+	if ys[0]["ganjil_mulai"] != "2026-07-13" || ys[0]["ganjil_akhir"] != "2026-12-19" || ys[0]["genap_mulai"] != "2026-12-20" || ys[0]["genap_akhir"] != "2027-06-26" {
+		t.Fatalf("rentang semester: %v", ys[0])
+	}
+	var per struct {
+		Tahun []struct {
+			Semester []map[string]string
+		}
+	}
+	a.json("GET", "/api/rapor/periode", nil, &per)
+	if per.Tahun[0].Semester[1]["mulai"] != "2026-12-20" {
+		t.Fatalf("e-Rapor harus memakai semester dari Tahun Ajaran: %v", per.Tahun[0].Semester)
+	}
+	if code, _ := a.do("PUT", "/api/rapor/periode/1", map[string]any{"akhir_ganjil": "2026-12-01"}); code != 404 && code != 405 {
+		t.Fatalf("tempat kedua untuk mengatur semester harus sudah tidak ada, dapat %d", code)
+	}
+	if code, b := a.do("PUT", "/api/tahun/1", body(nil)); code != 200 {
+		t.Fatalf("kosongkan akhir ganjil: %d %s", code, b)
+	}
+	a.json("GET", "/api/tahun", nil, &ys)
+	if ys[0]["ganjil_akhir"] != "2026-12-31" {
+		t.Fatalf("akhir ganjil kosong = 31 Desember, dapat %v", ys[0]["ganjil_akhir"])
+	}
+}

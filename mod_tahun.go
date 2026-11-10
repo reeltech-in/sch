@@ -58,6 +58,12 @@ func apiYears(c *Ctx) error {
 	if err != nil {
 		return err
 	}
+	for _, r := range rows { // rentang semester (akhir ganjil kosong = 31 Desember)
+		ns := func(k string) sql.NullString { s, ok := r[k].(string); return sql.NullString{String: s, Valid: ok} }
+		nama, _ := r["nama"].(string)
+		r["ganjil_mulai"], r["ganjil_akhir"] = rentangSemester(nama, ns("mulai"), ns("selesai"), ns("akhir_ganjil"), 1)
+		r["genap_mulai"], r["genap_akhir"] = rentangSemester(nama, ns("mulai"), ns("selesai"), ns("akhir_ganjil"), 2)
+	}
 	return c.JSON(rows)
 }
 
@@ -65,9 +71,10 @@ var yearRe = regexp.MustCompile(`^\d{4}/\d{4}$`)
 
 func apiYearSave(c *Ctx) error {
 	var in struct {
-		Nama    string  `json:"nama"`
-		Mulai   *string `json:"mulai"`
-		Selesai *string `json:"selesai"`
+		Nama        string  `json:"nama"`
+		Mulai       *string `json:"mulai"`
+		Selesai     *string `json:"selesai"`
+		AkhirGanjil *string `json:"akhir_ganjil"`
 	}
 	if err := c.Bind(&in); err != nil {
 		return err
@@ -76,8 +83,8 @@ func apiYearSave(c *Ctx) error {
 	if !yearRe.MatchString(nama) {
 		return bad("Format tahun ajaran harus seperti 2026/2027.")
 	}
-	dates := []any{nil, nil}
-	for i, p := range []*string{in.Mulai, in.Selesai} {
+	dates := []any{nil, nil, nil}
+	for i, p := range []*string{in.Mulai, in.Selesai, in.AkhirGanjil} {
 		if v := str(p); v != nil {
 			d, err := cleanDate(v.(string))
 			if err != nil {
@@ -92,15 +99,24 @@ func apiYearSave(c *Ctx) error {
 	if err := cekRentang(dates[0], dates[1], "Tanggal"); err != nil {
 		return err
 	}
+	// akhir semester ganjil harus di antara mulai dan selesai tahun ajaran (bawaan 1 Juli & 30 Juni)
+	if ag, ok := dates[2].(string); ok {
+		ns := func(v any) sql.NullString { s, ok := v.(string); return sql.NullString{String: s, Valid: ok} }
+		m, _ := rentangSemester(nama, ns(dates[0]), ns(dates[1]), sql.NullString{}, 1)
+		_, s := rentangSemester(nama, ns(dates[0]), ns(dates[1]), sql.NullString{}, 2)
+		if ag <= m || ag >= s {
+			return bad("Akhir semester ganjil harus di antara " + tanggalPanjang(m) + " dan " + tanggalPanjang(s) + ".")
+		}
+	}
 	var err error
 	if id := c.ID("id"); id > 0 {
-		_, err = c.A.db.Exec(`UPDATE academic_years SET nama=?, mulai=?, selesai=? WHERE id=?`, nama, dates[0], dates[1], id)
+		_, err = c.A.db.Exec(`UPDATE academic_years SET nama=?, mulai=?, selesai=?, akhir_ganjil=? WHERE id=?`, nama, dates[0], dates[1], dates[2], id)
 		if err == nil {
 			c.A.db.Exec(`UPDATE settings SET tahun_ajaran=? WHERE id=1 AND (SELECT aktif FROM academic_years WHERE id=?)=1`, nama, id)
 			c.A.db.Exec(`UPDATE classes SET tahun_ajaran=? WHERE tahun_id=?`, nama, id)
 		}
 	} else {
-		_, err = c.A.db.Exec(`INSERT INTO academic_years (nama, mulai, selesai, created_at) VALUES (?,?,?,?)`, nama, dates[0], dates[1], nowStr())
+		_, err = c.A.db.Exec(`INSERT INTO academic_years (nama, mulai, selesai, akhir_ganjil, created_at) VALUES (?,?,?,?,?)`, nama, dates[0], dates[1], dates[2], nowStr())
 	}
 	if err != nil {
 		return err

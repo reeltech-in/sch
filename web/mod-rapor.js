@@ -244,19 +244,13 @@ async function rpAtur() {
   const [es, gs] = await Promise.all([GET('/ekskul?' + rpQ()), GET('/rapor/guru').catch(() => [])]);
   S.rpGuru = gs;
   S.rpEks = es;
-  return `<div class="cols"><section class="card"><div class="card-head"><h3>Semester</h3></div>
-      <p class="muted" style="font-size:13px;margin-bottom:10px">Semester ganjil berakhir pada tanggal di bawah; genap mulai keesokan harinya sampai akhir tahun ajaran. Nilai otomatis, absensi, dan portofolio rapor dihitung dari rentang ini.</p>
-      ${S.rpPer.tahun.map(y => `<div class="li"><div><b>${esc(y.nama)}</b><small class="muted">Ganjil ${fmtDate(y.semester[0].mulai)} – ${fmtDate(y.semester[0].akhir)} · Genap ${fmtDate(y.semester[1].mulai)} – ${fmtDate(y.semester[1].akhir)}</small></div>
-        ${btn('Ubah', 'rpSmtForm', { id: y.id }, 'ghost sm', 'edit')}</div>`).join('')}</section>
+  const y = S.rpPer.tahun.find(x => x.id === S.rp.tahun);
+  return `<div class="hint" style="margin-bottom:14px">Semester ${y ? `<b>${esc(y.nama)}</b>: Ganjil ${fmtDate(y.semester[0].mulai)} – ${fmtDate(y.semester[0].akhir)} · Genap ${fmtDate(y.semester[1].mulai)} – ${fmtDate(y.semester[1].akhir)}. ` : ''}
+      Tanggal semester diatur di menu ${S.user.role === 'admin' ? `<a href="#/tahun">Tahun Ajaran</a>` : '<b>Tahun Ajaran</b>'}.</div>
     <section class="card"><div class="card-head"><h3>Ekstrakurikuler</h3>${btn('Tambah', 'rpEkForm', {}, 'sm', 'plus')}</div>
       ${es.length ? es.map(e => `<div class="li"><div><b>${esc(e.nama)}</b><small class="muted">Pembina: ${esc(e.pembina || 'belum ditentukan')} · ${e.anggota} anggota</small></div>
-        <div class="acts">${iconBtn('edit', 'rpEkForm', { id: e.id }, 'Ubah')}${iconBtn('trash', 'rpEkDel', { id: e.id, nama: e.nama }, 'Hapus', 'danger')}</div></div>`).join('') : empty('Belum ada ekstrakurikuler. Minimal Pramuka (wajib).', 'users')}</section></div>`;
+        <div class="acts">${iconBtn('edit', 'rpEkForm', { id: e.id }, 'Ubah')}${iconBtn('trash', 'rpEkDel', { id: e.id, nama: e.nama }, 'Hapus', 'danger')}</div></div>`).join('') : empty('Belum ada ekstrakurikuler. Minimal Pramuka (wajib).', 'users')}</section>`;
 }
-ACT.rpSmtForm = el => {
-  const y = S.rpPer.tahun.find(x => x.id === Number(el.dataset.id));
-  openForm({ title: 'Semester ' + y.nama, fields: [{ n: 'akhir_ganjil', l: 'Tanggal terakhir semester ganjil', t: 'date', hint: 'Kosongkan untuk memakai 31 Desember.' }],
-    values: { akhir_ganjil: y.akhir_ganjil || '' }, onSubmit: v => PUT('/rapor/periode/' + y.id, { akhir_ganjil: v.akhir_ganjil || null }) });
-};
 ACT.rpEkForm = el => {
   const e = S.rpEks.find(x => x.id === Number(el.dataset.id)) || {};
   openForm({ title: e.id ? 'Ubah ekstrakurikuler' : 'Ekstrakurikuler baru', values: { nama: e.nama || '', pembina_id: e.pembina_id || '' },

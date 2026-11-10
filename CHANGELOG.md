@@ -8,6 +8,12 @@ Format versi: `MAYOR.MINOR.PERBAIKAN`
 Versi yang sedang berjalan terlihat di menu kiri aplikasi (bawah nama pengguna), di `GET /api/version`,
 di header respons `X-SCH-Version`, dan dengan perintah `sch-server -version`.
 
+## v1.25.2 — 2026-11-10 (Semester diatur di menu Tahun Ajaran)
+- **Semester satu tempat:** isian **Akhir semester ganjil** pindah ke form Tahun Ajaran (bersama tanggal mulai &
+  selesai), dan daftar Tahun Ajaran menampilkan rentang Ganjil & Genap. Server menolak tanggal di luar tahun ajaran.
+  Tab Pengaturan e-Rapor kini hanya berisi ekstrakurikuler dengan keterangan semester aktif dan tautan ke menu
+  Tahun Ajaran; pengaturan semester terpisah di e-Rapor dihapus.
+
 ## v1.25.1 — 2026-11-10 (Pembelajaran, e-Rapor, Portofolio lebih cepat)
 - **Statistik perencana query SQLite selalu segar.** Server menjalankan `PRAGMA optimize=0x10002` saat menyala dan
   tiap jam (rekomendasi resmi SQLite untuk koneksi yang hidup lama). Sebelumnya hanya `PRAGMA optimize` harian di

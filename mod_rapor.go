@@ -127,7 +127,6 @@ CREATE INDEX IF NOT EXISTS idx_portfolio_course ON portfolios(course_id);
 	moduleRoutes = append(moduleRoutes, func(a *App, m *http.ServeMux) {
 		r := func(roles string, fn func(*Ctx) error) http.HandlerFunc { return a.mod("rapor", roles, fn) }
 		m.HandleFunc("GET /api/rapor/periode", r("any", apiRaporPeriode))
-		m.HandleFunc("PUT /api/rapor/periode/{id}", r("admin", apiRaporPeriodeSave))
 		m.HandleFunc("GET /api/rapor/tugas", r("admin,guru", apiRaporTugasku))
 		m.HandleFunc("GET /api/rapor/mapel", r("admin,guru", apiRaporMapel))
 		m.HandleFunc("PUT /api/rapor/mapel", r("admin,guru", apiRaporMapelSave))
@@ -236,31 +235,6 @@ func apiRaporPeriode(c *Ctx) error {
 	}
 	p, _ := c.periodeDari(0, 0)
 	return c.JSON(map[string]any{"tahun": rows, "aktif": map[string]any{"tahun": p.tahun, "smt": p.smt}})
-}
-
-func apiRaporPeriodeSave(c *Ctx) error {
-	var in struct {
-		AkhirGanjil *string `json:"akhir_ganjil"`
-	}
-	if err := c.Bind(&in); err != nil {
-		return err
-	}
-	var v any
-	if s := str(in.AkhirGanjil); s != nil {
-		d, err := cleanDate(s.(string))
-		if err != nil {
-			return err
-		}
-		v = d
-	}
-	res, err := c.A.db.Exec(`UPDATE academic_years SET akhir_ganjil=? WHERE id=?`, v, c.ID("id"))
-	if err != nil {
-		return err
-	}
-	if n, _ := res.RowsAffected(); n == 0 {
-		return notFound()
-	}
-	return c.OK()
 }
 
 // ---------------------------------------------------------------------

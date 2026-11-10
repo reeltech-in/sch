@@ -27,8 +27,9 @@ async function pageTahun() {
     <p class="muted">${r.kelas_baru} kelas dibuat/dipakai di tahun baru. Periksa guru pengampu di menu <b>Mata Pelajaran</b>, lalu tambahkan siswa baru (PPDB) ke kelas awal.</p></section>` : '';
   return hasil + head('Tahun Ajaran', 'Setiap kelas, mapel, nilai, dan absensi tersimpan per tahun ajaran. Tahun lalu tetap bisa dibuka sebagai arsip.',
       btn('Tambah tahun ajaran', 'yearForm', {}, 'ghost', 'plus') + (aktif && !aktif.dinaikkan ? btn('Kenaikan kelas', 'go', { page: 'naik', params: '{}' }, '', 'users') : '')) +
-    `<div class="tw"><table><thead><tr><th>Tahun ajaran</th><th>Periode</th><th class="n">Kelas</th><th class="n">Mapel</th><th class="n">Siswa</th><th>Status</th><th></th></tr></thead><tbody>
+    `<div class="tw"><table><thead><tr><th>Tahun ajaran</th><th>Periode</th><th>Semester</th><th class="n">Kelas</th><th class="n">Mapel</th><th class="n">Siswa</th><th>Status</th><th></th></tr></thead><tbody>
     ${ys.map(y => `<tr><td><b>${esc(y.nama)}</b></td><td>${y.mulai ? fmtDate(y.mulai) : '–'}${y.selesai ? ' – ' + fmtDate(y.selesai) : ''}</td>
+      <td><small>Ganjil ${fmtDate(y.ganjil_mulai)} – ${fmtDate(y.ganjil_akhir)}<br>Genap ${fmtDate(y.genap_mulai)} – ${fmtDate(y.genap_akhir)}</small></td>
       <td class="n">${y.jumlah_kelas}</td><td class="n">${y.jumlah_mapel}</td><td class="n">${y.jumlah_siswa}</td>
       <td>${y.aktif ? tag('Aktif', 'ok') : tag('Arsip')}${y.dinaikkan ? ' ' + tag('Sudah kenaikan', 'info') : ''}</td>
       <td><div class="acts">${btn('Kelas', 'go', { page: 'kelas', params: JSON.stringify({ tahun: y.id }) }, 'ghost sm')}${iconBtn('edit', 'yearForm', { id: y.id }, 'Ubah')}
@@ -41,7 +42,8 @@ ACT.yearForm = el => {
   const y = el.dataset.id ? S.years[el.dataset.id] : { nama: nextYearName(Object.values(S.years).find(x => x.aktif)?.nama) };
   openForm({
     title: y.id ? 'Ubah tahun ajaran' : 'Tambah tahun ajaran', values: y,
-    fields: [{ n: 'nama', l: 'Tahun ajaran', req: true, t: 'select', o: (() => { const n = new Date().getFullYear(); return Array.from({ length: 7 }, (_, i) => `${n - 3 + i}/${n - 2 + i}`).map(x => [x, x]); })() }, [{ n: 'mulai', l: 'Mulai', t: 'date' }, { n: 'selesai', l: 'Selesai', t: 'date' }]],
+    fields: [{ n: 'nama', l: 'Tahun ajaran', req: true, t: 'select', o: (() => { const n = new Date().getFullYear(); return Array.from({ length: 7 }, (_, i) => `${n - 3 + i}/${n - 2 + i}`).map(x => [x, x]); })() }, [{ n: 'mulai', l: 'Mulai', t: 'date' }, { n: 'selesai', l: 'Selesai', t: 'date' }],
+      { n: 'akhir_ganjil', l: 'Akhir semester ganjil', t: 'date', hint: 'Semester genap mulai keesokan harinya. Kosongkan untuk memakai 31 Desember. Dipakai e-Rapor: nilai, absensi, dan portofolio tiap semester.' }],
     onSubmit: v => y.id ? PUT('/tahun/' + y.id, v) : POST('/tahun', v),
   });
 };
