@@ -8,6 +8,17 @@ Format versi: `MAYOR.MINOR.PERBAIKAN`
 Versi yang sedang berjalan terlihat di menu kiri aplikasi (bawah nama pengguna), di `GET /api/version`,
 di header respons `X-SCH-Version`, dan dengan perintah `sch-server -version`.
 
+## v1.25.1 — 2026-11-10 (Pembelajaran, e-Rapor, Portofolio lebih cepat)
+- **Statistik perencana query SQLite selalu segar.** Server menjalankan `PRAGMA optimize=0x10002` saat menyala dan
+  tiap jam (rekomendasi resmi SQLite untuk koneksi yang hidup lama). Sebelumnya hanya `PRAGMA optimize` harian di
+  koneksi tulis, padahal query baca lewat koneksi lain, sehingga statistik dari saat database masih kecil membuat
+  SQLite membaca seluruh tabel walau indeksnya ada. Uji data satu sekolah penuh (30 kelas, 1.080 siswa, 300 mapel,
+  ±700 ribu baris nilai & absensi): Rekap Nilai 87 → 6 ms, Nilai mapel e-Rapor 81 → 5 ms, daftar Kuis 41 → 1 ms,
+  Beranda guru 28 → 1 ms; semua halaman ketiga modul ≤ 6 ms di server.
+- **Rekap Nilai** tidak lagi mengirim seluruh baris absensi/nilai mentah (123 KB → ±5 KB); nilai sudah dihitung server.
+- **e-Rapor**: periode & daftar tugas rapor diminta bersamaan dan disimpan sementara di browser; **Rapor siswa**
+  memuat daftar semester dan rapornya dalam satu permintaan (hemat satu putaran ±100–200 ms lewat internet).
+
 ## v1.25.0 — 2026-11-10 (e-Rapor Kurikulum Merdeka & Portofolio Siswa)
 - **e-Rapor per semester** (modul baru "e-Rapor", menu e-Rapor untuk admin, guru, dan siswa) sesuai komponen
   laporan hasil belajar Panduan Pembelajaran & Asesmen 2025 / Permendikdasmen 13/2025:

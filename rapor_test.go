@@ -121,9 +121,12 @@ func TestRaporAlurLengkap(t *testing.T) {
 	if code, _ := isi(g1, 1, 90); code != 400 {
 		t.Fatalf("nilai tidak boleh berubah setelah terbit")
 	}
-	var me struct{ Terbit []map[string]any }
-	if code := s1.json("GET", "/api/rapor/me", nil, &me); code != 200 || len(me.Terbit) != 1 {
-		t.Fatalf("daftar rapor terbit siswa: %d %v", code, me.Terbit)
+	var me struct {
+		Terbit []map[string]any
+		Rapor  *raporLengkap
+	}
+	if code := s1.json("GET", "/api/rapor/me", nil, &me); code != 200 || len(me.Terbit) != 1 || me.Rapor == nil || len(me.Rapor.Mapel) != 2 {
+		t.Fatalf("daftar rapor terbit + rapor terbaru dalam satu jawaban: %d %v", code, me.Terbit)
 	}
 	// Word
 	code, b := s1.do("GET", fmt.Sprintf("/api/rapor/siswa/%d/docx?%s", sid, q), nil)

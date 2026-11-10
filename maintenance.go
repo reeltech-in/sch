@@ -178,7 +178,7 @@ func (a *App) maintain() (string, bool) {
 		notes = append(notes, fmt.Sprintf("%d foto kedaluwarsa dihapus, %d file yatim dipindah ke sampah, %d file sampah >30 hari dihapus", removed, orphans, trash))
 	}
 	// 4. statistik perencana query (murah; membantu SQLite memilih indeks seiring data bertambah)
-	a.db.Exec(`PRAGMA optimize`)
+	a.db.Exec(`PRAGMA optimize=0x10002`) // semua tabel (query baca memakai koneksi lain)
 	return strings.Join(notes, "; "), ok
 }
 

@@ -133,6 +133,15 @@ func apiRekap(c *Ctx) error {
 		nilai[strconv.FormatInt(id, 10)] = skorDariRekap(rows("assignments"), rows("submissions"), rows("attempts"), rows("attendance"), id, now)
 	}
 	out["nilai"] = nilai
+	// baris mentah tidak dikirim ke browser (nilai sudah dihitung di sini); cukup jumlah pertemuan
+	tgl := map[any]bool{}
+	for _, a := range rows("attendance") {
+		tgl[a["tanggal"]] = true
+	}
+	out["pertemuan"] = len(tgl)
+	delete(out, "attendance")
+	delete(out, "submissions")
+	delete(out, "attempts")
 	return c.JSON(out)
 }
 

@@ -50,13 +50,11 @@ func TestAbsensiMapelAlurLengkap(t *testing.T) {
 		t.Fatalf("guru lain harus 403, dapat %d", code)
 	}
 	var rk struct {
-		Attendance []struct {
-			SiswaID int64 `json:"siswa_id"`
-			Status  string
-		}
+		Pertemuan int
+		Nilai     map[string]skorMapel
 	}
-	if code := g.json("GET", "/api/rekap?course_id=1", nil, &rk); code != 200 || len(rk.Attendance) < 2 {
-		t.Fatalf("rekap: %d, %d baris absensi", code, len(rk.Attendance))
+	if code := g.json("GET", "/api/rekap?course_id=1", nil, &rk); code != 200 || rk.Pertemuan < 1 || rk.Nilai[fmt.Sprint(s1)].Hadir == nil {
+		t.Fatalf("rekap: %d, %d pertemuan, %+v", code, rk.Pertemuan, rk.Nilai[fmt.Sprint(s1)])
 	}
 	if code, _ := g2.do("GET", "/api/rekap?course_id=1", nil); code != 403 {
 		t.Fatalf("guru lain tidak boleh melihat rekap mapel orang lain, dapat %d", code)

@@ -13,7 +13,7 @@ const rpQ = () => qs({ tahun: S.rp?.tahun, smt: S.rp?.smt });
 
 // ---- pilihan tahun ajaran & semester (dipakai semua tab)
 async function rpPeriode() {
-  if (!S.rpPer) S.rpPer = await GET('/rapor/periode');
+  S.rpPer = await GET('/rapor/periode');
   const tahun = Number(S.params.tahun) || S.rpPer.aktif.tahun;
   const smt = Number(S.params.smt) || S.rpPer.aktif.smt;
   S.rp = { tahun, smt };
@@ -27,8 +27,8 @@ CHG.rpPer = el => { const [tahun, smt] = el.value.split(':'); go(S.page, { ...S.
 // Guru / admin: e-Rapor
 // =====================================================================
 async function pageRapor() {
-  const per = await rpPeriode();
-  const t = await GET('/rapor/tugas?' + rpQ());
+  // periode & daftar tugas rapor diminta bersamaan (satu putaran ke server, bukan dua)
+  const [per, t] = await Promise.all([rpPeriode(), GET('/rapor/tugas?' + qs({ tahun: S.params.tahun, smt: S.params.smt }))]);
   S.rpT = t;
   const items = [];
   if (t.mapel.length) items.push(['mapel', 'Nilai mapel']);
@@ -255,7 +255,7 @@ async function rpAtur() {
 ACT.rpSmtForm = el => {
   const y = S.rpPer.tahun.find(x => x.id === Number(el.dataset.id));
   openForm({ title: 'Semester ' + y.nama, fields: [{ n: 'akhir_ganjil', l: 'Tanggal terakhir semester ganjil', t: 'date', hint: 'Kosongkan untuk memakai 31 Desember.' }],
-    values: { akhir_ganjil: y.akhir_ganjil || '' }, onSubmit: async v => { await PUT('/rapor/periode/' + y.id, { akhir_ganjil: v.akhir_ganjil || null }); S.rpPer = null; } });
+    values: { akhir_ganjil: y.akhir_ganjil || '' }, onSubmit: v => PUT('/rapor/periode/' + y.id, { akhir_ganjil: v.akhir_ganjil || null }) });
 };
 ACT.rpEkForm = el => {
   const e = S.rpEks.find(x => x.id === Number(el.dataset.id)) || {};
@@ -269,12 +269,12 @@ ACT.rpEkDel = el => del('/ekskul/' + el.dataset.id, `Hapus ekstrakurikuler <b>${
 // Siswa: rapor
 // =====================================================================
 async function siswaRapor() {
-  const me = await GET('/rapor/me');
+  const [pt, ps] = String(S.params.p || '').split(':');
+  const me = await GET('/rapor/me?' + qs({ tahun: pt, smt: ps })); // daftar + rapor terpilih dalam satu permintaan
   if (!me.terbit.length) return head('Rapor', 'Rapor muncul di sini setelah diterbitkan wali kelas.') + `<div class="card">${empty('Belum ada rapor yang diterbitkan.', 'file')}</div>`;
-  const key = S.params.p || `${me.terbit[0].tahun_id}:${me.terbit[0].semester}`;
-  const [tahun, smt] = key.split(':').map(Number);
-  S.rp = { tahun, smt };
-  const r = await GET(`/rapor/siswa/${S.user.id}?` + rpQ());
+  S.rp = { tahun: me.tahun, smt: me.smt };
+  const key = `${me.tahun}:${me.smt}`;
+  const r = me.rapor;
   const opt = me.terbit.map(t => [`${t.tahun_id}:${t.semester}`, `${t.nama} · ${t.semester === 1 ? 'Ganjil' : 'Genap'}`]);
   return head('Rapor', 'Laporan hasil belajar per semester.', btn('Unduh Word', 'rpWord', { id: S.user.id }, 'ghost', 'download') + btn('Cetak', 'rpPrint', { id: S.user.id }, '', 'print')) +
     `<div class="bar"><select data-change="rpSiswaPer" aria-label="Semester" style="min-width:0;flex:0 1 280px">${opts(opt, key)}</select></div>

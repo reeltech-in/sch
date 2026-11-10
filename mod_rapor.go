@@ -1090,7 +1090,28 @@ func apiRaporMe(c *Ctx) error {
 	if err != nil {
 		return err
 	}
-	return c.JSON(map[string]any{"terbit": rows})
+	out := map[string]any{"terbit": rows}
+	if len(rows) > 0 { // rapor semester terpilih (?tahun=&smt=) atau yang terbaru, dalam jawaban yang sama
+		tahun, smt := c.QInt("tahun"), int(c.QInt("smt"))
+		if tahun == 0 {
+			tahun, _ = rows[0]["tahun_id"].(int64)
+			s, _ := rows[0]["semester"].(int64)
+			smt = int(s)
+		}
+		p, err := c.periodeDari(tahun, smt)
+		if err != nil {
+			return err
+		}
+		if err := c.bolehLihatRapor(c.U.ID, p); err != nil {
+			return err
+		}
+		r, err := c.raporLengkap(c.U.ID, p)
+		if err != nil {
+			return err
+		}
+		out["rapor"], out["tahun"], out["smt"] = r, p.tahun, p.smt
+	}
+	return c.JSON(out)
 }
 
 func fmtNilai(v any) string {

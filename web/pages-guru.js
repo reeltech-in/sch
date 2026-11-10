@@ -262,7 +262,7 @@ async function guruRekap() {
     `<div class="print-only"><div class="print-head">${st.logo_url ? `<img src="${esc(logoSrc(st))}" alt="">` : ''}<div><b style="font-size:16px">${esc(st.nama_sekolah)}</b><br>${esc(st.alamat || '')}${st.telepon ? ' · Telp. ' + esc(st.telepon) : ''}</div></div>
       <h2 style="text-align:center;margin-bottom:6px">REKAP NILAI</h2>
       <p>Mata pelajaran: <b>${esc(c.nama)}</b> · Kelas: <b>${esc(c.kelas_nama)}</b> · Tahun ajaran: <b>${esc(st.tahun_ajaran || '–')}</b> · Guru: <b>${esc(S.user.nama_lengkap)}</b></p><br></div>
-    <p class="muted no-print" style="margin-bottom:12px">${r.assignments.length} tugas · ${r.quizzes.length} kuis · ${new Set(r.attendance.map(a => a.tanggal)).size} pertemuan tercatat</p>
+    <p class="muted no-print" style="margin-bottom:12px">${r.assignments.length} tugas · ${r.quizzes.length} kuis · ${r.pertemuan} pertemuan tercatat</p>
     ${rows.length ? `<div class="tw no-stack"><table><thead><tr><th class="n">No</th><th class="fz">Nama</th><th>NIS</th><th class="n">Tugas</th><th class="n">Kuis</th><th class="n">Hadir</th><th class="n">Akhir</th><th>Predikat</th></tr></thead><tbody>
       ${rows.map((x, i) => { const [p, k] = predikat(x.akhir); return `<tr><td class="n">${i + 1}</td><td class="fz"><b>${esc(x.s.nama_lengkap)}</b></td><td>${esc(x.s.username)}</td>
         <td class="n">${fmtN(x.tugas)}</td><td class="n">${fmtN(x.kuis)}</td><td class="n">${x.hadir == null ? '–' : fmtN(x.hadir) + '%'}</td><td class="n"><b>${fmtN(x.akhir)}</b></td><td>${tag(p, k)}</td></tr>`; }).join('')}

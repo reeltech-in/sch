@@ -187,6 +187,11 @@ func openDB(path string) (*sql.DB, error) {
 	if err := runVersioned(db, path); err != nil {
 		return nil, err
 	}
+	// Statistik perencana query. Koneksi ini hidup lama dan query baca lewat kumpulan pembaca terpisah, jadi
+	// pakai bit 0x10000 agar SEMUA tabel diperiksa (bukan hanya yang di-query koneksi ini). Tanpa ini statistik
+	// dari saat database masih kecil bisa membuat SQLite membaca seluruh tabel walau indeksnya ada.
+	// Rekomendasi resmi: https://www.sqlite.org/lang_analyze.html (PRAGMA optimize=0x10002 saat koneksi dibuka).
+	db.Exec(`PRAGMA optimize=0x10002`)
 	return db, nil
 }
 

@@ -105,6 +105,7 @@ func (a *App) cleanupLoop() {
 		if i%60 == 0 {
 			a.db.Exec(`DELETE FROM sessions WHERE expires_at < ?`, nowStr())
 			a.db.Exec(`PRAGMA wal_checkpoint(TRUNCATE)`)
+			a.db.Exec(`PRAGMA optimize=0x10002`) // tiap jam; biasanya tidak melakukan apa-apa, cepat walau data besar
 		}
 		a.limit.prune()
 		if i%10 == 0 {

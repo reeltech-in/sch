@@ -135,7 +135,7 @@ function checkVersion(v) {
 }
 const GET_CACHE = new Map(), GET_INFLIGHT = new Map();
 const CACHE_TTL = 120000;
-const cacheable = p => /^\/(courses|classes|tahun)(\?|$)/.test(p);
+const cacheable = p => /^\/(courses|classes|tahun|rapor\/periode|rapor\/tugas)(\?|$)/.test(p);
 const clone = v => (v == null ? v : JSON.parse(JSON.stringify(v)));
 function GET(p) {
   const hit = GET_CACHE.get(p);
