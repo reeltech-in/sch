@@ -718,10 +718,13 @@ function judulKeHeader(page) {
   const el = $('#hdrTitle');
   if (!el) return;
   const h = $('#main .page-head h1');
-  const nav = (navFor(S.user.role).find(([p]) => p === (PAGE_PARENT[page] || page)) || [])[1];
-  const t = h ? h.textContent : nav || '';
+  const item = navFor(S.user.role).find(([p]) => p === (PAGE_PARENT[page] || page)) || [];
+  const t = h ? h.textContent : item[1] || '';
   if (h) h.classList.add('in-hdr');
   el.textContent = t;
+  // label kecil di atas judul: nama grup menu (Beranda: ringkasan hari ini)
+  const eb = $('#hdrEyebrow');
+  if (eb) eb.textContent = item[4] || (page === 'dash' ? 'Ringkasan hari ini' : S.settings.nama_sekolah || '');
   document.title = (t ? t + ' · ' : '') + (S.settings.nama_sekolah || 'Sekolah');
 }
 
@@ -736,7 +739,7 @@ function renderShell() {
   const u = S.user;
   $('#app').innerHTML = `<div class="shell" id="shell">
     <aside class="side" aria-label="Menu utama">
-      ${brandHtml(ROLE_LABEL[u.role])}
+      ${brandHtml(JENJANG_LABEL[jenjangDiatur()] || 'Sistem Informasi Sekolah')}
       <nav class="nav">${(() => { let g = null; return navFor(u.role).map(([p, l, i, , grp]) => {
         const h = grp !== g && grp ? `<div class="nav-group">${esc(grp)}</div>` : ''; g = grp;
         return h + `<button type="button" data-act="nav" data-page="${p}">${ico(i)}${esc(l)}</button>`; }).join(''); })()}</nav>
@@ -757,7 +760,7 @@ function headerHtml(u) {
   const role = esc(ROLE_LABEL[u.role] || u.role);
   const opt = (k, i, l) => `<button type="button" role="menuitemradio" tabindex="-1" aria-checked="${t === k}" class="${t === k ? 'on' : ''}" data-act="setTheme" data-t="${k}">${ico(i)}${l}</button>`;
   return `<header class="topbar">${iconBtn('menu', 'openMenu', {}, 'Buka menu')}
-    <h1 class="tb-title" id="hdrTitle"></h1>
+    <div class="tb-head"><small class="tb-eyebrow" id="hdrEyebrow"></small><h1 class="tb-title" id="hdrTitle"></h1></div>
     <div class="tb-time">${ico('clock')}<span id="hdrDate"></span><b id="hdrClock"></b><small id="hdrZone"></small></div>
     <div class="tb-acct">
       <button type="button" class="tb-me" data-act="acctMenu" aria-haspopup="menu" aria-expanded="false" aria-controls="acctPop" title="Menu akun">

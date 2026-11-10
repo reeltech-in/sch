@@ -78,11 +78,26 @@ svg.i { width: 18px; height: 18px; flex: none; stroke: currentColor; fill: none;
 .scrim { display: none; }
 
 /* ---- Header (semua ukuran layar): jam & menu akun. Tinggi disimpan di --hdr-h untuk elemen lengket. ---- */
-:root { --hdr-h: 64px; }
+:root { --hdr-h: 72px; }
 .topbar { display: flex; align-items: center; gap: 14px; position: sticky; top: 0; z-index: 25; height: var(--hdr-h); padding: 0 32px;
   background: var(--surface); background: color-mix(in srgb, var(--surface) 88%, transparent); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); }
 .topbar > .btn.icon { display: none; }
-.tb-title { font-size: 20px; font-weight: 800; letter-spacing: -.01em; margin: 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tb-head { display: flex; flex-direction: column; justify-content: center; gap: 2px; min-width: 0; }
+.tb-eyebrow { font-size: 13px; font-weight: 600; color: var(--brand); line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tb-eyebrow:empty { display: none; }
+.tb-title { font-size: 21px; font-weight: 800; letter-spacing: -.01em; line-height: 1.2; margin: 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* desktop: blok nama sekolah di sidebar setinggi header, garis bawahnya menyambung dengan garis header */
+@media (min-width: 861px) {
+  .shell .side { padding-top: 0; } /* menimpa padding sidebar bawaan agar blok nama sekolah mulai tepat di atas */
+  /* garis tegak sidebar: border di dalam sidebar (bukan bayangan di luar) agar tidak tertutup header & sejajar
+     piksel dengan garis bawah header */
+  .shell .side { border-right: 1px solid var(--border); box-shadow: none; }
+  /* header & blok nama sekolah satu warna dan satu garis: tinggi sama (--hdr-h, border-box), garis 1px warna sama */
+  .topbar { background: var(--surface); backdrop-filter: none; -webkit-backdrop-filter: none; }
+  .side .brand { height: var(--hdr-h); box-sizing: border-box; margin: 0 -16px 12px; padding: 0 20px; border-bottom: 1px solid var(--border); flex: none; }
+  .side .brand b { font-size: 16px; }
+  .side .brand small { font-size: 13px; }
+}
 /* judul halaman pindah ke header; di layar h1 di isi halaman disembunyikan (tetap tercetak) */
 @media screen {
   .page-head h1.in-hdr { display: none; }
@@ -135,7 +150,9 @@ svg.i { width: 18px; height: 18px; flex: none; stroke: currentColor; fill: none;
   :root { --hdr-h: 60px; }
   .topbar { gap: 10px; padding: 0 12px 0 16px; background: var(--surface); }
   .topbar > .btn.icon { display: inline-grid; }
-  .tb-title { font-size: 16px; flex: 1; }
+  .tb-head { flex: 1; }
+  .tb-eyebrow { display: none; }
+  .tb-title { font-size: 16px; }
   .topbar .tb-time, .tb-who, .tb-me > svg.i { display: none; }
   .tb-me { padding: 4px; }
   .main { padding: 18px 16px 48px; }

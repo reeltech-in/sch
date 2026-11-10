@@ -8,6 +8,15 @@ Format versi: `MAYOR.MINOR.PERBAIKAN`
 Versi yang sedang berjalan terlihat di menu kiri aplikasi (bawah nama pengguna), di `GET /api/version`,
 di header respons `X-SCH-Version`, dan dengan perintah `sch-server -version`.
 
+## v1.25.3 — 2026-11-10 (Header & sidebar rapi sejajar)
+- **Header** kini dua baris: label kecil berwarna (grup menu, mis. "Pembelajaran"; Beranda: "Ringkasan hari ini") di
+  atas judul halaman yang tebal; tinggi header 72 px.
+- **Sidebar desktop**: blok nama sekolah setinggi header dengan garis bawah yang menyambung lurus ke garis header,
+  dan garis tegak sidebar berupa border 1 px yang tidak tertutup header; header & blok nama satu warna. Garis
+  presisi di tema terang & gelap (diukur: garis bawah y=72 px keduanya, garis tegak tepat di tepi kiri header).
+- Keterangan di bawah nama sekolah: jenjang sekolah (bila diatur) atau "Sistem Informasi Sekolah"; peran pengguna
+  tetap di menu akun.
+
 ## v1.25.2 — 2026-11-10 (Semester diatur di menu Tahun Ajaran)
 - **Semester satu tempat:** isian **Akhir semester ganjil** pindah ke form Tahun Ajaran (bersama tanggal mulai &
   selesai), dan daftar Tahun Ajaran menampilkan rentang Ganjil & Genap. Server menolak tanggal di luar tahun ajaran.
