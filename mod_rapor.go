@@ -118,6 +118,12 @@ CREATE INDEX IF NOT EXISTS idx_portfolio_course ON portfolios(course_id);
 		_, err := tx.Exec(`ALTER TABLE academic_years ADD COLUMN akhir_ganjil TEXT`)
 		return err
 	}})
+	// migrasi berikutnya selalu DITAMBAHKAN DI AKHIR (nomor versi mengikuti urutan)
+	migrations = append(migrations, migration{name: "tahun ajaran kelas dari tahun kelas", up: func(tx *sql.Tx) error {
+		_, err := tx.Exec(`UPDATE classes SET tahun_ajaran=(SELECT nama FROM academic_years y WHERE y.id=classes.tahun_id)
+			WHERE tahun_id IS NOT NULL AND COALESCE(tahun_ajaran,'') <> COALESCE((SELECT nama FROM academic_years y WHERE y.id=classes.tahun_id),'')`)
+		return err
+	}})
 	moduleRoutes = append(moduleRoutes, func(a *App, m *http.ServeMux) {
 		r := func(roles string, fn func(*Ctx) error) http.HandlerFunc { return a.mod("rapor", roles, fn) }
 		m.HandleFunc("GET /api/rapor/periode", r("any", apiRaporPeriode))

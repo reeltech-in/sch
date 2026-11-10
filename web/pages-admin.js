@@ -31,8 +31,8 @@ async function adminKelas() {
   const ks = await GET('/classes?tahun=' + ty.id);
   return head('Kelas', `Rombongan belajar tahun ajaran <b>${esc(ty.nama)}</b>.`, ty.aktif ? btn('Tambah kelas', 'kelasForm', {}, '', 'plus') : '') +
     yearBar(ys, ty, 'kelasTahun') +
-    (ks.length ? `<div class="tw"><table><thead><tr><th>Nama kelas</th><th>Tingkat</th><th>Wali kelas</th><th>Tahun ajaran</th><th class="n">Siswa</th><th class="n">Mapel</th><th></th></tr></thead><tbody>
-    ${ks.map(k => `<tr><td><b>${esc(k.nama)}</b></td><td>${esc(k.tingkat || '–')}</td><td>${k.wali_nama ? esc(k.wali_nama) : '<small class="muted">–</small>'}</td><td>${esc(k.tahun_ajaran || '–')}</td><td class="n">${k.jumlah_siswa}</td><td class="n">${k.jumlah_mapel}</td>
+    (ks.length ? `<div class="tw"><table><thead><tr><th>Nama kelas</th><th>Tingkat</th><th>Wali kelas</th><th class="n">Siswa</th><th class="n">Mapel</th><th></th></tr></thead><tbody>
+    ${ks.map(k => `<tr><td><b>${esc(k.nama)}</b></td><td>${esc(k.tingkat || '–')}</td><td>${k.wali_nama ? esc(k.wali_nama) : '<small class="muted">–</small>'}</td><td class="n">${k.jumlah_siswa}</td><td class="n">${k.jumlah_mapel}</td>
       <td><div class="acts">${iconBtn('users', 'go', { page: 'siswa', params: JSON.stringify({ kelas: k.id }) }, 'Lihat siswa')}${iconBtn('edit', 'kelasForm', { id: k.id, k: JSON.stringify(k) }, 'Ubah')}${iconBtn('trash', 'kelasDel', { id: k.id, nama: k.nama }, 'Hapus', 'danger')}</div></td></tr>`).join('')}
     </tbody></table></div>` : `<div class="card">${empty('Belum ada kelas. Klik "Tambah kelas" untuk memulai.', 'school')}</div>`);
 }

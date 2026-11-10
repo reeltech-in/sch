@@ -129,8 +129,8 @@ func apiWaliDetail(c *Ctx) error {
 		bulan = time.Now().Format("2006-01")
 	}
 	m1, m2, _ := monthRange(bulan)
-	k, err := c.list(`SELECT k.id, k.nama, k.tingkat, k.tahun_ajaran, u.nama_lengkap AS wali_nama, u.nip AS wali_nip
-		FROM classes k LEFT JOIN users u ON u.id=k.wali_id WHERE k.id=?`, kid)
+	k, err := c.list(`SELECT k.id, k.nama, k.tingkat, COALESCE(y.nama, k.tahun_ajaran) AS tahun_ajaran, u.nama_lengkap AS wali_nama, u.nip AS wali_nip
+		FROM classes k LEFT JOIN users u ON u.id=k.wali_id LEFT JOIN academic_years y ON y.id=k.tahun_id WHERE k.id=?`, kid)
 	if err != nil || len(k) == 0 {
 		return notFound()
 	}

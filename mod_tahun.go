@@ -97,6 +97,7 @@ func apiYearSave(c *Ctx) error {
 		_, err = c.A.db.Exec(`UPDATE academic_years SET nama=?, mulai=?, selesai=? WHERE id=?`, nama, dates[0], dates[1], id)
 		if err == nil {
 			c.A.db.Exec(`UPDATE settings SET tahun_ajaran=? WHERE id=1 AND (SELECT aktif FROM academic_years WHERE id=?)=1`, nama, id)
+			c.A.db.Exec(`UPDATE classes SET tahun_ajaran=? WHERE tahun_id=?`, nama, id)
 		}
 	} else {
 		_, err = c.A.db.Exec(`INSERT INTO academic_years (nama, mulai, selesai, created_at) VALUES (?,?,?,?)`, nama, dates[0], dates[1], nowStr())

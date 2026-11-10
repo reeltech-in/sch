@@ -284,3 +284,32 @@ func TestPeranDibatasiModul(t *testing.T) {
 		}
 	}
 }
+
+// Mengubah kelas (mis. mengisi wali kelas) tidak boleh mengosongkan tahun ajarannya; daftar kelas selalu
+// menampilkan nama tahun dari tahun kelas.
+func TestUbahKelasTidakMengosongkanTahunAjaran(t *testing.T) {
+	e := newEnv(t)
+	a := e.login("admin", testAdminPW)
+	guru := e.id(`SELECT id FROM users WHERE username='guru001'`)
+	if code, b := a.do("PUT", "/api/classes/1", map[string]any{"nama": "7A", "tingkat": "7", "wali_id": guru}); code != 200 {
+		t.Fatalf("ubah kelas: %d %s", code, b)
+	}
+	var ta string
+	e.app.db.QueryRow(`SELECT COALESCE(tahun_ajaran,'') FROM classes WHERE id=1`).Scan(&ta)
+	if ta != "2026/2027" {
+		t.Fatalf("tahun ajaran kelas harus tetap 2026/2027 setelah diubah, dapat %q", ta)
+	}
+	e.app.db.Exec(`UPDATE classes SET tahun_ajaran=NULL WHERE id=2`) // data lama yang sudah terlanjur kosong
+	var ks []struct {
+		ID          int64  `json:"id"`
+		TahunAjaran string `json:"tahun_ajaran"`
+	}
+	if code := a.json("GET", "/api/classes", nil, &ks); code != 200 {
+		t.Fatalf("daftar kelas: %d", code)
+	}
+	for _, k := range ks {
+		if k.TahunAjaran != "2026/2027" {
+			t.Fatalf("kelas %d: tahun ajaran %q", k.ID, k.TahunAjaran)
+		}
+	}
+}

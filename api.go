@@ -421,11 +421,11 @@ func apiDashboard(c *Ctx) error {
 // Kelas
 // ---------------------------------------------------------------------
 func apiClasses(c *Ctx) error {
-	rows, err := c.list(`SELECT k.id, k.nama, k.tingkat, k.tahun_ajaran, k.tahun_id, k.wali_id,
+	rows, err := c.list(`SELECT k.id, k.nama, k.tingkat, COALESCE(y.nama, k.tahun_ajaran) AS tahun_ajaran, k.tahun_id, k.wali_id,
 		(SELECT nama_lengkap FROM users w WHERE w.id=k.wali_id) AS wali_nama,
 		`+memberCount("k.id")+` AS jumlah_siswa,
 		(SELECT COUNT(*) FROM courses co WHERE co.kelas_id=k.id) AS jumlah_mapel
-		FROM classes k WHERE (?=0 OR k.tahun_id=?) ORDER BY k.tingkat, k.nama`, c.yearParam(), c.yearParam())
+		FROM classes k LEFT JOIN academic_years y ON y.id=k.tahun_id WHERE (?=0 OR k.tahun_id=?) ORDER BY k.tingkat, k.nama`, c.yearParam(), c.yearParam())
 	if err != nil {
 		return err
 	}
@@ -434,10 +434,9 @@ func apiClasses(c *Ctx) error {
 
 func apiSaveClass(c *Ctx) error {
 	var in struct {
-		Nama        string  `json:"nama"`
-		Tingkat     *string `json:"tingkat"`
-		TahunAjaran *string `json:"tahun_ajaran"`
-		WaliID      any     `json:"wali_id"`
+		Nama    string  `json:"nama"`
+		Tingkat *string `json:"tingkat"`
+		WaliID  any     `json:"wali_id"`
 	}
 	if err := c.Bind(&in); err != nil {
 		return err
@@ -462,7 +461,9 @@ func apiSaveClass(c *Ctx) error {
 		return err
 	}
 	if id := c.ID("id"); id > 0 {
-		_, err = c.A.db.Exec(`UPDATE classes SET nama=?, tingkat=?, tahun_ajaran=?, wali_id=? WHERE id=?`, nama, str(in.Tingkat), str(in.TahunAjaran), wali, id)
+		// tahun ajaran mengikuti tahun kelas (tahun_id), tidak diubah dari formulir
+		_, err = c.A.db.Exec(`UPDATE classes SET nama=?, tingkat=?, wali_id=?, tahun_ajaran=(SELECT nama FROM academic_years y WHERE y.id=classes.tahun_id) WHERE id=?`,
+			nama, str(in.Tingkat), wali, id)
 	} else {
 		ty := activeYear(c.A.db)
 		var tn string

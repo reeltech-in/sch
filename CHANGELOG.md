@@ -24,6 +24,10 @@ di header respons `X-SCH-Version`, dan dengan perintah `sch-server -version`.
   memberi catatan dan nilai; jumlah karya tampil di tab Nilai mapel e-Rapor. Karya yang sudah dinilai tidak bisa
   diubah siswa.
 - Tes otomatis untuk alur rapor, ekstrakurikuler, portofolio, saran deskripsi, dan saran AI.
+- **Perbaikan Kelas:** mengubah kelas (mis. mengisi wali kelas) dulu mengosongkan kolom tahun ajarannya karena
+  formulir tidak memuat isian itu. Kini tahun ajaran kelas selalu mengikuti tahun kelasnya, data yang sudah
+  terlanjur kosong diperbaiki otomatis saat pembaruan, dan ganti nama tahun ajaran ikut memperbarui kelas. Kolom
+  "Tahun ajaran" di tabel Kelas dihapus karena halaman itu sudah menampilkan satu tahun ajaran terpilih.
 
 ## v1.24.3 — 2026-11-10 (Judul halaman di header)
 - Judul halaman (Beranda, Tugas, Rekap Nilai, …) pindah ke header di kiri, sejajar dengan jam dan menu akun; di HP
