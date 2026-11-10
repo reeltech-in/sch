@@ -272,6 +272,9 @@ func apiCBTDelete(c *Ctx) error {
 	if !c.ownsExam(c.ID("id")) {
 		return forbidden()
 	}
+	if err := c.lindungiHasil("exams", c.ID("id")); err != nil {
+		return err
+	}
 	return apiDelete("exams")(c)
 }
 

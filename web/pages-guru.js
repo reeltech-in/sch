@@ -89,7 +89,7 @@ ACT.tugasForm = el => {
     },
   });
 };
-ACT.tugasDel = el => del('/assignments/' + el.dataset.id, `Hapus tugas <b>${esc(el.dataset.judul)}</b> beserta semua jawaban dan nilai siswa?`);
+ACT.tugasDel = el => del('/assignments/' + el.dataset.id, `Hapus tugas <b>${esc(el.dataset.judul)}</b>? Tugas yang sudah dikumpulkan siswa tidak bisa dihapus agar nilainya tidak hilang.`);
 
 ACT.gradeOpen = el => {
   const aid = Number(el.dataset.id);
@@ -151,7 +151,7 @@ ACT.kuisForm = el => {
     },
   });
 };
-ACT.kuisDel = el => del('/quizzes/' + el.dataset.id, `Hapus kuis <b>${esc(el.dataset.judul)}</b> beserta semua soal dan hasilnya?`);
+ACT.kuisDel = el => del('/quizzes/' + el.dataset.id, `Hapus kuis <b>${esc(el.dataset.judul)}</b> beserta soalnya? Kuis yang sudah dikerjakan siswa tidak bisa dihapus agar nilainya tidak hilang.`);
 
 ACT.soalOpen = el => {
   const q = S.quizzes[el.dataset.id];

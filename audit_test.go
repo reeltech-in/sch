@@ -406,3 +406,55 @@ func TestCBTDihapusPesanJelas(t *testing.T) {
 		t.Fatalf("ujian dihapus: %d %s", code, b)
 	}
 }
+
+// Nilai siswa tidak boleh hilang karena guru salah hapus: ujian/kuis/tugas yang sudah ada hasilnya ditolak (409);
+// admin tetap bisa menghapus dengan ?paksa=1, dan hapus berantai tidak meninggalkan data yatim.
+func TestHapusDilindungiBilaAdaHasil(t *testing.T) {
+	e := newEnv(t)
+	s := e.login("siswa001", "siswa123")
+	exam := e.id(`SELECT id FROM exams LIMIT 1`)
+	if code, b := s.do("POST", fmt.Sprintf("/api/cbt/%d/start", exam), map[string]string{"token": "MTK26"}); code != 200 {
+		t.Fatalf("mulai: %d %s", code, b)
+	}
+	kuis := e.id(`SELECT quiz_id FROM quiz_attempts LIMIT 1`)
+	tugas := e.id(`SELECT assignment_id FROM submissions LIMIT 1`)
+	paths := []string{fmt.Sprintf("/api/cbt/%d", exam), fmt.Sprintf("/api/quizzes/%d", kuis), fmt.Sprintf("/api/assignments/%d", tugas)}
+
+	g := e.login("guru001", "guru123")
+	a := e.login("admin", testAdminPW)
+	for _, p := range paths {
+		if code, b := g.do("DELETE", p, nil); code != 409 || !strings.Contains(string(b), "tidak bisa dihapus") {
+			t.Fatalf("guru hapus %s: %d %s", p, code, b)
+		}
+		if code, b := g.do("DELETE", p+"?paksa=1", nil); code != 409 {
+			t.Fatalf("guru paksa %s harus tetap ditolak: %d %s", p, code, b)
+		}
+		if code, b := a.do("DELETE", p, nil); code != 409 {
+			t.Fatalf("admin tanpa paksa %s: %d %s", p, code, b)
+		}
+		if code, b := a.do("DELETE", p+"?paksa=1", nil); code != 200 {
+			t.Fatalf("admin paksa %s: %d %s", p, code, b)
+		}
+	}
+	// tidak ada data yatim setelah hapus berantai
+	for _, q := range []string{
+		`SELECT COUNT(*) FROM exam_attempts WHERE exam_id NOT IN (SELECT id FROM exams)`,
+		`SELECT COUNT(*) FROM exam_questions WHERE exam_id NOT IN (SELECT id FROM exams)`,
+		`SELECT COUNT(*) FROM quiz_attempts WHERE quiz_id NOT IN (SELECT id FROM quizzes)`,
+		`SELECT COUNT(*) FROM quiz_questions WHERE quiz_id NOT IN (SELECT id FROM quizzes)`,
+		`SELECT COUNT(*) FROM submissions WHERE assignment_id NOT IN (SELECT id FROM assignments)`,
+	} {
+		if n := e.id(q); n != 0 {
+			t.Fatalf("data yatim %d: %s", n, q)
+		}
+	}
+	// yang belum ada hasilnya tetap bisa dihapus guru seperti biasa
+	var course int64 = e.id(`SELECT id FROM courses WHERE guru_id=(SELECT id FROM users WHERE username='guru001') LIMIT 1`)
+	if code, b := g.do("POST", "/api/quizzes", map[string]any{"course_id": course, "judul": "Kuis kosong", "durasi_menit": 10, "jumlah_opsi": 4}); code != 200 {
+		t.Fatalf("buat kuis: %d %s", code, b)
+	}
+	baru := e.id(`SELECT id FROM quizzes WHERE judul='Kuis kosong'`)
+	if code, b := g.do("DELETE", fmt.Sprintf("/api/quizzes/%d", baru), nil); code != 200 {
+		t.Fatalf("hapus kuis kosong: %d %s", code, b)
+	}
+}

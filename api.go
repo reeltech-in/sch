@@ -226,8 +226,40 @@ func apiDeleteChild(table, key string) func(*Ctx) error {
 		if err := c.requireManage(c.courseOf(table, id), key); err != nil {
 			return err
 		}
+		if err := c.lindungiHasil(table, id); err != nil {
+			return err
+		}
 		return apiDelete(table)(c)
 	}
+}
+
+// Hasil siswa (nilai tugas, kuis, CBT) ikut terhapus berantai bila induknya dihapus. Agar tidak hilang karena
+// salah tekan, penghapusan ditolak (409) selama sudah ada siswa yang mengerjakan/mengumpulkan. Admin tetap bisa
+// menghapus setelah konfirmasi kedua (?paksa=1) — tercatat di log aktivitas.
+var hasilSiswa = map[string]struct{ sql, apa, kerja string }{
+	"exams":       {`SELECT COUNT(*) FROM exam_attempts WHERE exam_id=?`, "Ujian", "dikerjakan"},
+	"quizzes":     {`SELECT COUNT(*) FROM quiz_attempts WHERE quiz_id=?`, "Kuis", "dikerjakan"},
+	"assignments": {`SELECT COUNT(*) FROM submissions WHERE assignment_id=?`, "Tugas", "dikumpulkan"},
+}
+
+func (c *Ctx) lindungiHasil(table string, id int64) error {
+	h, ok := hasilSiswa[table]
+	if !ok {
+		return nil
+	}
+	var n int
+	if err := c.A.db.QueryRow(h.sql, id).Scan(&n); err != nil || n == 0 {
+		return err
+	}
+	if c.U.Role == "admin" && c.R.URL.Query().Get("paksa") == "1" {
+		c.Note = fmt.Sprintf("beserta hasil %d siswa", n)
+		return nil
+	}
+	saran := "Minta admin menghapusnya bila memang harus dihapus."
+	if table == "exams" {
+		saran = "Ujian otomatis tertutup setelah jadwal selesai. Bila memang harus dihapus, hapus dulu pekerjaan siswa di Hasil ujian, atau minta admin."
+	}
+	return apiErr{409, fmt.Sprintf("%s ini sudah %s %d siswa. Menghapusnya ikut menghapus nilai mereka secara permanen, jadi tidak bisa dihapus. %s", h.apa, h.kerja, n, saran)}
 }
 
 // ---------------------------------------------------------------------

@@ -46,7 +46,7 @@ ACT.cbtForm = async el => {
     },
   });
 };
-ACT.cbtDel = el => del('/cbt/' + el.dataset.id, `Hapus ujian <b>${esc(el.dataset.judul)}</b> beserta semua soal dan hasilnya?`);
+ACT.cbtDel = el => del('/cbt/' + el.dataset.id, `Hapus ujian <b>${esc(el.dataset.judul)}</b> beserta soalnya? Ujian yang sudah dikerjakan siswa tidak bisa dihapus agar nilainya tidak hilang.`);
 
 ACT.cbtSoal = el => {
   const x = S.cbtList[el.dataset.id];

@@ -111,7 +111,7 @@ async function apiJSON(res, path) {
   let data = null;
   try { data = await res.json(); } catch { /* bukan JSON */ }
   if (res.status === 401 && S.user && path !== '/login') { resetClient(true); }
-  if (!res.ok) throw new Error((data && data.error) || `Gagal (${res.status})`);
+  if (!res.ok) { const err = new Error((data && data.error) || `Gagal (${res.status})`); err.status = res.status; throw err; }
   return data;
 }
 async function api(method, path, body) { return apiJSON(await apiFetch(method, path, body), path); }
@@ -628,7 +628,14 @@ function confirmBox(msg, ok = 'Hapus', kind = 'danger') {
 
 async function del(path, msg, success = 'Terhapus.') {
   if (!(await confirmBox(msg))) return;
-  try { await DEL(path); toast(success); await afterSave(); } catch (e) { toast(e.message, 'bad'); }
+  try { await DEL(path); toast(success); await afterSave(); } catch (e) {
+    if (e.status !== 409) return toast(e.message, 'bad');
+    // sudah ada hasil siswa: guru mendapat penjelasan; admin boleh tetap menghapus setelah konfirmasi kedua
+    if (S.user.role !== 'admin') return openModal({ title: 'Tidak bisa dihapus', body: `<p style="margin-bottom:18px">${esc(e.message)}</p>
+      <div class="sheet-foot"><button type="button" class="btn" data-act="closeModal">Mengerti</button></div>` });
+    if (!(await confirmBox(`${esc(e.message.replace(/,? jadi tidak bisa dihapus\..*$/, '.'))}<br><br><b>Sebagai admin, tetap hapus beserta semua nilai siswa?</b> Tindakan ini tidak bisa dibatalkan (cadangan harian tetap ada).`, 'Hapus beserta nilai'))) return;
+    try { await DEL(path + (path.includes('?') ? '&' : '?') + 'paksa=1'); toast(success); await afterSave(); } catch (e2) { toast(e2.message, 'bad'); }
+  }
 }
 
 // =====================================================================

@@ -179,7 +179,7 @@ func apiDeleteCourse(c *Ctx) error {
 	id := c.ID("id")
 	n := c.countRefs([]string{
 		`SELECT COUNT(*) FROM submissions s JOIN assignments a ON a.id=s.assignment_id WHERE a.course_id=?`,
-		`SELECT COUNT(*) FROM quiz_attempts t JOIN quizzes q ON q.id=t.quiz_id WHERE q.course_id=? AND t.selesai=1`,
+		`SELECT COUNT(*) FROM quiz_attempts t JOIN quizzes q ON q.id=t.quiz_id WHERE q.course_id=?`,
 		`SELECT COUNT(*) FROM attendance WHERE course_id=?`,
 	}, id)
 	if n > 0 {

@@ -8,7 +8,14 @@ Format versi: `MAYOR.MINOR.PERBAIKAN`
 Versi yang sedang berjalan terlihat di menu kiri aplikasi (bawah nama pengguna), di `GET /api/version`,
 di header respons `X-SCH-Version`, dan dengan perintah `sch-server -version`.
 
-## v1.23.2 — 2026-11-10 (Pesan jelas saat ujian CBT tidak bisa dibuka)
+## v1.23.2 — 2026-11-10 (Nilai siswa terlindung dari salah hapus; pesan jelas saat ujian CBT tidak bisa dibuka)
+- **Ujian CBT, Kuis, dan Tugas yang sudah ada hasil siswa tidak bisa dihapus guru.** Menghapusnya dulu ikut menghapus
+  nilai siswa secara permanen. Sekarang guru mendapat penjelasan ("Kuis ini sudah dikerjakan 12 siswa…"); yang belum
+  ada hasilnya tetap bisa langsung dihapus. Ujian CBT otomatis tertutup setelah jadwal selesai, atau pekerjaan siswa
+  bisa dihapus satu per satu di Hasil ujian.
+- **Admin** tetap bisa menghapus setelah konfirmasi kedua yang menyebut jumlah nilai yang ikut hilang; tercatat di
+  Log aktivitas ("beserta hasil N siswa"). Penghapusan berantai tetap bersih, tidak meninggalkan data yatim (ada tesnya).
+- Hapus mapel kini juga menghitung kuis yang sedang dikerjakan siswa.
 - Bila siswa membuka halaman ujian yang sudah dihapus guru (mis. tab lama masih terbuka), ditutup, sudah dikerjakan,
   atau belum dibuka, tampil kartu "Ujian tidak bisa dibuka" dengan alasannya dan tombol **Kembali ke daftar ujian**,
   bukan "Terjadi kendala · Data tidak ditemukan."
