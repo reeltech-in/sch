@@ -9,7 +9,7 @@ Versi yang sedang berjalan terlihat di menu kiri aplikasi (bawah nama pengguna),
 di header respons `X-SCH-Version`, dan dengan perintah `sch-server -version`.
 
 ## v1.24.0 — 2026-11-10 (Header baru & sudut kartu lebih tegas)
-- **Header di bagian atas** (desktop): hari, tanggal, dan jam menurut waktu server (WIB/WITA/WIT), serta **menu akun**
+- **Header di bagian atas** (desktop): di kanan ada hari, tanggal, dan jam menurut waktu server (WIB/WITA/WIT), lalu **menu akun**
   berisi nama & peran, Akun Saya (profil & kata sandi), Pengaturan (admin), pilihan **tema Sistem / Terang / Gelap**,
   dan Keluar. Di HP header berisi tombol menu, nama sekolah, dan tombol akun yang sama. Menu akun bisa dipakai dengan
   keyboard (panah, Home/End, Esc) sesuai pola Menu Button WAI-ARIA. Nama pengguna, tombol tema, dan Keluar tidak lagi

@@ -82,11 +82,11 @@ svg.i { width: 18px; height: 18px; flex: none; stroke: currentColor; fill: none;
 .topbar { display: flex; align-items: center; gap: 14px; position: sticky; top: 0; z-index: 25; height: var(--hdr-h); padding: 0 32px;
   background: var(--surface); background: color-mix(in srgb, var(--surface) 88%, transparent); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); }
 .topbar > .btn.icon, .topbar .tb-school { display: none; }
-.tb-time { display: flex; align-items: center; gap: 8px; color: var(--text-2); font-size: 14px; white-space: nowrap; min-width: 0; }
+.tb-time { display: flex; align-items: center; gap: 8px; margin-left: auto; padding-right: 14px; border-right: 1px solid var(--border); height: 28px; color: var(--text-2); font-size: 14px; white-space: nowrap; min-width: 0; } /* di kanan, sebelum tombol akun */
 .tb-time svg.i { width: 17px; height: 17px; color: var(--muted); flex: none; }
 .tb-time b { font-size: 15px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
 .tb-time small { font-size: 12px; color: var(--muted); font-weight: 600; }
-.tb-acct { position: relative; margin-left: auto; }
+.tb-acct { position: relative; }
 .tb-me { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 10px; padding: 4px 10px 4px 4px; border-radius: 10px; cursor: pointer; min-height: 44px; }
 .tb-me:hover, .tb-me[aria-expanded=true] { background: var(--surface-2); }
 .tb-me:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
@@ -130,7 +130,6 @@ svg.i { width: 18px; height: 18px; flex: none; stroke: currentColor; fill: none;
   .topbar > .btn.icon { display: inline-grid; }
   .topbar .tb-school { display: block; font-size: 15px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .topbar .tb-time, .tb-who, .tb-me > svg.i { display: none; }
-  .tb-acct { margin-left: 0; }
   .tb-me { padding: 4px; }
   .main { padding: 18px 16px 48px; }
   h1 { font-size: 21px; }
