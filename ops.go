@@ -63,6 +63,14 @@ CREATE INDEX IF NOT EXISTS idx_audit_user ON audit_log(user_id, waktu);
 	})
 }
 
+// dayRangeUTC: rentang tanggal sekolah [from, to] (YYYY-MM-DD, zona sekolah) → batas waktu UTC RFC3339
+// [awal from, awal hari setelah to), untuk kolom yang menyimpan waktu UTC (created_at, waktu).
+func dayRangeUTC(from, to string) (string, string) {
+	t1, _ := time.ParseInLocation("2006-01-02", from, time.Local)
+	t2, _ := time.ParseInLocation("2006-01-02", to, time.Local)
+	return t1.UTC().Format(time.RFC3339), t2.AddDate(0, 0, 1).UTC().Format(time.RFC3339)
+}
+
 func applyTimezone(name string) {
 	if name == "" {
 		return // ikut zona waktu server
@@ -137,14 +145,14 @@ func apiAudit(c *Ctx) error {
 		args = append(args, like, like, like, like)
 	}
 	if d, err := cleanDate(q.Get("dari")); err == nil {
-		t, _ := time.ParseInLocation("2006-01-02", d, time.Local)
+		lo, _ := dayRangeUTC(d, d)
 		where = append(where, "waktu >= ?")
-		args = append(args, t.UTC().Format(time.RFC3339))
+		args = append(args, lo)
 	}
 	if d, err := cleanDate(q.Get("sampai")); err == nil {
-		t, _ := time.ParseInLocation("2006-01-02", d, time.Local)
+		_, hi := dayRangeUTC(d, d)
 		where = append(where, "waktu < ?")
-		args = append(args, t.AddDate(0, 0, 1).UTC().Format(time.RFC3339))
+		args = append(args, hi)
 	}
 	if q.Get("gagal") == "1" {
 		where = append(where, "status >= 400")

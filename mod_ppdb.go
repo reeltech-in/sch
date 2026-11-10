@@ -52,7 +52,7 @@ func (a *App) apiPPDBDaftar(c *Ctx) error {
 	}
 	// batas per perangkat & masa pendaftaran dicek SEBELUM membaca isi (hingga 10 MB), agar pengirim
 	// yang sudah diblokir tidak bisa menghabiskan memori server
-	if err := c.publicGuard("ppdb:", 3, ""); err != nil {
+	if err := c.publicBlocked("ppdb:", 3); err != nil {
 		return err
 	}
 	cfg := getConfig(a.db, "ppdb")
@@ -63,8 +63,9 @@ func (a *App) apiPPDBDaftar(c *Ctx) error {
 	if err := c.bindLarge(&in, 10<<20); err != nil {
 		return err
 	}
-	if strings.TrimSpace(in.Website) != "" { // honeypot
-		return bad("Pengiriman ditolak.")
+	// dihitung setelah terbaca: berkas yang kebesaran (ditolak bindLarge) tidak memakan jatah 3 kiriman orang tua
+	if err := c.publicGuard("ppdb:", 3, in.Website); err != nil {
+		return err
 	}
 	d := map[string]any{}
 	for _, f := range ppdbFields {
@@ -170,18 +171,16 @@ func apiPPDBCek(c *Ctx) error {
 	if err := c.Bind(&in); err != nil {
 		return err
 	}
-	ipKey := "pc:" + limitKey(clientIP(c.R))
-	noKey := "pn:" + strings.ToUpper(strings.TrimSpace(in.NoDaftar))
-	if c.A.limit.blockedN(ipKey, 20) || c.A.limit.blockedN(noKey, 5) {
-		return apiErr{429, "Terlalu banyak percobaan. Coba lagi 10 menit lagi."}
+	no := strings.ToUpper(strings.TrimSpace(in.NoDaftar))
+	if err := c.guessAllowed("pc:", no); err != nil {
+		return err
 	}
 	var nama, status, hash, jalur string
 	var catatan sql.NullString
 	err := c.A.db.QueryRow(`SELECT nama, status, pin_hash, COALESCE(jalur,''), catatan FROM ppdb_applicants WHERE no_daftar=?`, strings.ToUpper(strings.TrimSpace(in.NoDaftar))).
 		Scan(&nama, &status, &hash, &jalur, &catatan)
 	if err != nil || checkPassword(hash, strings.TrimSpace(in.PIN)) != nil {
-		c.A.limit.fail(ipKey)
-		c.A.limit.fail(noKey)
+		c.guessFailed("pc:", no)
 		return bad("Nomor pendaftaran atau PIN salah.")
 	}
 	return c.JSON(map[string]any{"nama": nama, "status": status, "jalur": jalur, "catatan": catatan.String})

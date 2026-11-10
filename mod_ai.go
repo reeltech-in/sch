@@ -163,7 +163,10 @@ func aiRequest(ctx context.Context, method, url, key string, body any) (*http.Re
 
 func upstreamErr(res *http.Response) error {
 	b, _ := io.ReadAll(io.LimitReader(res.Body, 2000))
-	msg := strings.TrimSpace(string(b))
+	// hanya pesan galat JSON gaya OpenAI yang ditampilkan; isi lain (mis. halaman dari alamat jaringan dalam)
+	// tidak dikembalikan ke browser, cukup dicatat di log server
+	msg := "jawaban bukan dari API yang kompatibel OpenAI; periksa URL endpoint"
+	log.Printf("ai: penyedia HTTP %d: %.300s", res.StatusCode, b)
 	var e struct {
 		Error any `json:"error"`
 	}

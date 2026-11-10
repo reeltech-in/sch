@@ -63,10 +63,12 @@ func (a *App) reader() *sql.DB {
 // maintain menjalankan pemeliharaan harian. ok=false bila backup gagal (agar dicoba ulang).
 var maintMu sync.Mutex
 
+const maintBusy = "pemeliharaan sedang berjalan"
+
 func (a *App) maintain() (string, bool) {
 	// tombol "Jalankan sekarang" dan jadwal harian tidak boleh berjalan bersamaan (file backup .tmp yang sama)
 	if !maintMu.TryLock() {
-		return "pemeliharaan sedang berjalan", false
+		return maintBusy, false
 	}
 	defer maintMu.Unlock()
 	cfg := getConfig(a.db, "penyimpanan")
@@ -292,6 +294,9 @@ func (a *App) apiBackupFile(c *Ctx) error {
 
 func (a *App) apiMaintainNow(c *Ctx) error {
 	rep, ok := a.maintain()
+	if rep == maintBusy {
+		return apiErr{409, "Pemeliharaan sedang berjalan (jadwal harian). Tunggu beberapa menit lalu coba lagi."}
+	}
 	if ok {
 		kvSet(a.db, "maint_last", time.Now().Format("2006-01-02"))
 	}

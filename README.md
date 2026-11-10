@@ -84,7 +84,8 @@ dan tanpa membuka port di router**. HTTPS diurus Cloudflare, jadi kamera HP lang
    ```
    `-proxy` **wajib** di belakang tunnel: server membaca IP asli pengunjung dari header Cloudflare.
    Tanpa ini semua pengunjung terlihat dari 127.0.0.1, sehingga satu orang yang salah password bisa membuat
-   semua orang terblokir login.
+   semua orang terblokir login. `-proxy` saja hanya mempercayai proxy di komputer yang sama; bila cloudflared/nginx
+   berjalan di mesin lain atau di Docker, pakai `-proxy-ip <IP mesin itu>` (lihat di bawah).
 2. Di Cloudflare: **Zero Trust → Networks → Tunnels → Create tunnel (Cloudflared)**, pasang `cloudflared` di
    PC server sesuai perintah yang ditampilkan.
 3. Tambahkan **Public hostname**: subdomain pilihan Anda → Service `HTTP` → `localhost:3220`.
@@ -140,9 +141,9 @@ juga menampilkan pemakaian disk dan daftar backup untuk diunduh.
 |---|---|---|
 | `-addr :3220` | port HTTP (pakai `:80` agar cukup ketik IP tanpa `:3220`) | `:3220` |
 | `-https :3221` | port HTTPS untuk kamera HP; isi kosong `-https ""` untuk mematikan | `:3221` |
-| `-proxy` | wajib bila online lewat Cloudflare Tunnel / reverse proxy | mati |
+| `-proxy` | wajib bila online lewat Cloudflare Tunnel / reverse proxy **di komputer yang sama** (hanya 127.0.0.1 dipercaya) | mati |
 | `-upload-max-gb 5` | batas total ukuran file upload (foto, berkas PPDB, e-book) | `5` |
-| `-proxy-ip 10.0.0.5` | hanya percayai header proxy dari IP/CIDR ini (otomatis menyalakan `-proxy`) | – |
+| `-proxy-ip 10.0.0.5` | proxy/cloudflared di **mesin lain** (VM, Docker 172.17.0.0/16): percayai header proxy dari IP/CIDR ini (otomatis menyalakan `-proxy`) | – |
 | `-db data/sch.db` | lokasi file database (folder ini juga menyimpan upload & sertifikat) | `data/sch.db` |
 | `-reset-admin` | buat password admin baru lalu keluar (jika lupa password) | – |
 | `-demo` | isi data contoh untuk mencoba (hanya jika database kosong) | – |

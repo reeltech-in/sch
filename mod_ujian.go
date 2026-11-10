@@ -246,21 +246,15 @@ func apiCBTSave(c *Ctx) error {
 	if tok != nil {
 		tok = strings.ToUpper(tok.(string))
 	}
-	b := func(v bool) int {
-		if v {
-			return 1
-		}
-		return 0
-	}
 	if id > 0 {
 		if err := opsiCukup(c, "exam_questions", "exam_id", id, in.JumlahOpsi); err != nil {
 			return err
 		}
 		_, err = c.A.db.Exec(`UPDATE exams SET judul=?, mapel=?, kelas_ids=?, mulai=?, selesai=?, durasi_menit=?, jumlah_opsi=?, acak_soal=?, acak_opsi=?, token=?, tampil_nilai=? WHERE id=?`,
-			judul, str(in.Mapel), string(kb), mulai, selesai, in.DurasiMenit, in.JumlahOpsi, b(in.AcakSoal), b(in.AcakOpsi), tok, b(in.TampilNilai), id)
+			judul, str(in.Mapel), string(kb), mulai, selesai, in.DurasiMenit, in.JumlahOpsi, b2i(in.AcakSoal), b2i(in.AcakOpsi), tok, b2i(in.TampilNilai), id)
 	} else {
 		_, err = c.A.db.Exec(`INSERT INTO exams (judul, mapel, kelas_ids, mulai, selesai, durasi_menit, jumlah_opsi, acak_soal, acak_opsi, token, tampil_nilai, created_by, created_at)
-			VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`, judul, str(in.Mapel), string(kb), mulai, selesai, in.DurasiMenit, in.JumlahOpsi, b(in.AcakSoal), b(in.AcakOpsi), tok, b(in.TampilNilai), c.U.ID, nowStr())
+			VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`, judul, str(in.Mapel), string(kb), mulai, selesai, in.DurasiMenit, in.JumlahOpsi, b2i(in.AcakSoal), b2i(in.AcakOpsi), tok, b2i(in.TampilNilai), c.U.ID, nowStr())
 	}
 	if err != nil {
 		return err
@@ -649,6 +643,17 @@ func apiCBTSubmit(c *Ctx) error {
 	var omap, saved, started, durasi, selesai, urutan string
 	if err := tx.QueryRow(`SELECT t.id, t.opsi_map, t.jawaban, t.started_at, e.durasi_menit, e.selesai, t.urutan FROM exam_attempts t JOIN exams e ON e.id=t.exam_id
 		WHERE t.exam_id=? AND t.siswa_id=? AND t.selesai=0`, id, c.U.ID).Scan(&aid, &omap, &saved, &started, &durasi, &selesai, &urutan); err != nil {
+		// sudah ditutup (dinilai otomatis karena waktu habis saat HP offline, atau terkirim dari tab lain):
+		// kirim ulang dari HP tidak boleh gagal terus — tampilkan nilai yang tersimpan
+		var skor sql.NullFloat64
+		var tampil int
+		if tx.QueryRow(`SELECT t.skor, e.tampil_nilai FROM exam_attempts t JOIN exams e ON e.id=t.exam_id
+			WHERE t.exam_id=? AND t.siswa_id=? AND t.selesai=1 AND COALESCE(t.metode,'')<>'ljk'`, id, c.U.ID).Scan(&skor, &tampil) == nil {
+			if tampil != 1 || !skor.Valid {
+				return c.JSON(map[string]any{"skor": nil})
+			}
+			return c.JSON(map[string]any{"skor": skor.Float64})
+		}
 		return bad("Ujian belum dimulai atau sudah dikirim.")
 	}
 	ans := toOriginal(in.Answers, omap)

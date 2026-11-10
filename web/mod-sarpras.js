@@ -23,7 +23,7 @@ const kondisiTag = k => tag(KONDISI.find(x => x[0] === k)?.[1] || k, k === 'baik
 
 async function pageAset() {
   const kib = 'ABCDEF'.includes(S.params.tab || '-') && S.params.tab ? S.params.tab : 'all';
-  const pg = await GETpage('/aset?' + (kib !== 'all' ? 'kib=' + kib + '&' : '') + new URLSearchParams(Object.entries({ q: S.params.q || '', limit: S.params.lim || 300 }).filter(([, v]) => v !== '')).toString());
+  const pg = await GETpage('/aset?' + (kib !== 'all' ? 'kib=' + kib + '&' : '') + qs({ q: S.params.q || '', limit: S.params.lim || 300 }));
   const rows = pg.rows, total = pg.total;
   S.aset = rows;
   S.asetMap = Object.fromEntries(rows.map(r => [r.id, r]));
@@ -177,7 +177,7 @@ ACT.circCam = async () => {
 };
 
 async function perpusKatalog() {
-  const pg = await GETpage('/buku?' + new URLSearchParams(Object.entries({ q: S.params.q || '', limit: S.params.lim || 300 }).filter(([, v]) => v !== '')).toString());
+  const pg = await GETpage('/buku?' + qs({ q: S.params.q || '', limit: S.params.lim || 300 }));
   const bs = pg.rows;
   S.buku = Object.fromEntries(bs.map(b => [b.id, b]));
   S.bukuList = bs;
@@ -261,8 +261,8 @@ document.addEventListener('error', e => {
 // rak buku: siswa/guru (semua buku atau e-book saja) dan tab E-book pengelola
 async function perpusRak(adminEbook = false) {
   const ebook = adminEbook || S.params.rak === 'ebook';
-  const qs = new URLSearchParams(Object.entries({ q: S.params.q || '', limit: S.params.lim || 300, ebook: ebook ? 1 : '' }).filter(([, v]) => v !== '')).toString();
-  const pg = await GETpage('/buku?' + qs);
+  const query = qs({ q: S.params.q || '', limit: S.params.lim || 300, ebook: ebook ? 1 : '' });
+  const pg = await GETpage('/buku?' + query);
   const bs = pg.rows;
   const chips = adminEbook ? '' : `<div class="acts" style="justify-content:flex-start;margin-bottom:10px">${[['', 'Semua buku'], ['ebook', 'E-book']].map(([k, l]) =>
     btn(l, 'go', { page: 'perpus', params: JSON.stringify({ rak: k }) }, (S.params.rak || '') === k ? 'sm' : 'ghost sm')).join('')}</div>`;
@@ -287,7 +287,7 @@ S.sibi = { jenis: 'kurmer', jenjang: '', kelas: '', tipe: '', q: '', sel: new Se
 ACT.sibiOpen = () => { S.sibi.sel = new Set(); S.sibiModal = openModal({ title: 'Impor e-book dari Buku Kemendikbud', wide: true, builder: sibiBody }); };
 async function sibiBody() {
   const f = S.sibi;
-  const r = await GET('/perpus/sibi?' + new URLSearchParams(Object.entries({ jenis: f.jenis, jenjang: f.jenjang, kelas: f.kelas, tipe: f.tipe, q: f.q }).filter(([, v]) => v)).toString());
+  const r = await GET('/perpus/sibi?' + qs({ jenis: f.jenis, jenjang: f.jenjang, kelas: f.kelas, tipe: f.tipe, q: f.q }));
   const kelasOpt = [['', 'Semua kelas'], ...Array.from({ length: 12 }, (_, i) => [String(i + 1), 'Kelas ' + (i + 1)])];
   const tipeOpt = [['', 'Siswa & guru'], ['Buku siswa', 'Buku siswa'], ['Buku guru', 'Buku guru']];
   const sel = (k, label, o, v) => `<select data-change="sibiSet" data-k="${k}" aria-label="${label}">${opts(o, v)}</select>`;

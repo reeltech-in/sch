@@ -412,12 +412,29 @@ func TestKelulusanDibatasiPerNISN(t *testing.T) {
 	b, _ := json.Marshal(map[string]any{"buka": past})
 	kvSet(e.app.db, "cfg_kelulusan", string(b))
 	c := e.anon()
+	cek := func() int {
+		code, _ := c.do("POST", "/api/kelulusan/cek", map[string]string{"nisn": "0012345678", "tgl_lahir": "2010-01-01"})
+		return code
+	}
+	// satu perangkat: 10 salah per 10 menit
 	var last int
-	for i := 0; i < 7; i++ {
-		last, _ = c.do("POST", "/api/kelulusan/cek", map[string]string{"nisn": "0012345678", "tgl_lahir": "2010-01-01"})
+	for i := 0; i < 11; i++ {
+		last = cek()
 	}
 	if last != 429 {
-		t.Errorf("percobaan ke-7 untuk NISN yang sama: status %d, harusnya 429", last)
+		t.Errorf("percobaan ke-11 dari perangkat yang sama: status %d, harusnya 429", last)
+	}
+	// target yang sudah 20x salah hari ini (dari perangkat lain): perangkat yang belum pernah salah masih boleh
+	// mencoba (siswa asli tidak terkunci oleh orang iseng), perangkat yang sudah salah tidak.
+	e.app.limit = newLoginLimiter()
+	for i := 0; i < guessTarget; i++ {
+		e.app.limit.dayAdd("kl:t:0012345678")
+	}
+	if code := cek(); code != 400 {
+		t.Errorf("perangkat bersih ditolak untuk NISN yang sering ditebak: %d, harusnya 400 (boleh mencoba)", code)
+	}
+	if code := cek(); code != 429 {
+		t.Errorf("perangkat yang baru saja salah masih boleh menebak NISN itu: %d, harusnya 429", code)
 	}
 }
 

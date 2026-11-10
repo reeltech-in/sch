@@ -2,7 +2,6 @@ package main
 
 import (
 	"strings"
-	"time"
 )
 
 // Buku tamu: kiosk publik dengan foto, daftar kunjungan untuk admin.
@@ -20,15 +19,15 @@ func (a *App) apiGuestAdd(c *Ctx) error {
 		Foto      string `json:"foto"`
 		Website   string `json:"website"`
 	}
-	if err := c.publicGuard("tamu:", 6, ""); err != nil { // sebelum membaca isi (hingga 3 MB)
+	if err := c.publicBlocked("tamu:", 6); err != nil { // sebelum membaca isi (hingga 3 MB)
 		return err
 	}
 	c.longBody()
 	if err := c.bindLarge(&in, 3<<20); err != nil {
 		return err
 	}
-	if strings.TrimSpace(in.Website) != "" { // honeypot
-		return bad("Pengiriman ditolak.")
+	if err := c.publicGuard("tamu:", 6, in.Website); err != nil {
+		return err
 	}
 	cut := func(s string, n int) any {
 		r := []rune(strings.TrimSpace(s))
@@ -65,10 +64,8 @@ func apiGuestList(c *Ctx) error {
 	if err != nil {
 		return err
 	}
-	t1, _ := time.ParseInLocation("2006-01-02", from, time.Local)
-	t2, _ := time.ParseInLocation("2006-01-02", to, time.Local)
-	rows, err := c.list(`SELECT * FROM guestbook WHERE created_at >= ? AND created_at < ? ORDER BY created_at DESC`,
-		t1.UTC().Format(time.RFC3339), t2.AddDate(0, 0, 1).UTC().Format(time.RFC3339))
+	lo, hi := dayRangeUTC(from, to)
+	rows, err := c.list(`SELECT * FROM guestbook WHERE created_at >= ? AND created_at < ? ORDER BY created_at DESC`, lo, hi)
 	if err != nil {
 		return err
 	}

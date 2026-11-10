@@ -352,9 +352,10 @@ func (a *App) apiAbsenSelfie(c *Ctx) error {
 	}
 	c.longBody()
 	var in struct {
-		Foto string   `json:"foto"`
-		Lat  *float64 `json:"lat"`
-		Lng  *float64 `json:"lng"`
+		Foto    string   `json:"foto"`
+		Lat     *float64 `json:"lat"`
+		Lng     *float64 `json:"lng"`
+		Akurasi *float64 `json:"akurasi"` // meter, dari browser
 	}
 	if err := c.Bind(&in); err != nil {
 		return err
@@ -362,15 +363,34 @@ func (a *App) apiAbsenSelfie(c *Ctx) error {
 	if in.Lat == nil || in.Lng == nil {
 		return bad("Lokasi tidak terbaca. Izinkan akses lokasi di browser.")
 	}
+	// Lokasi berasal dari HP siswa dan bisa dipalsukan aplikasi "fake GPS"; server tidak bisa mencegahnya
+	// sepenuhnya. Yang dilakukan: tolak bacaan yang tidak akurat, dan tandai absen yang mencurigakan agar
+	// diperiksa petugas (foto selfie tetap tersimpan sebagai bukti).
+	var curiga []string
+	if in.Akurasi == nil || *in.Akurasi <= 0 {
+		curiga = append(curiga, "akurasi lokasi tidak dilaporkan")
+	}
 	if slat, ok := cfg["lat"].(float64); ok {
 		slng, _ := cfg["lng"].(float64)
 		rad, _ := cfg["radius_m"].(float64)
 		if rad <= 0 {
 			rad = 150
 		}
-		if d := haversine(slat, slng, *in.Lat, *in.Lng); d > rad {
+		if in.Akurasi != nil && *in.Akurasi > math.Max(100, rad) {
+			return bad("Lokasi kurang akurat (±" + itoa(int(*in.Akurasi)) + " m). Nyalakan GPS / Lokasi akurasi tinggi, tunggu sebentar, lalu coba lagi.")
+		}
+		d := haversine(slat, slng, *in.Lat, *in.Lng)
+		if d > rad {
 			return bad("Anda berada sekitar " + itoa(int(d)) + " m dari sekolah (batas " + itoa(int(rad)) + " m). Absen hanya bisa di area sekolah.")
 		}
+		if d < 1 {
+			curiga = append(curiga, "titik lokasi persis sama dengan titik sekolah")
+		}
+	}
+	var kembar int
+	c.A.reader().QueryRow(`SELECT COUNT(*) FROM daily_attendance WHERE tanggal=? AND siswa_id<>? AND lat=? AND lng=?`, localDate(), c.U.ID, *in.Lat, *in.Lng).Scan(&kembar)
+	if kembar > 0 {
+		curiga = append(curiga, fmt.Sprintf("koordinat sama persis dengan %d siswa lain", kembar))
 	}
 	var jp sql.NullString
 	if c.A.db.QueryRow(`SELECT jam_pulang FROM daily_attendance WHERE siswa_id=? AND tanggal=?`, c.U.ID, localDate()).Scan(&jp) == nil && jp.Valid {
@@ -390,6 +410,10 @@ func (a *App) apiAbsenSelfie(c *Ctx) error {
 	r, err := a.recordPresence(c.U.ID, "auto", "selfie", nil, *in.Lat, *in.Lng, url)
 	if err != nil {
 		return err
+	}
+	if len(curiga) > 0 {
+		a.db.Exec(`UPDATE daily_attendance SET keterangan=? WHERE siswa_id=? AND tanggal=? AND (keterangan IS NULL OR keterangan='')`,
+			"Selfie perlu dicek: "+strings.Join(curiga, "; "), c.U.ID, localDate())
 	}
 	return c.JSON(r)
 }

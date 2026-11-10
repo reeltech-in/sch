@@ -20,7 +20,7 @@ async function pagePPDB() {
     return hd + t + `<div class="cols"><section class="card">${formHtml(id, fields, c, { cancel: false })}</section>${linkCard(location.origin + '/#/ppdb', 'Alamat formulir pendaftaran')}</div>`;
   }
   const f = S.params.status || '';
-  const pg = await GETpage('/ppdb?' + new URLSearchParams(Object.entries({ status: f, q: S.params.q || '', limit: S.params.lim || 300 }).filter(([, v]) => v !== '')).toString());
+  const pg = await GETpage('/ppdb?' + qs({ status: f, q: S.params.q || '', limit: S.params.lim || 300 }));
   const rows = pg.rows;
   S.ppdb = Object.fromEntries(rows.map(r => [r.id, r]));
   S.ppdbRows = rows;

@@ -86,8 +86,8 @@ const ttdBlock = (nama, nip = '', jabatan = 'Guru') => `<table style="width:100%
 // ---------------------------------------------------------------------
 async function pageCatatan() {
   const p = { ...S.params, bulan: validBulan(S.params.bulan) };
-  const qs = new URLSearchParams(Object.entries({ kelas_id: p.kelas || '', jenis: p.jenis || '', bulan: p.bulan || '', siswa_id: p.siswa || '' }).filter(([, v]) => v)).toString();
-  const [rows, ref] = await Promise.all([GET('/catatan' + (qs ? '?' + qs : '')), GET('/catatan/siswa')]);
+  const query = qs({ kelas_id: p.kelas || '', jenis: p.jenis || '', bulan: p.bulan || '', siswa_id: p.siswa || '' });
+  const [rows, ref] = await Promise.all([GET('/catatan' + (query ? '?' + query : '')), GET('/catatan/siswa')]);
   S.catRef = ref; S.catatan = Object.fromEntries(rows.map(r => [r.id, r]));
   const kelas = uniqList(ref.siswa.map(s => s.kelas_id + '|' + s.kelas_nama)).map(x => x.split('|'));
   const pel = rows.filter(r => r.jenis === 'pelanggaran').reduce((s, r) => s + r.poin, 0);

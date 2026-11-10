@@ -512,8 +512,10 @@ async function del(path, msg, success = 'Terhapus.') {
 // =====================================================================
 // Navigasi
 // =====================================================================
+// query string dari objek; nilai kosong/null dilewati
+const qs = o => new URLSearchParams(Object.entries(o).filter(([, v]) => v != null && v !== '')).toString();
 function go(page, params = {}) {
-  const q = new URLSearchParams(Object.entries(params).filter(([, v]) => v != null && v !== '')).toString();
+  const q = qs(params);
   const h = '#/' + page + (q ? '?' + q : '');
   if (location.hash === h) route(); else location.hash = h;
 }
@@ -558,9 +560,11 @@ async function refresh(quiet) {
     const [html, after] = await pageFn(S.user.role, page)(S.params).then(h => { const a = S.after; S.after = null; return [h, a]; });
     if (seq !== S.seq || page !== S.page) return;
     // isian saring cepat ([data-filter]) dipertahankan saat halaman yang sama dimuat ulang (mis. setelah simpan)
-    const keepFilter = main.dataset.page === page ? $$('[data-filter]', main).map(i => [i.dataset.filter, i.value]).filter(([, v]) => v) : [];
+    // hanya untuk halaman + tab yang sama (Surat masuk/keluar memakai id saringan yang sama)
+    const view = page + '|' + (S.params.tab || '');
+    const keepFilter = main.dataset.view === view ? $$('[data-filter]', main).map(i => [i.dataset.filter, i.value]).filter(([, v]) => v) : [];
     main.dataset.seq = seq;
-    main.dataset.page = page;
+    main.dataset.view = view;
     main.innerHTML = html;
     for (const [id, v] of keepFilter) {
       const i = $(`[data-filter="${id}"]`, main);

@@ -419,7 +419,7 @@ ACT.selfieOpen = () => {
     S.selfie.stream = st; v.srcObject = st;
   })
     .catch(() => { $('#selfieLoc').textContent = 'Kamera tidak bisa dibuka. Izinkan akses kamera.'; });
-  navigator.geolocation.getCurrentPosition(p => { S.selfie.lat = p.coords.latitude; S.selfie.lng = p.coords.longitude; const el = $('#selfieLoc'); if (el) el.textContent = `Lokasi terbaca (akurasi ±${Math.round(p.coords.accuracy)} m).`; },
+  navigator.geolocation.getCurrentPosition(p => { S.selfie.lat = p.coords.latitude; S.selfie.lng = p.coords.longitude; S.selfie.akurasi = p.coords.accuracy; const el = $('#selfieLoc'); if (el) el.textContent = `Lokasi terbaca (akurasi ±${Math.round(p.coords.accuracy)} m).`; },
     () => { const el = $('#selfieLoc'); if (el) el.textContent = 'Lokasi tidak terbaca. Izinkan akses lokasi.'; }, { enableHighAccuracy: true, timeout: 15000 });
   return m;
 };
@@ -434,7 +434,7 @@ ACT.selfieShot = async el => {
   c.getContext('2d').drawImage(v, 0, 0, c.width, c.height);
   el.disabled = true;
   try {
-    const r = await POST('/absen/selfie', { foto: c.toDataURL('image/jpeg', .75), lat: S.selfie.lat, lng: S.selfie.lng });
+    const r = await POST('/absen/selfie', { foto: c.toDataURL('image/jpeg', .75), lat: S.selfie.lat, lng: S.selfie.lng, akurasi: S.selfie.akurasi });
     stopSelfie(); closeModal();
     toast(r.aksi === 'sudah' ? 'Anda sudah absen.' : `Absen ${r.aksi} tercatat pukul ${r.aksi === 'pulang' ? r.jam_pulang : r.jam_masuk}.`);
     refresh(true);

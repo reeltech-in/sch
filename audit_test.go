@@ -1,8 +1,13 @@
 package main
 
 import (
+	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"image"
+	"image/jpeg"
+	"strings"
 	"testing"
 	"time"
 )
@@ -99,5 +104,56 @@ func TestHapusAbsensiHanyaKelasSendiri(t *testing.T) {
 	e.app.db.QueryRow(`SELECT COUNT(*) FROM daily_attendance WHERE siswa_id=? AND tanggal=?`, lain, tgl).Scan(&n)
 	if n != 1 {
 		t.Error("absensi siswa kelas lain terhapus lewat kelas yang berbeda")
+	}
+}
+
+// Absen selfie: bacaan lokasi tidak akurat ditolak; titik persis di titik sekolah ditandai untuk diperiksa.
+func TestSelfieLokasiDiperiksa(t *testing.T) {
+	e := newEnv(t)
+	kvSet(e.app.db, "cfg_absen", `{"selfie":true,"lat":-6.2,"lng":106.8,"radius_m":150,"jam_masuk":"07:00"}`)
+	img := image.NewRGBA(image.Rect(0, 0, 64, 64))
+	for i := range img.Pix {
+		img.Pix[i] = byte(i * 7)
+	}
+	var buf bytes.Buffer
+	jpeg.Encode(&buf, img, &jpeg.Options{Quality: 90})
+	foto := "data:image/jpeg;base64," + base64.StdEncoding.EncodeToString(buf.Bytes())
+
+	s2 := e.login("siswa002", "siswa123")
+	code, b := s2.do("POST", "/api/absen/selfie", map[string]any{"foto": foto, "lat": -6.2005, "lng": 106.8, "akurasi": 5000})
+	expect(t, "lokasi tidak akurat", code, 400, b)
+
+	s1 := e.login("siswa001", "siswa123")
+	code, b = s1.do("POST", "/api/absen/selfie", map[string]any{"foto": foto, "lat": -6.2, "lng": 106.8, "akurasi": 8})
+	expect(t, "selfie di titik sekolah", code, 200, b)
+	var ket string
+	e.app.db.QueryRow(`SELECT COALESCE(keterangan,'') FROM daily_attendance WHERE siswa_id=(SELECT id FROM users WHERE username='siswa001')`).Scan(&ket)
+	if !strings.Contains(ket, "persis sama") {
+		t.Errorf("selfie mencurigakan tidak ditandai: keterangan=%q", ket)
+	}
+}
+
+// HP offline saat waktu habis → ujian dinilai otomatis; kiriman ulang dari HP setelahnya tetap mendapat nilai
+// (bukan galat "sudah dikirim" yang membuat siswa terjebak di layar ujian).
+func TestKirimUlangSetelahDinilaiOtomatis(t *testing.T) {
+	e := newEnv(t)
+	s := e.login("siswa001", "siswa123")
+	exam := e.id(`SELECT id FROM exams LIMIT 1`)
+	if code, b := s.do("POST", fmt.Sprintf("/api/cbt/%d/start", exam), map[string]string{"token": "MTK26"}); code != 200 {
+		t.Fatalf("mulai: %d %s", code, b)
+	}
+	jb, _ := json.Marshal(kunciUjian(t, e, exam))
+	old := time.Now().Add(-3 * time.Hour).UTC().Format(time.RFC3339)
+	e.app.db.Exec(`UPDATE exam_attempts SET jawaban=?, started_at=? WHERE exam_id=?`, string(jb), old, exam)
+	e.app.db.Exec(`UPDATE exams SET tampil_nilai=1 WHERE id=?`, exam)
+	e.app.finalizeCBT(0)
+	var out struct {
+		Skor *float64 `json:"skor"`
+	}
+	if code := s.json("POST", fmt.Sprintf("/api/cbt/%d/submit", exam), map[string]any{"answers": map[string]string{}}, &out); code != 200 {
+		t.Fatalf("kirim ulang setelah dinilai otomatis: status %d, harusnya 200", code)
+	}
+	if out.Skor == nil || *out.Skor != 100 {
+		t.Errorf("kirim ulang harus menampilkan nilai tersimpan 100, dapat %v", out.Skor)
 	}
 }

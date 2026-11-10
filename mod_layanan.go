@@ -83,6 +83,15 @@ CREATE INDEX IF NOT EXISTS idx_letters ON letters(jenis, tanggal);
 }
 
 // publicGuard membatasi formulir publik: per-IP dan honeypot anti-bot.
+// publicBlocked: hanya memeriksa (tidak menghitung). Dipanggil SEBELUM membaca isi kiriman yang besar, agar
+// perangkat yang sudah diblokir tidak menghabiskan memori; kiriman dihitung lewat publicGuard setelah terbaca.
+func (c *Ctx) publicBlocked(key string, max int) error {
+	if c.A.limit.blockedN(key+limitKey(clientIP(c.R)), max) {
+		return apiErr{429, "Terlalu banyak pengiriman dari perangkat ini. Coba lagi 10 menit lagi."}
+	}
+	return nil
+}
+
 func (c *Ctx) publicGuard(key string, max int, honeypot string) error {
 	ip := limitKey(clientIP(c.R))
 	if c.A.limit.blockedN(key+ip, max) {

@@ -103,10 +103,11 @@ func cfgOn(c map[string]any, k string) bool    { b, _ := c[k].(bool); return b }
 // Antrean
 // ---------------------------------------------------------------------
 
-// waQueue memasukkan pesan ke antrean bila notifikasi aktif dan jenis kejadian ini dinyalakan.
-// Tidak pernah menggagalkan aksi utama (absensi/pendaftaran tetap tersimpan walau WA bermasalah).
+// pengganti isi pesan yang memuat PIN PPDB (log & backup tidak menyimpan PIN)
 const waHidden = "(isi disembunyikan karena memuat PIN)"
 
+// waQueue memasukkan pesan ke antrean bila notifikasi aktif dan jenis kejadian ini dinyalakan.
+// Tidak pernah menggagalkan aksi utama (absensi/pendaftaran tetap tersimpan walau WA bermasalah).
 func (a *App) waQueue(event, kunci, hp string, vals map[string]string, rahasia bool) {
 	cfg := getConfig(a.db, "wa")
 	if !cfgOn(cfg, "aktif") || !cfgOn(cfg, "kirim_"+event) {

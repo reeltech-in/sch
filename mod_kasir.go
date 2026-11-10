@@ -207,9 +207,7 @@ func apiSales(c *Ctx) error {
 		}
 		from, to = d, d
 	}
-	t1, _ := time.ParseInLocation("2006-01-02", from, time.Local)
-	t2, _ := time.ParseInLocation("2006-01-02", to, time.Local)
-	a, b := t1.UTC().Format(time.RFC3339), t2.AddDate(0, 0, 1).UTC().Format(time.RFC3339)
+	a, b := dayRangeUTC(from, to)
 	sales, err := c.list(`SELECT s.id, s.no, s.total, s.bayar, s.kembali, s.created_at, u.nama_lengkap AS kasir FROM sales s LEFT JOIN users u ON u.id=s.kasir_id
 		WHERE s.created_at>=? AND s.created_at<? ORDER BY s.created_at DESC`, a, b)
 	if err != nil {

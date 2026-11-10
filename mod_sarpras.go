@@ -355,7 +355,7 @@ func (a *App) apiBorrow(c *Ctx) error {
 	}
 	switch {
 	case stok == 0:
-		return bad("\"" + judul + "\" hanya tersedia sebagai e-book (tidak ada buku fisik).")
+		return bad("\"" + judul + "\" tidak punya eksemplar fisik (jumlah eksemplar 0). Ubah jumlahnya di Katalog bila bukunya ada.")
 	case dipinjam >= stok:
 		return bad("Stok \"" + judul + "\" sedang habis dipinjam.")
 	case sama > 0:

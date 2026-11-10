@@ -19,12 +19,26 @@ di header respons `X-SCH-Version`, dan dengan perintah `sch-server -version`.
   dan satu akun dibatasi 15 e-book baru per 10 menit.
 - PIN PPDB pada pesan WhatsApp yang gagal/kedaluwarsa/antre tidak lagi tersimpan atau tampil terbuka.
 
+- **Cek kelulusan & status PPDB**: tebakan tanggal lahir/PIN kini dibatasi per perangkat (10 salah/10 menit, 40/hari)
+  dan per NISN/nomor (setelah 20 salah sehari hanya perangkat yang belum pernah salah boleh mencoba). Orang iseng
+  tidak bisa lagi mengunci siswa asli dengan sengaja salah berkali-kali.
+- Absen selfie: lokasi yang kurang akurat ditolak; absen mencurigakan (titik persis di titik sekolah, koordinat
+  sama dengan siswa lain, akurasi tidak dilaporkan) diberi keterangan "Selfie perlu dicek" untuk petugas.
+- Galat penyedia AI hanya menampilkan pesan galat resmi penyedia, bukan isi halaman dari alamat lain.
+- Server mencatat peringatan bila header proxy datang dari alamat yang tidak dipercaya (memudahkan menemukan salah setel).
+
+> **Catatan pembaruan:** `-proxy` saja kini hanya mempercayai proxy di komputer yang sama. Bila cloudflared/nginx
+> berjalan di mesin lain atau Docker, tambahkan `-proxy-ip <IP>` (install.sh: `SCH_PROXY_IP=<IP> SCH_UNIT=rewrite`).
+> Server sch1.reeltech.net sudah memakai `-proxy-ip`, tidak perlu diubah.
+
 **Ujian & nilai**
 - Ujian CBT yang waktunya habis tetapi tidak dikumpulkan (HP mati, browser tertutup) kini dinilai otomatis dari
   jawaban yang tersimpan, tidak lagi "belum selesai" selamanya.
 - Nilai CBT hanya dihitung dari soal yang memang diterima siswa (soal tambahan susulan tidak menurunkan nilai).
 - Jumlah pilihan ujian/kuis tidak bisa dikurangi bila masih ada soal berkunci di luar pilihan baru.
 - Kuota harian Asisten AI tidak bisa lagi diakali dengan menghapus dokumen.
+- Siswa yang HP-nya offline saat waktu habis: ujian dinilai otomatis, dan kiriman ulang dari HP menampilkan nilainya
+  (tidak terjebak pesan "sudah dikirim").
 
 **Perbaikan lain**
 - Kalender: ujian/tenggat pagi hari di tanggal pertama rentang tidak lagi hilang.
@@ -33,6 +47,14 @@ di header respons `X-SCH-Version`, dan dengan perintah `sch-server -version`.
 - Pemeliharaan harian tidak bisa berjalan ganda; galat penyimpanan pada pergantian tahun ajaran tidak lagi diabaikan.
 - Pesan galat Asisten AI dalam bahasa Indonesia (rincian teknis ke log server).
 - Katalog Buku Kemendikbud: bila sumber sedang bermasalah, daftar lama tetap dipakai dan permintaan lain tidak ikut menunggu.
+
+- "Jalankan pemeliharaan sekarang" saat jadwal harian sedang berjalan kini memberi pesan sibuk yang jelas.
+- Berkas PPDB yang kebesaran tidak lagi memakan jatah 3 kiriman orang tua per 10 menit.
+- Jatah 15 e-book baru per 10 menit hanya terpakai bila unduhan berhasil.
+
+**Kerapian kode**
+- Rumus nilai, rentang tanggal sekolah→UTC, dan pembuat query string disatukan menjadi satu fungsi bersama;
+  aturan CSS yang bertentangan/terpecah dirapikan.
 
 **Kecepatan (query)**
 - Indeks baru untuk kunci tamu (menghapus guru tidak lagi memindai ratusan ribu baris absensi), ISBN buku, dan

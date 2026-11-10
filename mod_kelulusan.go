@@ -76,10 +76,6 @@ func apiGradInfo(c *Ctx) error {
 }
 
 func apiGradCheck(c *Ctx) error {
-	ipKey := "kl:" + limitKey(clientIP(c.R))
-	if c.A.limit.blockedN(ipKey, 30) {
-		return apiErr{429, "Terlalu banyak percobaan. Coba lagi 10 menit lagi."}
-	}
 	cfg := getConfig(c.A.db, "kelulusan")
 	buka, _ := cfg["buka"].(string)
 	t, err := time.Parse(time.RFC3339, buka)
@@ -100,10 +96,9 @@ func apiGradCheck(c *Ctx) error {
 	if err != nil || strings.TrimSpace(in.NISN) == "" {
 		return bad("Isi NISN dan tanggal lahir.")
 	}
-	// kunci per NISN: mencegah menebak tanggal lahir satu siswa dari banyak IP
-	nKey := "kn:" + strings.TrimSpace(in.NISN)
-	if c.A.limit.blockedN(nKey, 5) {
-		return apiErr{429, "Terlalu banyak percobaan untuk NISN ini. Coba lagi 10 menit lagi."}
+	nisn := strings.TrimSpace(in.NISN)
+	if err := c.guessAllowed("kl:", nisn); err != nil {
+		return err
 	}
 	var nama, status string
 	var kelas, catatan sql.NullString
@@ -111,8 +106,7 @@ func apiGradCheck(c *Ctx) error {
 		LEFT JOIN classes k ON k.id=u.kelas_id JOIN graduation g ON g.siswa_id=u.id WHERE sp.nisn=? AND sp.tgl_lahir=?`,
 		strings.TrimSpace(in.NISN), tgl).Scan(&nama, &kelas, &status, &catatan)
 	if err != nil {
-		c.A.limit.fail(ipKey)
-		c.A.limit.fail(nKey)
+		c.guessFailed("kl:", nisn)
 		return bad("Data tidak ditemukan. Periksa kembali NISN dan tanggal lahir.")
 	}
 	pesan := cfg["pesan"]

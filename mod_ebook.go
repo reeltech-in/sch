@@ -157,8 +157,10 @@ func sibiLoad(jenis string) ([]sibiBook, error) {
 	mu, _ := sibiFetchMu.LoadOrStore(jenis, &sync.Mutex{})
 	mu.(*sync.Mutex).Lock()
 	defer mu.(*sync.Mutex).Unlock()
-	if d, fresh, _ := get(); fresh {
+	if d, fresh, failed := get(); fresh || (failed && d != nil) {
 		return d, nil
+	} else if failed { // yang menunggu antrean tidak mengulang unduhan 90 detik setelah pengambilan barusan gagal
+		return nil, apiErr{502, "Katalog Buku Kemendikdasmen tidak bisa dihubungi. Coba lagi sebentar lagi."}
 	}
 	out, err := sibiFetch(j.ep, jenis)
 	sibiCache.Lock()
@@ -392,7 +394,7 @@ func (a *App) cachedFile(src, ext string, isPDF bool) (string, error) {
 	}
 	mu, _ := fetchLocks.LoadOrStore(p, &sync.Mutex{})
 	mu.(*sync.Mutex).Lock()
-	defer func() { mu.(*sync.Mutex).Unlock(); fetchLocks.Delete(p) }()
+	defer func() { mu.(*sync.Mutex).Unlock(); fetchLocks.CompareAndDelete(p, mu) }()
 	if _, err := os.Stat(p); err == nil { // sudah diunduh permintaan lain saat menunggu
 		return p, nil
 	}
@@ -476,7 +478,11 @@ func (a *App) apiBookRead(c *Ctx) error {
 			if c.U.Role != "admin" && c.A.limit.blockedN(key, 15) {
 				return apiErr{429, "Terlalu banyak e-book baru dibuka. Coba lagi 10 menit lagi, atau buka e-book yang sudah pernah dibaca."}
 			}
-			c.A.limit.fail(key)
+			defer func() {
+				if p != "" { // hanya unduhan yang berhasil dihitung (sumber mati / penyimpanan penuh tidak memakan jatah)
+					c.A.limit.fail(key)
+				}
+			}()
 			if _, size := a.ebookCacheSize(); size > ebookCacheMax() {
 				return apiErr{507, "Penyimpanan salinan e-book penuh. Hubungi admin (hapus e-book yang tidak dipakai dari katalog)."}
 			}
