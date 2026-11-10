@@ -36,8 +36,8 @@
     "hash": "9a8f508df61197f3a4d5e2c742851c68"
   },
   "mod_ai.go": {
-    "mtime": 1794271007198.3337,
-    "hash": "65440e4ac58030891f645879496678eb"
+    "mtime": 1794283840386.1394,
+    "hash": "4849227138483b74595e758df38d2d43"
   },
   "mod_layanan.go": {
     "mtime": 1794269477947.9412,
@@ -84,8 +84,8 @@
     "hash": "f526404e20f29a50b24f36960ea8bf9a"
   },
   "web/mod-ai.js": {
-    "mtime": 1794270307167.6382,
-    "hash": "de49eb937cfc346b198d9962ef8d832b"
+    "mtime": 1794284053456.7595,
+    "hash": "49089a1ad45a1d0112e1fa2c73cfc0ee"
   },
   "web/mod-audit.js": {
     "mtime": 1794278613739.247,
@@ -120,12 +120,12 @@
     "hash": "e23343d8c9827b32230cc0d7b142ab21"
   },
   "CHANGELOG.md": {
-    "mtime": 1794278875914.484,
-    "hash": "9073a41f925ab6084614955cb1550655"
+    "mtime": 1794284315725.3782,
+    "hash": "c097174ae07269f4ccafe949b2f24489"
   },
   "README.md": {
-    "mtime": 1794269495166.6064,
-    "hash": "7ed824d9c4fa5da6872e0cde1c5b5391"
+    "mtime": 1794284325950.1606,
+    "hash": "a9040ccbe167a84ae1ef5ebefff89c8b"
   },
   "docs/design-system.md": {
     "mtime": 1794201149296.8513,
@@ -288,11 +288,23 @@
     "hash": "659cf2388215daebdbc71f62c2c866a9"
   },
   ".graphify/GRAPH_REPORT.md": {
-    "mtime": 1794271239314.155,
-    "hash": "cc85d47bd8375496841d06d14ee19654"
+    "mtime": 1794278877862.497,
+    "hash": "ee239dfa4a6698ceae061cae533b54a4"
   },
   "docs/INSTALL-UBUNTU.md": {
     "mtime": 1794267381424.0015,
     "hash": "0a5f47d410558fd2f07268ccd23250c8"
+  },
+  "docx.go": {
+    "mtime": 1794283977318.9458,
+    "hash": "4445ad13ef93253d062620d361a68430"
+  },
+  "rpp.go": {
+    "mtime": 1794283632714.4233,
+    "hash": "58a1f85ba590592d1d717a829b70c60d"
+  },
+  "rpp_test.go": {
+    "mtime": 1794284107636.3982,
+    "hash": "98a140269819ecbce87debd6a54867f2"
   }
 }
