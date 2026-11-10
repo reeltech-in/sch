@@ -108,7 +108,7 @@ function absenScanHtml() {
   S.after = () => {
     const inp = $('#scanIn');
     inp?.focus();
-    inp?.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); const v = inp.value.trim(); inp.value = ''; if (v) doScan(v); } });
+    onScan(inp, doScan);
   };
   return `<div class="cols"><section class="card scan-box">
       <label class="f"><span>Mode</span><select id="scanMode"><option value="auto">Otomatis (pertama = masuk, berikutnya = pulang)</option><option value="masuk">Masuk saja</option><option value="pulang">Pulang saja</option></select></label>
@@ -412,29 +412,22 @@ ACT.selfieOpen = () => {
   const m = openModal({ title: 'Absen selfie', body: `<div class="scan-box"><video class="scan-video" id="selfieV" playsinline muted autoplay style="transform:scaleX(-1)"></video>
     <p class="muted" id="selfieLoc">Mengambil lokasi…</p><div class="sheet-foot">${btn('Batal', 'selfieClose', {}, 'ghost')}${btn('Ambil foto & absen', 'selfieShot', {}, '', 'check')}</div></div>` });
   S.selfie = { lat: null, lng: null, stream: null };
-  navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 640 } }).then(st => {
-    trackStream(st);
-    const v = $('#selfieV');
-    if (!v) return st.getTracks().forEach(t => t.stop()); // jendela sudah ditutup sebelum kamera siap
-    S.selfie.stream = st; v.srcObject = st;
-  })
-    .catch(() => { $('#selfieLoc').textContent = 'Kamera tidak bisa dibuka. Izinkan akses kamera.'; });
+  openCamera($('#selfieV'), { facingMode: 'user', width: 640 }).then(st => { if (st) S.selfie.stream = st; })
+    .catch(() => { const el = $('#selfieLoc'); if (el) el.textContent = 'Kamera tidak bisa dibuka. Izinkan akses kamera.'; });
   navigator.geolocation.getCurrentPosition(p => { S.selfie.lat = p.coords.latitude; S.selfie.lng = p.coords.longitude; S.selfie.akurasi = p.coords.accuracy; const el = $('#selfieLoc'); if (el) el.textContent = `Lokasi terbaca (akurasi ±${Math.round(p.coords.accuracy)} m).`; },
     () => { const el = $('#selfieLoc'); if (el) el.textContent = 'Lokasi tidak terbaca. Izinkan akses lokasi.'; }, { enableHighAccuracy: true, timeout: 15000 });
   return m;
 };
-const stopSelfie = () => { if (S.selfie?.stream) S.selfie.stream.getTracks().forEach(t => t.stop()); };
+const stopSelfie = () => { stopStream(S.selfie?.stream, $('#selfieV')); if (S.selfie) S.selfie.stream = null; };
 ACT.selfieClose = () => { stopSelfie(); closeModal(); };
 ACT.selfieShot = async el => {
   const v = $('#selfieV');
-  if (!v || !v.videoWidth) return toast('Kamera belum siap.', 'bad');
+  const foto = snapshot(v);
+  if (!foto) return toast('Kamera belum siap.', 'bad');
   if (S.selfie.lat == null) return toast('Tunggu lokasi terbaca terlebih dahulu.', 'bad');
-  const c = document.createElement('canvas');
-  const w = 480; c.width = w; c.height = Math.round(v.videoHeight * w / v.videoWidth);
-  c.getContext('2d').drawImage(v, 0, 0, c.width, c.height);
   el.disabled = true;
   try {
-    const r = await POST('/absen/selfie', { foto: c.toDataURL('image/jpeg', .75), lat: S.selfie.lat, lng: S.selfie.lng, akurasi: S.selfie.akurasi });
+    const r = await POST('/absen/selfie', { foto, lat: S.selfie.lat, lng: S.selfie.lng, akurasi: S.selfie.akurasi });
     stopSelfie(); closeModal();
     toast(r.aksi === 'sudah' ? 'Anda sudah absen.' : `Absen ${r.aksi} tercatat pukul ${r.aksi === 'pulang' ? r.jam_pulang : r.jam_masuk}.`);
     refresh(true);

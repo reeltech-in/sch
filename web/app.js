@@ -89,20 +89,33 @@ const ico = n =>`<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n
 // =====================================================================
 // API
 // =====================================================================
-async function api(method, path, body) {
+// Inti semua permintaan ke server (api, GETpage, Asisten AI): header CSRF, pesan jaringan yang ramah,
+// pemeriksaan versi aplikasi, dan koreksi jam perangkat. Permintaan GET untuk halaman dibatalkan
+// (AbortController) begitu pengguna pindah menu, agar halaman baru tidak antre di belakang yang lama.
+async function apiFetch(method, path, body) {
   const opt = { method, headers: { 'X-SCH': '1' }, credentials: 'same-origin' };
   if (body !== undefined) { opt.headers['Content-Type'] = 'application/json'; opt.body = JSON.stringify(body); }
+  if (method === 'GET' && S.navCtl) opt.signal = S.navCtl.signal; // simpan/ubah data tidak pernah dibatalkan
   let res;
-  try { res = await fetch('/api' + path, opt); } catch { throw new Error('Tidak terhubung ke server sekolah. Periksa jaringan WiFi/LAN.'); }
+  try { res = await fetch('/api' + path, opt); } catch (e) {
+    if (e.name === 'AbortError') throw e;
+    throw new Error('Tidak terhubung ke server sekolah. Periksa jaringan WiFi/LAN.');
+  }
   checkVersion(res.headers.get('X-SCH-Version'));
   const sd = Date.parse(res.headers.get('Date') || '');
   if (sd) S.skew = sd - Date.now();
+  return res;
+}
+// baca jawaban JSON; sesi habis (401) → kembali ke halaman masuk tanpa menghapus jawaban ujian/kuis
+async function apiJSON(res, path) {
   let data = null;
   try { data = await res.json(); } catch { /* bukan JSON */ }
   if (res.status === 401 && S.user && path !== '/login') { resetClient(true); }
   if (!res.ok) throw new Error((data && data.error) || `Gagal (${res.status})`);
   return data;
 }
+async function api(method, path, body) { return apiJSON(await apiFetch(method, path, body), path); }
+const isAbort = e => e && e.name === 'AbortError';
 // Data rujukan yang dipakai hampir semua halaman (mapel, kelas, tahun ajaran) disimpan sebentar di memori,
 // supaya pindah menu tidak menunggu permintaan yang sama berulang kali lewat internet. Setiap perubahan data
 // (POST/PUT/DELETE) mengosongkan simpanan ini, jadi tampilan tidak pernah memakai data basi setelah menyimpan.
@@ -132,7 +145,7 @@ function GET(p) {
   // generasi: jawaban yang berangkat SEBELUM ada perubahan data tidak disimpan (bisa sudah basi)
   const gen = CACHE_GEN;
   const pr = api('GET', p).then(v => { if (cacheable(p) && gen === CACHE_GEN) GET_CACHE.set(p, { t: Date.now(), v }); return v; })
-    .finally(() => GET_INFLIGHT.delete(p));
+    .finally(() => { if (GET_INFLIGHT.get(p) === pr) GET_INFLIGHT.delete(p); });
   GET_INFLIGHT.set(p, pr);
   return pr.then(clone);
 }
@@ -224,8 +237,11 @@ function openModal({ title, body = '', wide = false, builder = null }) {
     <div class="sheet-body">${body}</div></div>`;
   el.addEventListener('mousedown', e => { if (e.target === el) ACT.closeModal(); });
   $('#modals').append(el);
-  const m = { el, builder, body: $('.sheet-body', el) };
+  // aksesibilitas (MDN aria-modal/inert): halaman di belakang tidak bisa difokus/diklik selama jendela terbuka,
+  // dan fokus kembali ke tombol pembuka saat ditutup
+  const m = { el, builder, body: $('.sheet-body', el), opener: document.activeElement };
   MODALS.push(m);
+  $('#app').inert = true;
   if (builder) refreshModal(m);
   setTimeout(() => $('input:not([type=hidden]),select,textarea', el)?.focus(), 40);
   return m;
@@ -237,11 +253,54 @@ async function refreshModal(m) {
   try { html = await m.builder(); } catch (e) { html = errBox(e); }
   if (seq === m.seq) m.body.innerHTML = html;
 }
-function closeModal() { const m = MODALS.pop(); if (m) { m.el.remove(); stopAllMedia(); } }
+function closeModal() {
+  const m = MODALS.pop();
+  if (!m) return;
+  m.el.remove(); stopAllMedia();
+  if (!MODALS.length) {
+    $('#app').inert = false;
+    if (m.opener?.isConnected) m.opener.focus({ preventScroll: true });
+  }
+}
 
 // ---- Kamera: semua stream dicatat agar pasti dimatikan saat jendela ditutup atau pindah halaman
 const MEDIA = new Set();
 function trackStream(st) { MEDIA.add(st); return st; }
+// Scanner barcode/QR USB bekerja seperti keyboard: mengetik kode lalu Enter. onScan(input, fn) memanggil fn(kode)
+// lalu mengosongkan isian, siap untuk pindaian berikutnya (absensi gerbang, kasir, perpustakaan, bilik suara).
+function onScan(inp, fn) {
+  inp?.addEventListener('keydown', e => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    const v = inp.value.trim();
+    inp.value = '';
+    if (v) fn(v);
+  });
+}
+// Satu cara membuka/menutup kamera untuk semua fitur (scan QR, selfie, buku tamu, LJK), mengikuti pola MDN:
+// semua track dihentikan dan srcObject dilepas. Bila elemen video sudah hilang ketika izin kamera akhirnya
+// diberikan (pengguna pindah halaman), kamera langsung dimatikan lagi.
+async function openCamera(video, constraints) {
+  if (!window.isSecureContext) throw new Error('Kamera butuh alamat https:// (di jaringan sekolah: port 3221).');
+  if (!navigator.mediaDevices?.getUserMedia) throw new Error('Browser ini tidak mendukung kamera.');
+  const st = trackStream(await navigator.mediaDevices.getUserMedia({ video: constraints, audio: false }));
+  if (!video || !video.isConnected) { stopStream(st); return null; }
+  video.srcObject = st;
+  try { await video.play(); } catch { /* autoplay ditolak: video tetap tampil saat diketuk */ }
+  return st;
+}
+function stopStream(st, video) {
+  if (st) { st.getTracks().forEach(t => t.stop()); MEDIA.delete(st); }
+  if (video) video.srcObject = null;
+}
+// gambar diam dari video (JPEG); null bila kamera belum menghasilkan gambar
+function snapshot(video, w = 480, q = 0.75) {
+  if (!video || !video.videoWidth) return null;
+  const c = document.createElement('canvas');
+  c.width = w; c.height = Math.round(video.videoHeight * w / video.videoWidth);
+  c.getContext('2d').drawImage(video, 0, 0, c.width, c.height);
+  return c.toDataURL('image/jpeg', q);
+}
 function stopAllMedia() {
   if (typeof Scanner !== 'undefined') Scanner.stop();
   MEDIA.forEach(st => st.getTracks().forEach(t => t.stop()));
@@ -531,6 +590,9 @@ window.addEventListener('hashchange', () => { if (S.user) route(); });
 
 async function route() {
   if (S.timer) { clearInterval(S.timer); S.timer = null; }
+  if (S.navCtl) S.navCtl.abort();
+  S.navCtl = new AbortController();
+  GET_INFLIGHT.clear(); // halaman baru tidak ikut menunggu permintaan lama yang barusan dibatalkan
   if (confirmResolve) { const r = confirmResolve; confirmResolve = null; r(false); } // dialog konfirmasi ditinggal = "batal"
   while (MODALS.length) closeModal();
   stopAllMedia();
@@ -702,12 +764,12 @@ document.addEventListener('click', e => {
   // klik ganda cepat tidak menjalankan aksi dua kali (pinjam/kembali buku, kirim ulang WA, buka jendela, dll.)
   if (BUSY.has(el)) return;
   BUSY.add(el);
-  Promise.resolve().then(() => fn(el, e)).catch(ex => toast(ex.message, 'bad')).finally(() => BUSY.delete(el));
+  Promise.resolve().then(() => fn(el, e)).catch(ex => { if (!isAbort(ex)) toast(ex.message, 'bad'); }).finally(() => BUSY.delete(el));
 });
 const BUSY = new WeakSet();
 document.addEventListener('change', e => {
   const el = e.target.closest('[data-change]');
-  if (el && CHG[el.dataset.change]) Promise.resolve(CHG[el.dataset.change](el)).catch(ex => toast(ex.message, 'bad'));
+  if (el && CHG[el.dataset.change]) Promise.resolve(CHG[el.dataset.change](el)).catch(ex => { if (!isAbort(ex)) toast(ex.message, 'bad'); });
 });
 document.addEventListener('input', e => {
   const el = e.target.closest('[data-filter]');
@@ -860,12 +922,9 @@ const Scanner = {
     if (!window.isSecureContext) throw new Error('Kamera butuh HTTPS. Buka aplikasi lewat alamat https://… (port 3221) yang tampil di layar server.');
     if (!this.supported()) throw new Error('Browser ini belum mendukung pemindai kamera. Gunakan Chrome di Android, atau scanner barcode USB.');
     const det = new BarcodeDetector({ formats: ['qr_code', 'code_128', 'ean_13', 'code_39'] });
-    const st = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-    if (!video.isConnected) { st.getTracks().forEach(t => t.stop()); return; } // sudah pindah halaman
-    if (this.stream) this.stream.getTracks().forEach(t => t.stop());
-    this.stream = st;
-    video.srcObject = this.stream;
-    await video.play();
+    if (this.stream) stopStream(this.stream);
+    this.stream = await openCamera(video, { facingMode: 'environment' });
+    if (!this.stream) return; // sudah pindah halaman
     let last = '', lastAt = 0;
     const run = this.run = Symbol('scan'); // putaran lama berhenti bila start() dipanggil lagi
     const loop = async () => {
@@ -916,10 +975,8 @@ function yearBar(ys, ty, change, note = '') {
 
 // GET dengan informasi jumlah total (header X-Total-Count) untuk daftar berhalaman
 async function GETpage(path) {
-  const res = await fetch('/api' + path, { headers: { 'X-SCH': '1' }, credentials: 'same-origin' });
-  const data = await res.json().catch(() => null);
-  if (res.status === 401 && S.user) resetClient();
-  if (!res.ok) throw new Error((data && data.error) || `Gagal (${res.status})`);
+  const res = await apiFetch('GET', path);
+  const data = await apiJSON(res, path);
   return { rows: data || [], total: Number(res.headers.get('X-Total-Count') || (data || []).length), headers: res.headers };
 }
 // Bilah cari (server) + info jumlah + tombol muat lebih banyak
@@ -940,17 +997,21 @@ document.addEventListener('search', e => { // tombol x pada input pencarian
 ACT.camStop = () => { Scanner.stop(); const v = $('#scanVideo'); if (v) v.hidden = true; };
 
 // Layar wajib ganti password (akun hasil impor atau direset admin)
-function renderGantiPW() {
+// Formulir ganti password (layar wajib ganti & halaman Akun Saya memakai yang sama)
+function pwForm(after) {
   const fields = [{ n: 'old', l: 'Password saat ini', t: 'password', req: true, ac: 'current-password' },
     { n: 'new', l: 'Password baru', t: 'password', req: true, minlength: 6, ac: 'new-password' },
     { n: 'new2', l: 'Ulangi password baru', t: 'password', req: true, minlength: 6, ac: 'new-password' }];
-  const id = registerForm(fields, async v => {
+  const id = registerForm(fields, async (v, form) => {
     if (v.new !== v.new2) throw new Error('Ulangan password baru tidak sama.');
     await POST('/password', { old: v.old, new: v.new });
-    S.user.ganti_pw = false;
     toast('Password berhasil diganti.');
-    route();
+    after(form);
   });
+  return { id, fields };
+}
+function renderGantiPW() {
+  const { id, fields } = pwForm(() => { S.user.ganti_pw = false; route(); });
   $('#app').innerHTML = `<div class="login-wrap"><div style="width:min(440px,100%)">${brandHtml('Keamanan akun')}
     <div class="card" style="padding:26px"><h1 style="font-size:24px;margin-bottom:6px">Ganti password</h1>
     <p class="muted" style="margin-bottom:16px">Halo ${esc(S.user.nama_lengkap)}, demi keamanan silakan buat password baru sebelum melanjutkan.</p>
@@ -963,15 +1024,7 @@ function renderGantiPW() {
 // =====================================================================
 async function pageAkun() {
   const u = S.user;
-  const fields = [{ n: 'old', l: 'Password lama', t: 'password', req: true, ac: 'current-password' },
-    { n: 'new', l: 'Password baru', t: 'password', req: true, minlength: 6, ac: 'new-password' },
-    { n: 'new2', l: 'Ulangi password baru', t: 'password', req: true, minlength: 6, ac: 'new-password' }];
-  const id = registerForm(fields, async (v, form) => {
-    if (v.new !== v.new2) throw new Error('Ulangan password baru tidak sama.');
-    await POST('/password', { old: v.old, new: v.new });
-    form.reset();
-    toast('Password berhasil diganti.');
-  });
+  const { id, fields } = pwForm(form => form.reset());
   return head('Akun Saya') + `<div class="cols">
     <section class="card"><div class="card-head"><h3>Data akun</h3></div>
       <div class="li"><small>Nama</small><b>${esc(u.nama_lengkap)}</b></div>

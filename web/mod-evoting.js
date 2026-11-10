@@ -110,7 +110,7 @@ function bilikScan() {
     <input class="scan-input" id="bilikIn" placeholder="Scan kartu…" autocomplete="off" style="max-width:420px">
     <div class="acts" style="justify-content:center;margin-top:12px">${btn('Pakai kamera', 'bilikCam', {}, 'ghost sm', 'eye')}</div><video class="scan-video" id="scanVideo" playsinline muted hidden style="max-width:420px;margin:12px auto 0"></video></section>`;
   const inp = $('#bilikIn'); inp.focus();
-  inp.addEventListener('keydown', ev => { if (ev.key === 'Enter') { ev.preventDefault(); const v = inp.value.trim(); inp.value = ''; if (v) bilikOpen(v); } });
+  onScan(inp, bilikOpen);
 }
 ACT.bilikCam = async () => { const v = $('#scanVideo'); v.hidden = false; try { await Scanner.start(v, code => { Scanner.stop(); bilikOpen(code); }); } catch (e) { v.hidden = true; toast(e.message, 'bad'); } };
 async function bilikOpen(token) {

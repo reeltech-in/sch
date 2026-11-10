@@ -117,9 +117,8 @@ async function aiRun(tpl, raw) {
   out.innerHTML = '<p class="muted">Menghubungi AI…</p>';
   acts.innerHTML = '';
   let res;
-  try { res = await fetch('/api/ai/generate', { method: 'POST', headers: { 'X-SCH': '1', 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ template: tpl, inputs }) }); }
-  catch { throw new Error('Tidak terhubung ke server.'); }
-  if (!res.ok) { const d = await res.json().catch(() => ({})); out.innerHTML = empty(d.error || 'Gagal.', 'x'); throw new Error(d.error || 'Gagal membuat dokumen.'); }
+  res = await apiFetch('POST', '/ai/generate', { template: tpl, inputs });
+  if (!res.ok) { try { await apiJSON(res, '/ai/generate'); } catch (e) { out.innerHTML = empty(e.message, 'x'); throw e; } }
   const reader = res.body.getReader();
   const dec = new TextDecoder();
   let text = '', last = 0;

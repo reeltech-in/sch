@@ -18,7 +18,7 @@ async function pageKasir() {
   S.cart = S.cart || [];
   S.after = () => {
     const inp = $('#posIn'); inp?.focus();
-    inp?.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); const v = inp.value.trim(); inp.value = ''; if (v) posAdd(v); } });
+    onScan(inp, posAdd);
     renderCart();
   };
   return hd + t + `<div class="cols cols-21"><section class="card">

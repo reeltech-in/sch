@@ -290,12 +290,11 @@ ACT.ljkCam = async () => {
   const v = $('#ljkVideo');
   try {
     ACT.ljkCamStop(); // tombol diketuk dua kali: kamera lama dimatikan dulu
-    S.ljkStream = trackStream(await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } } }));
-    if (!v.isConnected) return ACT.ljkCamStop(); // sudah pindah halaman saat izin kamera ditanyakan: matikan lagi
-    v.srcObject = S.ljkStream; await v.play(); $('#ljkCamBox').hidden = false;
+    S.ljkStream = await openCamera(v, { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } });
+    if (S.ljkStream) $('#ljkCamBox').hidden = false;
   } catch { toast('Kamera tidak bisa dibuka. Izinkan akses kamera atau pakai tombol Foto.', 'bad'); }
 };
-ACT.ljkCamStop = () => { if (S.ljkStream) S.ljkStream.getTracks().forEach(t => t.stop()); S.ljkStream = null; const b = $('#ljkCamBox'); if (b) b.hidden = true; };
+ACT.ljkCamStop = () => { stopStream(S.ljkStream, $('#ljkVideo')); S.ljkStream = null; const b = $('#ljkCamBox'); if (b) b.hidden = true; };
 ACT.ljkSnap = () => ljkProcess($('#ljkVideo'), 'Kamera');
 CHG.ljkSiswa = el => { S.ljk.hasil[el.dataset.i].siswa_id = el.value ? Number(el.value) : ''; };
 CHG.ljkJawab = el => { // gambar ulang kartu itu saja (bukan semua kartu)

@@ -116,8 +116,8 @@ function perpusSirkulasi() {
   S.after = () => {
     const m = $('#circMember'), b = $('#circBook');
     (S.circ.member ? b : m)?.focus();
-    m?.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); const v = m.value.trim(); m.value = ''; if (v) circMember(v); } });
-    b?.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); const v = b.value.trim(); b.value = ''; if (v) circBorrow(v); } });
+    onScan(m, circMember);
+    onScan(b, circBorrow);
   };
   const mb = S.circ.member;
   return `<div class="cols"><section class="card scan-box">
@@ -322,12 +322,6 @@ ACT.sibiImport = async el => {
 };
 document.addEventListener('keydown', e => {
   if (e.key === 'Enter' && e.target.id === 'sibiQ') { e.preventDefault(); S.sibi.q = e.target.value.trim(); refreshModal(S.sibiModal); }
-});
-document.addEventListener('input', e => {
-  const el = e.target.closest('[data-filter2]');
-  if (!el) return;
-  const q = el.value.trim().toLowerCase();
-  $$('#' + el.dataset.filter2 + ' > [data-text]').forEach(c => { c.hidden = q && !c.dataset.text.includes(q); });
 });
 
 Object.assign(PAGES.admin, { aset: pageAset, perpus: pagePerpus });

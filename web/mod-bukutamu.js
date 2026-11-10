@@ -34,18 +34,20 @@ PUBLIC_PAGES.bukutamu = () => {
     setTimeout(() => { if (!S.user && parseHash().page === 'bukutamu') PUBLIC_PAGES.bukutamu(); }, 6000);
   });
   let stream = null;
-  const stopCam = () => { if (stream) stream.getTracks().forEach(t => t.stop()); stream = null; };
+  const stopCam = () => { stopStream(stream, $('#tamuV')); stream = null; };
   ACT.tamuCam = async () => {
-    if (!window.isSecureContext) return toast('Kamera butuh alamat https.', 'bad');
-    try { stopCam(); stream = trackStream(await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 640 } })); const vd = $('#tamuV');
-      if (!vd) return stopCam(); // formulir sudah ditutup saat izin kamera ditanyakan
-      vd.hidden = false; vd.srcObject = stream; $('#tamuShot').hidden = false; }
-    catch { toast('Kamera tidak bisa dibuka.', 'bad'); }
+    try {
+      stopCam();
+      const vd = $('#tamuV');
+      if (vd) vd.hidden = false;
+      stream = await openCamera(vd, { facingMode: 'user', width: 640 });
+      if (stream) $('#tamuShot').hidden = false;
+    } catch (e) { toast(e.message.startsWith('Kamera') || e.message.startsWith('Browser') ? e.message : 'Kamera tidak bisa dibuka.', 'bad'); }
   };
   ACT.tamuShot = () => {
-    const vd = $('#tamuV'); if (!vd.videoWidth) return;
-    const c = document.createElement('canvas'); c.width = 480; c.height = Math.round(vd.videoHeight * 480 / vd.videoWidth);
-    c.getContext('2d').drawImage(vd, 0, 0, c.width, c.height); foto = c.toDataURL('image/jpeg', .75);
+    const vd = $('#tamuV');
+    const f = snapshot(vd); if (!f) return;
+    foto = f;
     stopCam(); vd.hidden = true; $('#tamuShot').hidden = true; $('#tamuPrev').innerHTML = `<img src="${foto}" alt="" style="width:120px;border-radius:12px">`;
   };
   $('#app').innerHTML = publicShell('Buku Tamu', `<h1 style="font-size:26px;margin-bottom:4px">Selamat datang</h1><p class="muted" style="margin-bottom:16px">Mohon isi buku tamu berikut.</p>
