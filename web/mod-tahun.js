@@ -65,7 +65,8 @@ async function pageNaik() {
   // bila memang ada beberapa tingkat berbeda. Jangan meluluskan semua kelas hanya karena tingkatnya sama.
   const grades = [...new Set(ks.map(gradeNum).filter(n => n != null))];
   const maxGrade = Math.max(...grades);
-  const isTop = g => g != null && ([6, 9, 12].includes(g) || (grades.length > 1 && g === maxGrade));
+  const akhir = jenjangDiatur() ? Math.max(...JENJANG_KELAS[jenjangDiatur()]) : null; // tingkat akhir jenjang sekolah
+  const isTop = g => g != null && (akhir ? g === akhir : ([6, 9, 12].includes(g) || (grades.length > 1 && g === maxGrade)));
   S.naik = { src, ks, siswa: aktifSiswa, kec: {} };
   const rows = ks.map(k => {
     const n = aktifSiswa.filter(u => u.kelas_id === k.id).length;

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -166,6 +167,55 @@ Struktur wajib (heading Markdown):
 6. Lampiran singkat: LKPD ringkas / bahan bacaan / glosarium`
 	}
 	return strings.Join([]string{struktur, data, waktu, umum}, "\n\n")
+}
+
+func init() {
+	// jenjang sekolah disimpan sekali di Pengaturan → Identitas sekolah
+	moduleMigrations = append(moduleMigrations, func(db *sql.DB) error { return addColumn(db, "settings", "jenjang", "TEXT") })
+}
+
+// jenjangDiatur: jenjang yang benar-benar dipilih admin (bukan tebakan). Pembatasan tingkat kelas & daftar mapel
+// hanya berlaku bila sudah diatur, agar sekolah yang belum mengisi tidak terhalang tebakan yang keliru.
+func jenjangDiatur(db *sql.DB) (string, bool) {
+	var j sql.NullString
+	db.QueryRow(`SELECT jenjang FROM settings WHERE id=1`).Scan(&j)
+	_, ok := jenjangNama[j.String]
+	return j.String, ok
+}
+
+// mapel standar (kode) yang lazim per jenjang menurut struktur Kurikulum Merdeka
+var mapelJenjang = func() map[string]map[string]bool {
+	agama := "PAI PAK PKAT PAH PAB PAKH PPKN BIN MTK BIG PJOK BDR BAR"
+	m := map[string]string{
+		"SD":  agama + " IPAS SR SM",
+		"SMP": agama + " IPA IPS INF PKY SR SM BK",
+		"SMA": agama + " IPA IPS INF PKY SR SM SEJ FIS KIM BIO EKO GEO SOS BK",
+		"SMK": agama + " IPAS INF SBD SEJ BK",
+	}
+	out := map[string]map[string]bool{}
+	for j, list := range m {
+		out[j] = map[string]bool{}
+		for _, k := range strings.Fields(list) {
+			out[j][k] = true
+		}
+	}
+	return out
+}()
+
+// jenjangSekolah: jenjang di pengaturan; bila belum diisi, ditebak dari warna tema (merah SD, abu SMA, lainnya SMP).
+func jenjangSekolah(db *sql.DB) string {
+	var j sql.NullString
+	db.QueryRow(`SELECT jenjang FROM settings WHERE id=1`).Scan(&j)
+	if _, ok := jenjangNama[j.String]; ok {
+		return j.String
+	}
+	switch getConfig(db, "tampilan")["warna"] {
+	case "merah":
+		return "SD"
+	case "abu":
+		return "SMA"
+	}
+	return "SMP"
 }
 
 // Jenjang pendidikan untuk perangkat ajar: membatasi kelas & kedalaman materi agar keluaran AI tidak keluar jenjang.

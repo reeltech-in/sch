@@ -62,6 +62,13 @@ func (c *Ctx) cekKelas(id int64, nama string, tingkat *string, wali any) error {
 			return bad("Nama kelas " + nama + " menunjukkan tingkat " + strconv.Itoa(t) + ", tetapi tingkat yang dipilih " + strings.TrimSpace(*tingkat) + ".")
 		}
 	}
+	if j, ok := jenjangDiatur(c.A.reader()); ok && tingkat != nil && strings.TrimSpace(*tingkat) != "" {
+		r := jenjangKelas[j]
+		if n, err := strconv.Atoi(strings.TrimSpace(*tingkat)); err != nil || n < r[0] || n > r[1] {
+			return bad(fmt.Sprintf("Tingkat %s bukan tingkat %s (kelas %d–%d). Jenjang sekolah diatur di Pengaturan → Identitas sekolah.",
+				strings.TrimSpace(*tingkat), jenjangNama[j], r[0], r[1]))
+		}
+	}
 	if wali != nil {
 		tahun := activeYear(c.A.db)
 		if id > 0 {

@@ -51,8 +51,6 @@ const JENIS_SURAT = ['Undangan rapat orang tua/wali', 'Undangan rapat guru', 'Pe
   'Surat keterangan aktif sekolah', 'Surat keterangan pindah', 'Surat rekomendasi', 'Surat pernyataan', 'Surat edaran'];
 // ---- Jenjang → kelas → fase → mapel: pilihan dibatasi per jenjang agar AI tidak "liar"
 // (mis. materi SMA untuk kelas SD, atau mapel IPAS untuk SMA)
-const JENJANG = [['SD', 'SD / MI'], ['SMP', 'SMP / MTs'], ['SMA', 'SMA / MA'], ['SMK', 'SMK / MAK']];
-const JENJANG_KELAS = { SD: [1, 2, 3, 4, 5, 6], SMP: [7, 8, 9], SMA: [10, 11, 12], SMK: [10, 11, 12] };
 const faseKelas = k => (k <= 2 ? 'A' : k <= 4 ? 'B' : k <= 6 ? 'C' : k <= 9 ? 'D' : k === 10 ? 'E' : 'F');
 const kelasJenjang = j => (JENJANG_KELAS[j] || JENJANG_KELAS.SMP).map(k => [`Kelas ${k} (Fase ${faseKelas(k)})`, `Kelas ${k} · Fase ${faseKelas(k)}`]);
 // struktur mapel Kurikulum Merdeka per jenjang (saran; mapel lain tetap bisa diketik)
@@ -71,36 +69,22 @@ const MAPEL_JENJANG = {
     'Seni Budaya', 'Informatika', 'Projek Ilmu Pengetahuan Alam dan Sosial', 'Dasar-dasar Program Keahlian', 'Konsentrasi Keahlian',
     'Projek Kreatif dan Kewirausahaan', 'Mata Pelajaran Pilihan', 'Bahasa Daerah'],
 };
-// jenjang awal: pilihan terakhir guru, selain itu dari warna tema sekolah (merah SD, biru SMP, abu SMA)
-function jenjangAwal() {
-  let j = '';
-  try { j = localStorage.getItem('ai_jenjang') || ''; } catch { /* abaikan */ }
-  return JENJANG_KELAS[j] ? j : ({ merah: 'SD', abu: 'SMA' })[S.settings.warna] || 'SMP';
-}
+// jenjang: satu sumber, Pengaturan → Identitas sekolah (server juga selalu memakai nilai ini)
+const jenjangAwal = () => (JENJANG_KELAS[S.settings.jenjang] ? S.settings.jenjang : 'SMP');
 // mapel: yang diampu guru di atas (berlabel), lalu saran sesuai jenjang
 const mapelJenjang = j => {
   const ampu = (S.aiMapel || []).filter(Array.isArray);
   return [...ampu, ...(MAPEL_JENJANG[j] || MAPEL_UMUM).filter(n => !ampu.some(([a]) => a.toLowerCase() === n.toLowerCase()))];
 };
-const AI_JENJANG = { n: 'jenjang', l: 'Jenjang', req: true, t: 'select', o: JENJANG };
 const AI_MAPEL = { n: 'mapel', l: 'Mata pelajaran', req: true, t: 'combo', o: () => mapelJenjang(S.aiJenjang) };
-const AI_KELAS = { n: 'kelas', l: 'Kelas', req: true, t: 'select', o: () => kelasJenjang(S.aiJenjang) };
-// ganti jenjang → daftar kelas & saran mapel ikut berganti
-document.addEventListener('change', e => {
-  const el = e.target;
-  if (el.name !== 'jenjang' || !el.closest('#main form[data-form]') || !JENJANG_KELAS[el.value]) return;
-  S.aiJenjang = el.value;
-  try { localStorage.setItem('ai_jenjang', el.value); } catch { /* abaikan */ }
-  const f = el.form, k = f.kelas, m = f.mapel;
-  if (k) k.innerHTML = opts(kelasJenjang(el.value), '');
-  if (m) setComboOptions(m, mapelJenjang(el.value));
-});
+const AI_KELAS = { n: 'kelas', l: 'Kelas', req: true, t: 'select', o: () => kelasJenjang(S.aiJenjang),
+  hint: 'Sesuai jenjang sekolah (diatur admin di Pengaturan → Identitas sekolah).' };
 
 // ---------- Template (field untuk tiap jenis dokumen; prompt ada di server) ----------
 const AI_TPL = {
   rpm: { judul: 'RPP / RPM / Modul Ajar', desc: 'Perencanaan Kurikulum Merdeka terbaru (Pembelajaran Mendalam): RPM, Modul Ajar, atau RPP satu lembar, lengkap dengan asesmen.', icon: 'layers',
     fields: [{ n: 'format', l: 'Format', t: 'select', o: RPP_FORMAT },
-      [AI_JENJANG, AI_KELAS], AI_MAPEL,
+      [AI_KELAS, AI_MAPEL],
       { n: 'materi', l: 'Materi pokok', req: true },
       [{ n: 'jp', l: 'JP per pertemuan', t: 'number', min: 1, max: 6, v: 2 }, { n: 'pertemuan', l: 'Jumlah pertemuan', t: 'number', min: 1, max: 20, v: 1 }],
       { n: 'menit_jp', l: 'Lama 1 JP', t: 'select', o: MENIT_JP, hint: 'Otomatis: SD 35 · SMP 40 · SMA/SMK 45 menit.' },
@@ -110,22 +94,22 @@ const AI_TPL = {
       { n: 'cp', l: 'Capaian Pembelajaran (opsional)', t: 'textarea', rows: 3, ph: 'Tempel CP resmi dari Kepka BSKAP 046/H/KR/2025 untuk fase & mapel ini', hint: 'Bila kosong, AI menulis ringkasan CP yang ditandai "cocokkan dengan dokumen CP resmi".' },
       { n: 'catatan', l: 'Catatan tambahan', t: 'textarea', rows: 2, ph: 'Karakteristik siswa, sarana yang ada…' }] },
   lkpd: { judul: 'LKPD', desc: 'Lembar Kerja Peserta Didik siap cetak dengan ruang jawaban.', icon: 'file',
-    fields: [[AI_JENJANG, AI_KELAS], AI_MAPEL, { n: 'materi', l: 'Materi', req: true },
+    fields: [[AI_KELAS, AI_MAPEL], { n: 'materi', l: 'Materi', req: true },
       { n: 'tujuan', l: 'Tujuan pembelajaran', t: 'textarea', rows: 2 }, [{ n: 'kegiatan', l: 'Jenis kegiatan', t: 'select', o: KEGIATAN_LKPD, blank: 'Pilih yang paling sesuai' }, { n: 'jumlah', l: 'Jumlah soal/aktivitas', t: 'number', min: 1, max: 30, v: 5 }],
       { n: 'catatan', l: 'Catatan', t: 'textarea', rows: 2 }] },
   soal: { judul: 'Generator Soal', desc: 'Soal pilihan ganda + kunci + pembahasan. Bisa langsung dimasukkan ke CBT/Kuis.', icon: 'quiz',
-    fields: [[AI_JENJANG, AI_KELAS], AI_MAPEL, { n: 'materi', l: 'Materi / indikator', req: true, t: 'textarea', rows: 2 },
+    fields: [[AI_KELAS, AI_MAPEL], { n: 'materi', l: 'Materi / indikator', req: true, t: 'textarea', rows: 2 },
       [{ n: 'jumlah', l: 'Jumlah soal', t: 'number', min: 1, max: 50, v: 10 }, { n: 'opsi', l: 'Pilihan jawaban', t: 'select', o: [['4', '4 (A–D)'], ['5', '5 (A–E)'], ['3', '3 (A–C)']] }],
       { n: 'tingkat', l: 'Tingkat kesulitan', t: 'select', o: [['mudah', 'Mudah'], ['sedang', 'Sedang'], ['sulit (HOTS)', 'Sulit (HOTS)'], ['campuran', 'Campuran']] }, { n: 'catatan', l: 'Catatan', t: 'textarea', rows: 2 }] },
   surat: { judul: 'Surat Sekolah', desc: 'Undangan, pemberitahuan, surat tugas, keterangan, dll. sesuai tata naskah.', icon: 'inbox',
     fields: [{ n: 'jenis', l: 'Jenis surat', req: true, t: 'combo', o: JENIS_SURAT }, { n: 'tujuan', l: 'Ditujukan kepada', ph: 'Bapak/Ibu Orang Tua/Wali Murid Kelas 7' },
       { n: 'isi', l: 'Isi pokok / keperluan', t: 'textarea', rows: 3, req: true }, { n: 'waktu', l: 'Waktu & tempat (jika ada)', ph: 'Sabtu, 15 Nov 2026, 09.00, Aula' }, { n: 'ttd', l: 'Penanda tangan', ph: 'Kosongkan = kepala sekolah' }] },
   prota: { judul: 'Prota & Promes', desc: 'Program tahunan dan program semester lengkap dengan minggu efektif.', icon: 'cal',
-    fields: [[AI_JENJANG, AI_KELAS], AI_MAPEL, [{ n: 'tahun', l: 'Tahun ajaran', t: 'combo', o: () => S.aiTahun || [] }, { n: 'jp', l: 'JP per minggu', t: 'number', min: 1, max: 20, v: 4 }],
+    fields: [[AI_KELAS, AI_MAPEL], [{ n: 'tahun', l: 'Tahun ajaran', t: 'combo', o: () => S.aiTahun || [] }, { n: 'jp', l: 'JP per minggu', t: 'number', min: 1, max: 20, v: 4 }],
       { n: 'materi', l: 'Daftar materi / bab (opsional)', t: 'textarea', rows: 3, ph: 'Kosongkan agar disusun dari Capaian Pembelajaran' },
       { n: 'catatan', l: 'Catatan (libur, kegiatan, ujian)', t: 'textarea', rows: 2 }] },
   kktp: { judul: 'KKTP', desc: 'Kriteria Ketercapaian Tujuan Pembelajaran: deskripsi, rubrik, atau interval nilai.', icon: 'check',
-    fields: [[AI_JENJANG, AI_KELAS], AI_MAPEL, { n: 'materi', l: 'Materi / lingkup materi', req: true },
+    fields: [[AI_KELAS, AI_MAPEL], { n: 'materi', l: 'Materi / lingkup materi', req: true },
       { n: 'tujuan', l: 'Tujuan pembelajaran (opsional)', t: 'textarea', rows: 2 },
       { n: 'pendekatan', l: 'Pendekatan KKTP', t: 'select', o: [['rubrik', 'Rubrik'], ['deskripsi kriteria', 'Deskripsi kriteria'], ['interval nilai', 'Interval nilai'], ['ketiganya (deskripsi, rubrik, interval)', 'Ketiganya']] },
       { n: 'catatan', l: 'Catatan', t: 'textarea', rows: 2 }] },
@@ -158,7 +142,7 @@ async function pageAI() {
   const id = registerForm(x.fields, async v => aiRun(tpl, v));
   return hd + t + `<div style="margin-bottom:10px">${btn('Semua jenis', 'go', { page: 'ai', params: '{}' }, 'ghost sm', 'back')}</div>` + info +
     `<div class="cols cols-ai"><section class="card"><div class="card-head"><h3>${esc(x.judul)}</h3></div>
-      ${formHtml(id, x.fields, { mapel: mapelAwal(), jenjang: S.aiJenjang }, { submit: 'Buat dengan AI', cancel: false })}</section>
+      ${formHtml(id, x.fields, { mapel: mapelAwal() }, { submit: 'Buat dengan AI', cancel: false })}</section>
     <section class="card"><div class="card-head"><h3>Hasil</h3><div class="acts" id="aiActs"></div></div><div id="aiOut" class="md">${empty('Isi formulir lalu klik "Buat dengan AI".', 'spark')}</div></section></div>`;
 }
 

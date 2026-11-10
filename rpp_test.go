@@ -183,13 +183,57 @@ func TestJenjangMasukPrompt(t *testing.T) {
 	}))
 	defer fake.Close()
 	kvSet(e.app.db, "cfg_ai", `{"base_url":"`+fake.URL+`","model":"palsu","kuota_harian":0,"suhu":0.7}`)
+	// jenjang diatur SEKALI di Pengaturan (admin); kiriman jenjang dari browser diabaikan
+	adm := e.login("admin", testAdminPW)
+	if code, _ := adm.do("PUT", "/api/settings", map[string]any{"jenjang": "TK"}); code != 400 {
+		t.Errorf("jenjang tidak dikenal diterima: %d", code)
+	}
+	var st map[string]any
+	if code := adm.json("PUT", "/api/settings", map[string]any{"jenjang": "SD"}, &st); code != 200 || st["jenjang"] != "SD" {
+		t.Fatalf("simpan jenjang sekolah: %d %v", code, st["jenjang"])
+	}
 	g := e.login("guru001", "guru123")
-	code, b := g.do("POST", "/api/ai/generate", map[string]any{"template": "lkpd", "inputs": map[string]string{"jenjang": "SD", "kelas": "Kelas 7 (Fase D)", "mapel": "Matematika", "materi": "Pecahan"}})
+	code, b := g.do("POST", "/api/ai/generate", map[string]any{"template": "lkpd", "inputs": map[string]string{"jenjang": "SMP", "kelas": "Kelas 7 (Fase D)", "mapel": "Matematika", "materi": "Pecahan"}})
 	if code != 400 || diterima != "" {
 		t.Errorf("kelas di luar jenjang tidak ditolak: %d %s (AI dihubungi: %v)", code, b, diterima != "")
 	}
 	code, b = g.do("POST", "/api/ai/generate", map[string]any{"template": "lkpd", "inputs": map[string]string{"jenjang": "SD", "kelas": "Kelas 4 (Fase B)", "mapel": "Matematika", "materi": "Pecahan"}})
 	if code != 200 || !strings.Contains(diterima, "SD/MI, kelas 4, Fase B") || !strings.Contains(diterima, "jangan memakai materi") {
 		t.Errorf("konteks jenjang tidak sampai ke AI: %d %s", code, diterima[:min(300, len(diterima))])
+	}
+}
+
+// Setelah jenjang sekolah diatur: tingkat kelas di luar jenjang ditolak, saran mapel standar sesuai jenjang.
+func TestJenjangSekolahMembatasiKelasDanMapel(t *testing.T) {
+	e := newEnv(t)
+	a := e.login("admin", testAdminPW)
+	// belum diatur: tidak dibatasi (sekolah lama tidak terhalang tebakan)
+	if code, b := a.do("POST", "/api/classes", map[string]any{"nama": "10 IPA", "tingkat": "10"}); code != 200 {
+		t.Fatalf("sebelum jenjang diatur, kelas 10 harus diterima: %d %s", code, b)
+	}
+	var st map[string]any
+	a.json("GET", "/api/settings", nil, &st)
+	if st["jenjang_diatur"] != false {
+		t.Errorf("jenjang_diatur awal: %v", st["jenjang_diatur"])
+	}
+	a.do("PUT", "/api/settings", map[string]any{"jenjang": "SMP"})
+	if code, b := a.do("POST", "/api/classes", map[string]any{"nama": "11 IPS", "tingkat": "11"}); code != 400 || !strings.Contains(string(b), "SMP/MTs") {
+		t.Errorf("tingkat 11 di sekolah SMP diterima: %d %s", code, b)
+	}
+	if code, b := a.do("POST", "/api/classes", map[string]any{"nama": "8C", "tingkat": "8"}); code != 200 {
+		t.Errorf("tingkat 8 di sekolah SMP ditolak: %d %s", code, b)
+	}
+	var pil []map[string]string
+	a.json("GET", "/api/mapel/pilihan", nil, &pil)
+	umum, semua := map[string]bool{}, map[string]bool{}
+	for _, p := range pil {
+		semua[p["nama"]] = true
+		if p["sumber"] == "umum" {
+			umum[p["kode"]] = true
+		}
+	}
+	// IPA boleh dari mapel sekolah yang sudah ada atau dari saran umum; IPAS (SD) & Fisika (SMA) tidak disarankan untuk SMP
+	if !semua["Ilmu Pengetahuan Alam"] || !umum["IPS"] || umum["IPAS"] || umum["FIS"] {
+		t.Errorf("saran mapel SMP: IPA=%v IPS=%v IPAS=%v FIS=%v", semua["Ilmu Pengetahuan Alam"], umum["IPS"], umum["IPAS"], umum["FIS"])
 	}
 }

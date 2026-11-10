@@ -529,7 +529,7 @@ async function saran(key, bawaan = []) {
 // mata pelajaran: yang sudah ada di data + daftar umum Kurikulum Merdeka
 // [kode, nama] mata pelajaran umum Kurikulum Merdeka
 const MAPEL_STD = [['PAI', 'Pendidikan Agama Islam dan Budi Pekerti'], ['PAK', 'Pendidikan Agama Kristen dan Budi Pekerti'], ['PKAT', 'Pendidikan Agama Katolik dan Budi Pekerti'],
-  ['PAH', 'Pendidikan Agama Hindu dan Budi Pekerti'], ['PAB', 'Pendidikan Agama Buddha dan Budi Pekerti'], ['PPKN', 'Pendidikan Pancasila'], ['BIN', 'Bahasa Indonesia'],
+  ['PAH', 'Pendidikan Agama Hindu dan Budi Pekerti'], ['PAB', 'Pendidikan Agama Buddha dan Budi Pekerti'], ['PAKH', 'Pendidikan Agama Khonghucu dan Budi Pekerti'], ['PPKN', 'Pendidikan Pancasila'], ['BIN', 'Bahasa Indonesia'],
   ['MTK', 'Matematika'], ['IPA', 'Ilmu Pengetahuan Alam'], ['IPS', 'Ilmu Pengetahuan Sosial'], ['IPAS', 'Ilmu Pengetahuan Alam dan Sosial'], ['BIG', 'Bahasa Inggris'],
   ['PJOK', 'Pendidikan Jasmani, Olahraga, dan Kesehatan'], ['SBD', 'Seni Budaya'], ['SR', 'Seni Rupa'], ['SM', 'Seni Musik'], ['INF', 'Informatika'], ['PKY', 'Prakarya'],
   ['BDR', 'Bahasa Daerah'], ['BAR', 'Bahasa Arab'], ['FIS', 'Fisika'], ['KIM', 'Kimia'], ['BIO', 'Biologi'], ['EKO', 'Ekonomi'], ['GEO', 'Geografi'], ['SOS', 'Sosiologi'],
@@ -541,14 +541,27 @@ async function mapelOpts() {
   try { cs = uniqList((await GET('/courses')).map(c => c.nama)); } catch { /* tetap pakai daftar umum */ }
   const guru = S.user && S.user.role === 'guru';
   S.mapelAmpu = guru ? cs : [];
-  return [...(guru ? cs.map(n => [n, 'Mapel yang Anda ampu']) : cs), ...MAPEL_UMUM.filter(n => !cs.some(c => c.toLowerCase() === n.toLowerCase()))];
+  return [...(guru ? cs.map(n => [n, 'Mapel yang Anda ampu']) : cs), ...mapelUmumJenjang().filter(n => !cs.some(c => c.toLowerCase() === n.toLowerCase()))];
 }
 // guru yang hanya mengampu satu mapel: kolom mapel langsung terisi
 const mapelAwal = () => (S.mapelAmpu || []).length === 1 ? S.mapelAmpu[0] : '';
 async function kelasOpts() {
   try { return uniqList((await GET('/classes')).map(k => k.nama)); } catch { return []; }
 }
-const TINGKAT_OPTS = Array.from({ length: 12 }, (_, i) => [String(i + 1), 'Tingkat ' + (i + 1)]);
+// ---- Jenjang sekolah (Pengaturan → Identitas sekolah). Setelah diatur admin, semua pilihan yang terkait
+// jenjang mengikuti: tingkat kelas, saran mapel, kenaikan kelas, filter e-book, dan formulir Asisten AI.
+const JENJANG_KELAS = { SD: [1, 2, 3, 4, 5, 6], SMP: [7, 8, 9], SMA: [10, 11, 12], SMK: [10, 11, 12] };
+const JENJANG_LABEL = { SD: 'SD/MI', SMP: 'SMP/MTs', SMA: 'SMA/MA', SMK: 'SMK/MAK' };
+const jenjangDiatur = () => (S.settings.jenjang_diatur && JENJANG_KELAS[S.settings.jenjang] ? S.settings.jenjang : '');
+const tingkatList = () => JENJANG_KELAS[jenjangDiatur()] || Array.from({ length: 12 }, (_, i) => i + 1);
+const tingkatOpts = () => tingkatList().map(k => [String(k), 'Tingkat ' + k]);
+// kode mapel standar per jenjang (sama dengan mapelJenjang di server, rpp.go)
+const MAPEL_KODE_JENJANG = (() => {
+  const umum = 'PAI PAK PKAT PAH PAB PAKH PPKN BIN MTK BIG PJOK BDR BAR';
+  const m = { SD: umum + ' IPAS SR SM', SMP: umum + ' IPA IPS INF PKY SR SM BK', SMA: umum + ' IPA IPS INF PKY SR SM SEJ FIS KIM BIO EKO GEO SOS BK', SMK: umum + ' IPAS INF SBD SEJ BK' };
+  return Object.fromEntries(Object.entries(m).map(([j, s]) => [j, new Set(s.split(' '))]));
+})();
+const mapelUmumJenjang = () => { const j = jenjangDiatur(); return j ? MAPEL_STD.filter(([k]) => MAPEL_KODE_JENJANG[j].has(k)).map(([, n]) => n) : MAPEL_UMUM; };
 // pilihan tahun (mis. tahun perolehan/terbit): tahun ini mundur n tahun
 const yearOpts = (n = 40) => Array.from({ length: n }, (_, i) => String(new Date().getFullYear() - i));
 // tahun ajaran: dari daftar tahun ajaran + tahun depan

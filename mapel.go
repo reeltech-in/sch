@@ -40,7 +40,12 @@ func apiMapelPilihan(c *Ctx) error {
 		seen[strings.ToLower(n)] = true
 		out = append(out, map[string]string{"kode": k, "nama": n, "sumber": "sekolah"})
 	}
+	// saran mapel standar mengikuti jenjang sekolah (bila sudah diatur); mapel yang sudah dipakai sekolah tetap tampil
+	j, diatur := jenjangDiatur(c.A.reader())
 	for _, p := range mapelStd {
+		if diatur && !mapelJenjang[j][p[0]] {
+			continue
+		}
 		if !seen[strings.ToLower(p[1])] {
 			out = append(out, map[string]string{"kode": p[0], "nama": p[1], "sumber": "umum"})
 		}

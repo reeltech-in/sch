@@ -257,6 +257,8 @@ func (a *App) settingsData() (map[string]any, error) {
 	ab := getConfig(a.db, "absen")
 	s["absen_selfie"] = ab["selfie"] == true
 	s["warna"] = getConfig(a.db, "tampilan")["warna"]
+	s["jenjang"] = jenjangSekolah(a.rdb) // tersimpan atau tebakan dari warna tema
+	_, s["jenjang_diatur"] = jenjangDiatur(a.rdb)
 	return s, nil
 }
 
@@ -324,6 +326,17 @@ func apiPutSettings(c *Ctx) error {
 		nama, logo, str(val("alamat", cur.alamat)), str(val("telepon", cur.telepon)), str(val("tahun_ajaran", cur.tahun)),
 		str(val("kepala_sekolah", cur.kepsek)), str(val("nip_kepala", cur.nip)), string(ab)); err != nil {
 		return err
+	}
+	if v, ok := raw["jenjang"]; ok {
+		var j string
+		json.Unmarshal(v, &j)
+		j = strings.ToUpper(strings.TrimSpace(j))
+		if _, valid := jenjangNama[j]; !valid {
+			return bad("Pilih jenjang sekolah: SD, SMP, SMA, atau SMK.")
+		}
+		if _, err := c.A.db.Exec(`UPDATE settings SET jenjang=? WHERE id=1`, j); err != nil {
+			return err
+		}
 	}
 	aksesGuruCache.Store(nil)
 	return apiGetSettings(c)

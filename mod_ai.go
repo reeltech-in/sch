@@ -559,6 +559,7 @@ func apiAIGenerate(c *Ctx) error {
 	}
 	var konteksJenjang string
 	if aiTplJenjang[in.Template] {
+		clean["jenjang"] = jenjangSekolah(c.A.db) // satu sumber: Pengaturan → Identitas sekolah
 		var err error
 		if konteksJenjang, err = aiJenjang(clean); err != nil {
 			return err

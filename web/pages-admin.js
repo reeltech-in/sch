@@ -9,6 +9,7 @@ async function adminDash() {
   const warn = [];
   if (d.tanpa_kelas) warn.push(`<div class="li"><div><b>${d.tanpa_kelas} siswa belum punya kelas</b><small>Siswa tanpa kelas tidak bisa melihat mapel.</small></div>${btn('Atur', 'nav', { page: 'siswa' }, 'ghost sm')}</div>`);
   if (d.tanpa_guru) warn.push(`<div class="li"><div><b>${d.tanpa_guru} mapel belum punya guru</b><small>Mapel tanpa guru tidak bisa diisi materi.</small></div>${btn('Atur', 'nav', { page: 'mapel' }, 'ghost sm')}</div>`);
+  if (!S.settings.jenjang_diatur) warn.push(`<div class="li"><div><b>Jenjang sekolah belum diatur</b><small>Atur SD/SMP/SMA/SMK agar pilihan kelas, mapel, kenaikan kelas, e-book, dan Asisten AI sesuai jenjang.</small></div>${btn('Atur', 'go', { page: 'pengaturan', params: JSON.stringify({ tab: 'sekolah' }) }, 'ghost sm')}</div>`);
   const pk = d.penyimpanan || {};
   if (Number(pk.persen) >= 80) warn.push(`<div class="li"><div><b>Penyimpanan file ${esc(pk.persen)}% terpakai</b><small>${fmtBytes(pk.terpakai)} dari ${fmtBytes(pk.batas)}. Bila penuh, upload (foto, berkas PPDB) gagal.</small></div>${btn('Atur', 'nav', { page: 'pengaturan' }, 'ghost sm')}</div>`);
   if (!pk.backup_terakhir) warn.push(`<div class="li"><div><b>Belum ada backup otomatis</b><small>Backup harian dibuat setiap hari setelah pukul 01.00.</small></div>${btn('Lihat', 'nav', { page: 'pengaturan' }, 'ghost sm')}</div>`);
@@ -41,7 +42,7 @@ ACT.kelasForm = async el => {
   const gs = (await GET('/users?role=guru')).filter(g => g.status === 'aktif');
   openForm({
     title: k.id ? 'Ubah kelas' : 'Tambah kelas', values: k,
-    fields: [{ n: 'nama', l: 'Nama kelas', req: true, ph: 'Contoh: 7A, X IPA 1' }, { n: 'tingkat', l: 'Tingkat', t: 'select', o: TINGKAT_OPTS, blank: '—', hint: 'Kelas baru otomatis masuk tahun ajaran aktif (' + (S.settings.tahun_ajaran || '') + ').' },
+    fields: [{ n: 'nama', l: 'Nama kelas', req: true, ph: 'Contoh: 7A, X IPA 1' }, { n: 'tingkat', l: 'Tingkat', t: 'select', o: tingkatOpts(), blank: '—', hint: 'Kelas baru otomatis masuk tahun ajaran aktif (' + (S.settings.tahun_ajaran || '') + ').' },
       { n: 'wali_id', l: 'Wali kelas', t: 'select', o: gs.map(g => [g.id, g.nama_lengkap]), blank: '— Belum ditentukan —', hint: 'Wali kelas bisa membuka halaman Wali Kelas: rekap kehadiran & poin siswa kelasnya.' }],
     onSubmit: v => k.id ? PUT('/classes/' + k.id, v) : POST('/classes', v),
   });
@@ -272,6 +273,8 @@ const SET_PAGES = {
       { n: 'alamat', l: 'Alamat', t: 'textarea', rows: 2 },
       [{ n: 'telepon', l: 'Telepon' }, { n: 'tahun_ajaran', l: 'Tahun ajaran', t: 'select', o: tas.map(x => [x, x]), blank: '—' }],
       [{ n: 'kepala_sekolah', l: 'Nama kepala sekolah' }, { n: 'nip_kepala', l: 'NIP kepala sekolah' }],
+      { n: 'jenjang', l: 'Jenjang sekolah', t: 'select', req: true, o: [['SD', 'SD / MI'], ['SMP', 'SMP / MTs'], ['SMA', 'SMA / MA'], ['SMK', 'SMK / MAK']],
+        hint: 'Semua pilihan yang terkait jenjang mengikuti ini: tingkat kelas, saran mapel, kenaikan kelas, filter e-book, dan Asisten AI (kelas, fase, mapel, lama 1 JP).' },
       { n: 'logo_url', l: 'Logo sekolah', t: 'file', accept: 'image/*', hint: 'Tanpa logo, huruf depan nama sekolah yang tampil.' }];
     const id = registerForm(fields, async v => { await saveSettings(v); toast('Identitas sekolah tersimpan.'); renderShell(); route(); });
     return setCard('Identitas sekolah', 'Tampil di halaman login, kop dokumen cetak, dan tanda tangan laporan.', formHtml(id, fields, s, { cancel: false }));

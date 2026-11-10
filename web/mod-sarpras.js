@@ -284,11 +284,15 @@ async function perpusAnggota() {
 // ---- Impor e-book dari Buku Kemendikbud (SIBI). Yang disimpan hanya data & alamat; PDF diunduh saat pertama dibaca.
 const SIBI_JENIS = [['kurmer', 'Kurikulum Merdeka'], ['k13', 'Kurikulum 2013'], ['nonteks', 'Buku bacaan (nonteks)']];
 S.sibi = { jenis: 'kurmer', jenjang: '', kelas: '', tipe: '', q: '', sel: new Set() };
-ACT.sibiOpen = () => { S.sibi.sel = new Set(); S.sibiModal = openModal({ title: 'Impor e-book dari Buku Kemendikbud', wide: true, builder: sibiBody }); };
+ACT.sibiOpen = () => {
+  S.sibi.sel = new Set();
+  const j = jenjangDiatur(); // langsung tersaring ke jenjang sekolah (bisa diubah di filter)
+  if (j && S.sibi.jenis !== 'nonteks' && !S.sibi.jenjang) S.sibi.jenjang = j;
+  S.sibiModal = openModal({ title: 'Impor e-book dari Buku Kemendikbud', wide: true, builder: sibiBody }); };
 async function sibiBody() {
   const f = S.sibi;
   const r = await GET('/perpus/sibi?' + qs({ jenis: f.jenis, jenjang: f.jenjang, kelas: f.kelas, tipe: f.tipe, q: f.q }));
-  const kelasOpt = [['', 'Semua kelas'], ...Array.from({ length: 12 }, (_, i) => [String(i + 1), 'Kelas ' + (i + 1)])];
+  const kelasOpt = [['', 'Semua kelas'], ...(JENJANG_KELAS[f.jenjang] || tingkatList()).map(k => [String(k), 'Kelas ' + k])];
   const tipeOpt = [['', 'Siswa & guru'], ['Buku siswa', 'Buku siswa'], ['Buku guru', 'Buku guru']];
   const sel = (k, label, o, v) => `<select data-change="sibiSet" data-k="${k}" aria-label="${label}">${opts(o, v)}</select>`;
   return `<p class="muted" style="margin:0 0 12px">Sumber: <b>buku.kemendikdasmen.go.id</b> (gratis, lisensi terbuka). Buku masuk katalog sebagai e-book digital; file PDF diunduh server sekali saat pertama dibuka lalu disimpan.</p>

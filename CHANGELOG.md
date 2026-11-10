@@ -8,14 +8,20 @@ Format versi: `MAYOR.MINOR.PERBAIKAN`
 Versi yang sedang berjalan terlihat di menu kiri aplikasi (bawah nama pengguna), di `GET /api/version`,
 di header respons `X-SCH-Version`, dan dengan perintah `sch-server -version`.
 
-## v1.22.1 — 2026-11-10 (Perangkat ajar per jenjang)
-- RPP/RPM/Modul Ajar, LKPD, soal, Prota/Promes, dan KKTP kini memilih **Jenjang** (SD/MI, SMP/MTs, SMA/MA, SMK/MAK)
-  terlebih dahulu: pilihan **kelas** hanya kelas jenjang itu (lengkap dengan fase, mis. "Kelas 7 · Fase D"), saran
-  **mata pelajaran** sesuai struktur Kurikulum Merdeka jenjang itu (mapel yang diampu guru tetap paling atas), dan lama
-  1 JP otomatis per jenjang.
-- Jenjang awal mengikuti warna tema sekolah (merah SD, biru SMP, abu SMA) atau pilihan terakhir guru.
-- Server menolak kelas di luar jenjang dan menambahkan instruksi tegas ke AI agar materi, istilah, contoh, dan
-  tingkat kesulitan sesuai jenjang & fase (tidak memakai materi jenjang lain).
+## v1.23.0 — 2026-11-10 (Jenjang sekolah di satu tempat)
+- **Jenjang sekolah** (SD/MI, SMP/MTs, SMA/MA, SMK/MAK) diatur sekali di **Pengaturan → Identitas sekolah**. Setelah
+  diatur, semua yang terkait jenjang mengikuti:
+  - **Kelas**: pilihan tingkat hanya tingkat jenjang itu (SMP: 7–9), dan server menolak tingkat di luar jenjang.
+  - **Mata pelajaran**: saran mapel standar sesuai struktur Kurikulum Merdeka jenjang itu (mis. SMP tanpa IPAS/Fisika);
+    mapel yang sudah dipakai sekolah tetap tampil.
+  - **Kenaikan kelas**: saran "Lulus" untuk tingkat akhir jenjang (6, 9, atau 12).
+  - **Impor e-book Kemendikbud**: langsung tersaring ke jenjang & kelas sekolah (tetap bisa diubah).
+  - **Asisten AI** (RPP/RPM/Modul Ajar, LKPD, soal, Prota/Promes, KKTP): tanpa pilihan jenjang lagi — kelas hanya
+    kelas jenjang sekolah lengkap dengan fase ("Kelas 7 · Fase D"), saran mapel per jenjang, lama 1 JP otomatis, dan
+    server selalu memakai jenjang dari Pengaturan serta menambahkan instruksi tegas ke AI agar materi, istilah, contoh,
+    dan tingkat kesulitan sesuai jenjang & fase.
+- Selama belum diatur, aplikasi bekerja seperti sebelumnya (tidak membatasi) dan dasbor admin menampilkan pengingat
+  "Jenjang sekolah belum diatur".
 
 ## v1.22.0 — 2026-11-10 (RPP Kurikulum Merdeka terbaru: format, sunting, cetak resmi, Word)
 - **Asisten AI → RPP / RPM / Modul Ajar**, mengikuti Kurikulum Merdeka dengan Pembelajaran Mendalam
