@@ -266,6 +266,53 @@ function closeModal() {
 // ---- Kamera: semua stream dicatat agar pasti dimatikan saat jendela ditutup atau pindah halaman
 const MEDIA = new Set();
 function trackStream(st) { MEDIA.add(st); return st; }
+
+// ---- Mesin ujian bersama (kuis mapel & ujian CBT): hitung mundur, kirim otomatis saat waktu habis
+// (dengan coba ulang bila jaringan putus), kirim jawaban, dan kartu hasil.
+const examTime = left => { const h = Math.floor(left / 3600); return (h ? h + ':' : '') + pad(Math.floor(left / 60) % 60) + ':' + pad(left % 60); };
+const examLeft = st => Math.max(0, Math.round((st.end - Date.now()) / 1000));
+// st: { end, sent }; timerSel: elemen jam; lowAt: detik sisa saat jam berwarna merah; submit(auto) → Promise
+function examTimer(st, { timerSel, lowAt, submit }) {
+  const tick = () => {
+    const left = examLeft(st);
+    const t = $(timerSel);
+    if (!t) return;
+    t.textContent = examTime(left);
+    t.classList.toggle('low', left <= lowAt);
+    if (left <= 0 && !st.sent) {
+      clearInterval(S.timer); S.timer = null;
+      toast('Waktu habis. Jawaban dikirim otomatis.');
+      const kirim = () => Promise.resolve(submit(true)).catch(() => {}).then(() => {
+        if (!st.sent && document.body.contains(t)) { toast('Gagal mengirim, mencoba lagi…', 'bad'); S.timer = setTimeout(kirim, 10000); }
+      });
+      kirim();
+    }
+  };
+  tick();
+  S.timer = setInterval(tick, 1000);
+}
+// kirim sekali; berhasil → hapus salinan lokal & tampilkan hasil; gagal → jawaban tetap di perangkat
+async function examSubmit(st, { url, answers, auto, title, back }) {
+  if (st.sent) return;
+  st.sent = true;
+  try {
+    const r = await POST(url, { answers });
+    store.del(st.key);
+    if (S.timer) { clearInterval(S.timer); S.timer = null; }
+    $('#main').innerHTML = examResultHtml(auto ? 'Waktu habis, jawaban terkirim' : title, r.skor, back);
+  } catch (e) {
+    st.sent = false;
+    toast(e.message + ' Jawaban tetap tersimpan di perangkat. Coba kirim lagi.', 'bad');
+  }
+}
+function examResultHtml(title, skor, [page, label]) {
+  return `<div class="card" style="max-width:480px;margin:40px auto;text-align:center;padding:32px">
+    <div class="stat" style="justify-content:center;border:0;box-shadow:none"><div class="ic">${ico('check')}</div></div>
+    <h2>${esc(title)}</h2>
+    ${skor != null ? `<p class="muted" style="margin:6px 0 10px">Nilai Anda</p><div style="font-size:52px;font-weight:800;color:var(--brand)">${fmtN(skor)}</div>`
+      : '<p class="muted" style="margin-top:8px">Nilai akan diumumkan oleh guru.</p>'}
+    <div style="margin-top:20px">${btn(label, 'nav', { page }, 'ghost')}</div></div>`;
+}
 // Scanner barcode/QR USB bekerja seperti keyboard: mengetik kode lalu Enter. onScan(input, fn) memanggil fn(kode)
 // lalu mengosongkan isian, siap untuk pindaian berikutnya (absensi gerbang, kasir, perpustakaan, bilik suara).
 function onScan(inp, fn) {

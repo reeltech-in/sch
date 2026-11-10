@@ -164,22 +164,7 @@ async function pageCBTUjian(p) {
   S.cbt = { id, key, qs: r.questions, ans: { ...(local.ans || {}), ...r.answers }, ragu: new Set(local.ragu || []), cur: 0, end: Date.now() + r.sisa_detik * 1000, sent: false, judul: r.exam.judul };
   S.after = () => {
     renderCbt();
-    const tick = () => {
-      const left = Math.max(0, Math.round((S.cbt.end - Date.now()) / 1000));
-      const t = $('#cbtTimer');
-      if (!t) return;
-      t.textContent = cbtTimeText();
-      t.classList.toggle('low', left <= 300);
-      if (left <= 0 && !S.cbt.sent) {
-        clearInterval(S.timer); S.timer = null; toast('Waktu habis. Jawaban dikirim otomatis.');
-        const kirim = () => Promise.resolve(cbtSubmit(true)).catch(() => {}).then(() => {
-          if (!S.cbt.sent && document.body.contains(t)) { toast('Gagal mengirim, mencoba lagi…', 'bad'); S.timer = setTimeout(kirim, 10000); }
-        });
-        kirim();
-      }
-    };
-    tick();
-    S.timer = setInterval(tick, 1000);
+    examTimer(S.cbt, { timerSel: '#cbtTimer', lowAt: 300, submit: cbtSubmit });
   };
   return `<div class="cbt"><section class="card cbt-q" id="cbtQ"></section><aside class="card cbt-nav" id="cbtNav"></aside></div>`;
 }
@@ -201,11 +186,7 @@ function renderCbt() {
     <div class="cbt-legend"><span><i style="background:var(--ok)"></i>Dijawab</span><span><i style="background:var(--accent)"></i>Ragu</span><span><i style="background:var(--surface-2);border:1px solid var(--border)"></i>Belum</span></div>
     <div style="margin-top:14px">${btn('Kirim jawaban', 'cbtFinish', {}, 'block', 'check')}</div>`;
 }
-function cbtTimeText() {
-  const left = Math.max(0, Math.round((S.cbt.end - Date.now()) / 1000));
-  const h = Math.floor(left / 3600);
-  return (h ? h + ':' : '') + pad(Math.floor(left / 60) % 60) + ':' + pad(left % 60);
-}
+const cbtTimeText = () => examTime(examLeft(S.cbt));
 let cbtSaveT = null;
 function cbtPersist() {
   const c = S.cbt;
@@ -223,21 +204,9 @@ ACT.cbtFinish = async () => {
   const msg = kosong ? `Masih ada <b>${kosong} soal</b> belum dijawab${c.ragu.size ? ` dan <b>${c.ragu.size}</b> ditandai ragu` : ''}. Tetap kirim?` : c.ragu.size ? `Ada <b>${c.ragu.size} soal</b> ditandai ragu-ragu. Tetap kirim?` : 'Kirim semua jawaban? Jawaban tidak bisa diubah lagi.';
   if (await confirmBox(msg, 'Kirim', '')) await cbtSubmit(false);
 };
-async function cbtSubmit(auto) {
-  const c = S.cbt;
-  if (c.sent) return;
-  c.sent = true;
-  clearTimeout(cbtSaveT);
-  try {
-    const r = await POST(`/cbt/${c.id}/submit`, { answers: c.ans });
-    store.del(c.key);
-    if (S.timer) { clearInterval(S.timer); S.timer = null; }
-    $('#main').innerHTML = `<div class="card" style="max-width:480px;margin:40px auto;text-align:center;padding:32px">
-      <div class="stat" style="justify-content:center;border:0;box-shadow:none"><div class="ic">${ico('check')}</div></div>
-      <h2>${auto ? 'Waktu habis, jawaban terkirim' : 'Ujian selesai'}</h2>
-      ${r.skor != null ? `<p class="muted" style="margin:6px 0 10px">Nilai Anda</p><div style="font-size:52px;font-weight:800;color:var(--brand)">${fmtN(r.skor)}</div>` : '<p class="muted" style="margin-top:8px">Nilai akan diumumkan oleh guru.</p>'}
-      <div style="margin-top:20px">${btn('Kembali', 'nav', { page: 'cbt' }, 'ghost')}</div></div>`;
-  } catch (e) { c.sent = false; toast(e.message + ' Jawaban tetap tersimpan. Coba kirim lagi.', 'bad'); }
+function cbtSubmit(auto) {
+  clearTimeout(cbtSaveT); // simpan otomatis yang tertunda tidak perlu lagi: semua jawaban ikut dikirim
+  return examSubmit(S.cbt, { url: `/cbt/${S.cbt.id}/submit`, answers: S.cbt.ans, auto, title: 'Ujian selesai', back: ['cbt', 'Kembali'] });
 }
 
 Object.assign(PAGES.admin, { cbt: pageCBT });

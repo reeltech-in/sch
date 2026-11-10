@@ -136,22 +136,7 @@ async function siswaUjian(p) {
   const end = Date.now() + r.sisa_detik * 1000;
   S.ujian = { qid, key, end, total: r.questions.length, sent: false };
   S.after = () => {
-    const tick = () => {
-      const left = Math.max(0, Math.round((S.ujian.end - Date.now()) / 1000));
-      const t = $('#timer');
-      if (!t) return;
-      t.textContent = `${pad(Math.floor(left / 60))}:${pad(left % 60)}`;
-      t.classList.toggle('low', left <= 60);
-      if (left <= 0 && !S.ujian.sent) {
-        clearInterval(S.timer); S.timer = null; toast('Waktu habis. Jawaban dikirim otomatis.');
-        const kirim = () => Promise.resolve(submitUjian(true)).catch(() => {}).then(() => {
-          if (!S.ujian.sent && document.body.contains(t)) { toast('Gagal mengirim, mencoba lagi…', 'bad'); S.timer = setTimeout(kirim, 10000); }
-        });
-        kirim();
-      }
-    };
-    tick();
-    S.timer = setInterval(tick, 1000);
+    examTimer(S.ujian, { timerSel: '#timer', lowAt: 60, submit: submitUjian });
     updateAnswered();
   };
   return `<div class="quiz-head"><div><b>${esc(r.quiz.judul)}</b><small class="muted" style="display:block" id="answered"></small></div>
@@ -178,23 +163,8 @@ ACT.ujianSubmit = async () => {
   const msg = n < S.ujian.total ? `Masih ada <b>${S.ujian.total - n} soal</b> yang belum dijawab. Tetap kirim?` : 'Kirim semua jawaban sekarang? Jawaban tidak bisa diubah lagi.';
   if (await confirmBox(msg, 'Kirim', '')) await submitUjian(false);
 };
-async function submitUjian(auto) {
-  if (S.ujian.sent) return;
-  S.ujian.sent = true;
-  const answers = ujianAnswers();
-  try {
-    const r = await POST(`/quizzes/${S.ujian.qid}/submit`, { answers });
-    store.del(S.ujian.key);
-    if (S.timer) { clearInterval(S.timer); S.timer = null; }
-    $('#main').innerHTML = `<div class="card" style="max-width:480px;margin:40px auto;text-align:center;padding:32px">
-      <div class="stat" style="justify-content:center;border:0;box-shadow:none"><div class="ic">${ico('check')}</div></div>
-      <h2>${auto ? 'Waktu habis, jawaban terkirim' : 'Jawaban terkirim'}</h2>
-      <p class="muted" style="margin:6px 0 16px">Skor Anda</p><div style="font-size:48px;font-weight:800;color:var(--brand)">${fmtN(r.skor)}</div>
-      <div style="margin-top:20px">${btn('Kembali ke daftar kuis', 'nav', { page: 'kuis' }, 'ghost')}</div></div>`;
-  } catch (e) {
-    S.ujian.sent = false;
-    toast(e.message + ' Jawaban tetap tersimpan di perangkat. Coba kirim lagi.', 'bad');
-  }
+function submitUjian(auto) {
+  return examSubmit(S.ujian, { url: `/quizzes/${S.ujian.qid}/submit`, answers: ujianAnswers(), auto, title: 'Jawaban terkirim', back: ['kuis', 'Kembali ke daftar kuis'] });
 }
 
 async function siswaNilai() {
