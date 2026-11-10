@@ -8,6 +8,8 @@ import (
 	"image"
 	"image/png"
 	"io"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -140,5 +142,54 @@ func TestDokumenAISuntingDanWord(t *testing.T) {
 	}
 	if code, _ := b.raw("GET", fmt.Sprintf("/api/ai/docs/%d/docx", doc), nil, true); code != 404 {
 		t.Errorf("guru lain bisa mengunduh dokumen orang: %d", code)
+	}
+}
+
+func TestJenjangKelasDibatasi(t *testing.T) {
+	cases := []struct {
+		jenjang, kelas string
+		ok             bool
+		fase           string
+	}{
+		{"SMP", "Kelas 7 (Fase D)", true, "Fase D"}, {"SD", "Kelas 4 (Fase B)", true, "Fase B"}, {"SMA", "Kelas 11 (Fase F)", true, "Fase F"},
+		{"SMK", "Kelas 10 (Fase E)", true, "Fase E"}, {"SD", "Kelas 7 (Fase D)", false, ""}, {"SMP", "Kelas 10 (Fase E)", false, ""},
+		{"SMA", "", false, ""}, {"TK", "Kelas 1", false, ""},
+	}
+	for _, c := range cases {
+		in := map[string]string{"jenjang": c.jenjang, "kelas": c.kelas}
+		kon, err := aiJenjang(in)
+		if (err == nil) != c.ok {
+			t.Errorf("%s %q: err=%v, harusnya ok=%v", c.jenjang, c.kelas, err, c.ok)
+			continue
+		}
+		if c.ok && (!strings.Contains(kon, c.fase) || !strings.Contains(kon, jenjangNama[c.jenjang])) {
+			t.Errorf("%s %q: konteks %q", c.jenjang, c.kelas, kon)
+		}
+	}
+	if kon, err := aiJenjang(map[string]string{"kelas": "7A"}); err != nil || kon != "" {
+		t.Errorf("kiriman lama tanpa jenjang harus tetap diterima tanpa konteks: %q %v", kon, err)
+	}
+}
+
+// jenjang & kelas benar-benar sampai ke AI; kelas di luar jenjang ditolak sebelum menghubungi AI
+func TestJenjangMasukPrompt(t *testing.T) {
+	e := newEnv(t)
+	var diterima string
+	fake := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, _ := io.ReadAll(r.Body)
+		diterima = string(b)
+		w.Header().Set("Content-Type", "text/event-stream")
+		io.WriteString(w, "data: {\"choices\":[{\"delta\":{\"content\":\"# LKPD\"}}]}\n\ndata: [DONE]\n\n")
+	}))
+	defer fake.Close()
+	kvSet(e.app.db, "cfg_ai", `{"base_url":"`+fake.URL+`","model":"palsu","kuota_harian":0,"suhu":0.7}`)
+	g := e.login("guru001", "guru123")
+	code, b := g.do("POST", "/api/ai/generate", map[string]any{"template": "lkpd", "inputs": map[string]string{"jenjang": "SD", "kelas": "Kelas 7 (Fase D)", "mapel": "Matematika", "materi": "Pecahan"}})
+	if code != 400 || diterima != "" {
+		t.Errorf("kelas di luar jenjang tidak ditolak: %d %s (AI dihubungi: %v)", code, b, diterima != "")
+	}
+	code, b = g.do("POST", "/api/ai/generate", map[string]any{"template": "lkpd", "inputs": map[string]string{"jenjang": "SD", "kelas": "Kelas 4 (Fase B)", "mapel": "Matematika", "materi": "Pecahan"}})
+	if code != 200 || !strings.Contains(diterima, "SD/MI, kelas 4, Fase B") || !strings.Contains(diterima, "jangan memakai materi") {
+		t.Errorf("konteks jenjang tidak sampai ke AI: %d %s", code, diterima[:min(300, len(diterima))])
 	}
 }

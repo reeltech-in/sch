@@ -8,6 +8,15 @@ Format versi: `MAYOR.MINOR.PERBAIKAN`
 Versi yang sedang berjalan terlihat di menu kiri aplikasi (bawah nama pengguna), di `GET /api/version`,
 di header respons `X-SCH-Version`, dan dengan perintah `sch-server -version`.
 
+## v1.22.1 — 2026-11-10 (Perangkat ajar per jenjang)
+- RPP/RPM/Modul Ajar, LKPD, soal, Prota/Promes, dan KKTP kini memilih **Jenjang** (SD/MI, SMP/MTs, SMA/MA, SMK/MAK)
+  terlebih dahulu: pilihan **kelas** hanya kelas jenjang itu (lengkap dengan fase, mis. "Kelas 7 · Fase D"), saran
+  **mata pelajaran** sesuai struktur Kurikulum Merdeka jenjang itu (mapel yang diampu guru tetap paling atas), dan lama
+  1 JP otomatis per jenjang.
+- Jenjang awal mengikuti warna tema sekolah (merah SD, biru SMP, abu SMA) atau pilihan terakhir guru.
+- Server menolak kelas di luar jenjang dan menambahkan instruksi tegas ke AI agar materi, istilah, contoh, dan
+  tingkat kesulitan sesuai jenjang & fase (tidak memakai materi jenjang lain).
+
 ## v1.22.0 — 2026-11-10 (RPP Kurikulum Merdeka terbaru: format, sunting, cetak resmi, Word)
 - **Asisten AI → RPP / RPM / Modul Ajar**, mengikuti Kurikulum Merdeka dengan Pembelajaran Mendalam
   (Permendikdasmen No. 13 Tahun 2025, 8 dimensi profil lulusan; CP Kepka BSKAP No. 046/H/KR/2025):

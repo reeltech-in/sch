@@ -557,6 +557,13 @@ func apiAIGenerate(c *Ctx) error {
 	if in.Template == "bebas" && clean["pertanyaan"] == "" {
 		return bad("Tulis pertanyaan terlebih dahulu.")
 	}
+	var konteksJenjang string
+	if aiTplJenjang[in.Template] {
+		var err error
+		if konteksJenjang, err = aiJenjang(clean); err != nil {
+			return err
+		}
+	}
 	cfg := getConfig(c.A.db, "ai")
 	base, _ := cfg["base_url"].(string)
 	model, _ := cfg["model"].(string)
@@ -569,7 +576,11 @@ func apiAIGenerate(c *Ctx) error {
 	}
 	defer release()
 	suhu, _ := cfg["suhu"].(float64)
-	body := map[string]any{"model": model, "stream": true, "temperature": suhu, "messages": c.aiMessages(in.Template, tpl, clean)}
+	msgs := c.aiMessages(in.Template, tpl, clean)
+	if konteksJenjang != "" { // jenjang & kelas di awal permintaan agar menjadi batas yang jelas bagi AI
+		msgs[1]["content"] = konteksJenjang + "\n\n" + msgs[1]["content"]
+	}
+	body := map[string]any{"model": model, "stream": true, "temperature": suhu, "messages": msgs}
 	ctx, cancel := context.WithTimeout(c.R.Context(), 10*time.Minute)
 	defer cancel()
 	res, err := aiRequest(ctx, "POST", base+"/chat/completions", kvGet(c.A.db, "ai_key"), body)

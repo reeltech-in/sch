@@ -111,6 +111,7 @@ func rppPrompt(in map[string]string, sekolah string) string {
 	}
 	data := fmt.Sprintf(`Data:
 - Satuan pendidikan: %s
+- Jenjang: %s
 - Mata pelajaran: %s
 - Fase / kelas: %s / %s
 - Materi pokok: %s
@@ -122,7 +123,7 @@ func rppPrompt(in map[string]string, sekolah string) string {
 - Catatan guru (karakteristik siswa, sarana): %s
 
 %s`,
-		sekolah, v(in, "mapel", "-"), fase, v(in, "kelas", "-"), v(in, "materi", "-"), pertemuan, jp, menit, total,
+		sekolah, v(in, "jenjang", "-"), v(in, "mapel", "-"), fase, v(in, "kelas", "-"), v(in, "materi", "-"), pertemuan, jp, menit, total,
 		v(in, "model", "pilih yang paling sesuai materi"), v(in, "profil", "pilih 1–3 yang paling relevan"), v(in, "tujuan", "rumuskan sendiri dari CP"),
 		cp, v(in, "catatan", "-"), cpAturan)
 
@@ -165,4 +166,36 @@ Struktur wajib (heading Markdown):
 6. Lampiran singkat: LKPD ringkas / bahan bacaan / glosarium`
 	}
 	return strings.Join([]string{struktur, data, waktu, umum}, "\n\n")
+}
+
+// Jenjang pendidikan untuk perangkat ajar: membatasi kelas & kedalaman materi agar keluaran AI tidak keluar jenjang.
+var jenjangNama = map[string]string{"SD": "SD/MI", "SMP": "SMP/MTs", "SMA": "SMA/MA", "SMK": "SMK/MAK"}
+var jenjangKelas = map[string][2]int{"SD": {1, 6}, "SMP": {7, 9}, "SMA": {10, 12}, "SMK": {10, 12}}
+
+// aiTplJenjang: templat yang memakai isian jenjang/kelas
+var aiTplJenjang = map[string]bool{"rpm": true, "lkpd": true, "soal": true, "prota": true, "kktp": true}
+
+// aiJenjang memeriksa jenjang & kelas yang dikirim dan menghasilkan baris konteks untuk prompt.
+// Kiriman lama (tanpa jenjang) tetap diterima tanpa konteks tambahan.
+func aiJenjang(in map[string]string) (string, error) {
+	j := strings.ToUpper(strings.TrimSpace(in["jenjang"]))
+	if j == "" {
+		return "", nil
+	}
+	nama, ok := jenjangNama[j]
+	if !ok {
+		return "", bad("Jenjang tidak dikenal. Pilih SD, SMP, SMA, atau SMK.")
+	}
+	in["jenjang"] = nama
+	kelas := 0
+	if m := angkaRe.FindString(in["kelas"]); m != "" {
+		kelas, _ = strconv.Atoi(m)
+	}
+	r := jenjangKelas[j]
+	if kelas < r[0] || kelas > r[1] {
+		return "", bad(fmt.Sprintf("Kelas tidak sesuai jenjang %s (kelas %d–%d).", nama, r[0], r[1]))
+	}
+	fase, _ := rppFase(fmt.Sprintf("%d", kelas))
+	return fmt.Sprintf(`Jenjang & kelas (WAJIB dipatuhi): %s, kelas %d, %s. Sesuaikan kedalaman materi, istilah, contoh, panjang teks, dan tingkat kesulitan dengan peserta didik %s kelas %d; jangan memakai materi, istilah, atau capaian dari jenjang atau fase lain.`,
+		nama, kelas, fase, nama, kelas), nil
 }
