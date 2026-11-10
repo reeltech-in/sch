@@ -130,24 +130,223 @@ func apiYearActivate(c *Ctx) error {
 }
 
 // apiPromote: kenaikan kelas dari tahun {id} (harus aktif) ke tahun tujuan, dalam satu transaksi.
-func apiPromote(c *Ctx) error {
-	var in struct {
-		Tujuan struct {
-			Nama    string  `json:"nama"`
-			Mulai   *string `json:"mulai"`
-			Selesai *string `json:"selesai"`
-		} `json:"tujuan"`
-		Kelas []struct {
-			KelasID int64  `json:"kelas_id"`
-			Aksi    string `json:"aksi"`    // naik | lulus
-			KeNama  string `json:"ke_nama"` // nama kelas tujuan bila naik
-		} `json:"kelas"`
-		Kecuali []struct {
-			SiswaID int64  `json:"siswa_id"`
-			Aksi    string `json:"aksi"` // naik | tinggal | lulus | keluar
-		} `json:"kecuali"`
-		SalinMapel bool `json:"salin_mapel"`
+// promoteReq: permintaan kenaikan kelas dari tahun ajaran aktif ke tahun tujuan.
+type promoteReq struct {
+	Tujuan struct {
+		Nama    string  `json:"nama"`
+		Mulai   *string `json:"mulai"`
+		Selesai *string `json:"selesai"`
+	} `json:"tujuan"`
+	Kelas   []promoteKelas `json:"kelas"`
+	Kecuali []struct {
+		SiswaID int64  `json:"siswa_id"`
+		Aksi    string `json:"aksi"` // naik | tinggal | lulus | keluar
+	} `json:"kecuali"`
+	SalinMapel bool `json:"salin_mapel"`
+}
+
+type promoteKelas struct {
+	KelasID int64  `json:"kelas_id"`
+	Aksi    string `json:"aksi"`    // naik | lulus
+	KeNama  string `json:"ke_nama"` // nama kelas tujuan bila naik
+}
+
+// pengecualian per siswa (mis. tinggal kelas di kelas yang naik)
+func (in *promoteReq) exceptions() (map[int64]string, error) {
+	exc := map[int64]string{}
+	for _, e := range in.Kecuali {
+		switch e.Aksi {
+		case "naik", "tinggal", "lulus", "keluar":
+			exc[e.SiswaID] = e.Aksi
+		default:
+			return nil, bad("Aksi siswa tidak valid.")
+		}
 	}
+	return exc, nil
+}
+
+// unlistedClasses: kelas tahun sumber yang masih berisi siswa aktif tetapi tidak diatur dalam permintaan.
+// Semua wajib diproses agar tidak ada siswa tertinggal di tahun lama.
+func unlistedClasses(c *Ctx, src int64, in *promoteReq) ([]string, error) {
+	listed := map[int64]bool{}
+	for _, k := range in.Kelas {
+		listed[k.KelasID] = true
+	}
+	rows, err := c.A.reader().Query(`SELECT DISTINCT k.id, k.nama FROM classes k JOIN users u ON u.kelas_id=k.id
+		WHERE k.tahun_id=? AND u.role='siswa' AND u.status='aktif'`, src)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var missing []string
+	for rows.Next() {
+		var id int64
+		var nm string
+		if err := rows.Scan(&id, &nm); err != nil {
+			return nil, err
+		}
+		if !listed[id] {
+			missing = append(missing, nm)
+		}
+	}
+	return missing, rows.Err()
+}
+
+// promoter menjalankan kenaikan kelas di dalam SATU transaksi (semua atau tidak sama sekali).
+type promoter struct {
+	tx              *sql.Tx
+	src, dst        int64
+	srcNama, tujuan string
+	kelasTujuan     map[string]int64 // nama kelas (huruf kecil) di tahun tujuan → id
+	sum             map[string]int
+}
+
+// targetYear: tahun tujuan yang sudah ada (belum punya kelas) atau dibuat baru.
+func (p *promoter) targetYear(in *promoteReq) error {
+	if p.tx.QueryRow(`SELECT id FROM academic_years WHERE nama=?`, p.tujuan).Scan(&p.dst) == nil {
+		return nil
+	}
+	tgl := func(s *string) any {
+		if v := str(s); v != nil {
+			if d, err := cleanDate(v.(string)); err == nil {
+				return d
+			}
+		}
+		return nil
+	}
+	res, err := p.tx.Exec(`INSERT INTO academic_years (nama, mulai, selesai, created_at) VALUES (?,?,?,?)`, p.tujuan, tgl(in.Tujuan.Mulai), tgl(in.Tujuan.Selesai), nowStr())
+	if err != nil {
+		return err
+	}
+	p.dst, _ = res.LastInsertId()
+	return nil
+}
+
+// kelas: ambil atau buat kelas bernama nama di tahun tujuan.
+func (p *promoter) kelas(nama, tingkat string) (int64, error) {
+	key := strings.ToLower(strings.TrimSpace(nama))
+	if id, ok := p.kelasTujuan[key]; ok {
+		return id, nil
+	}
+	var id int64
+	if p.tx.QueryRow(`SELECT id FROM classes WHERE tahun_id=? AND nama=? COLLATE NOCASE`, p.dst, strings.TrimSpace(nama)).Scan(&id) != nil {
+		res, err := p.tx.Exec(`INSERT INTO classes (tahun_id, nama, tingkat, tahun_ajaran, created_at) VALUES (?,?,?,?,?)`,
+			p.dst, strings.TrimSpace(nama), nullIfEmpty(tingkat), p.tujuan, nowStr())
+		if err != nil {
+			return 0, err
+		}
+		id, _ = res.LastInsertId()
+	}
+	p.kelasTujuan[key] = id
+	return id, nil
+}
+
+// processClass: satu kelas sumber naik ke kelas tujuan (opsional menyalin mapel) atau lulus, lalu tiap siswanya dipindah.
+func (p *promoter) processClass(k promoteKelas, exc map[int64]string, salinMapel bool) error {
+	var nama string
+	var tingkat sql.NullString
+	if p.tx.QueryRow(`SELECT nama, tingkat FROM classes WHERE id=? AND tahun_id=?`, k.KelasID, p.src).Scan(&nama, &tingkat) != nil {
+		return bad("Kelas sumber tidak valid.")
+	}
+	var naikID int64
+	switch k.Aksi {
+	case "naik":
+		if strings.TrimSpace(k.KeNama) == "" {
+			return bad("Isi nama kelas tujuan untuk " + nama + ".")
+		}
+		var err error
+		if naikID, err = p.kelas(k.KeNama, nextTingkat(tingkat.String)); err != nil {
+			return err
+		}
+		if salinMapel {
+			if _, err := p.tx.Exec(`INSERT INTO courses (kode, nama, deskripsi, kelas_id, guru_id, created_at)
+				SELECT kode, nama, deskripsi, ?, guru_id, ? FROM courses WHERE kelas_id=?
+				AND lower(kode) NOT IN (SELECT lower(kode) FROM courses WHERE kelas_id=?)`, naikID, nowStr(), k.KelasID, naikID); err != nil {
+				return err
+			}
+		}
+	case "lulus":
+	default:
+		return bad("Aksi kelas harus naik atau lulus.")
+	}
+	ids, err := p.students(k.KelasID)
+	if err != nil {
+		return err
+	}
+	for _, sid := range ids {
+		aksi := k.Aksi
+		if e, ok := exc[sid]; ok {
+			aksi = e
+		}
+		if err := p.moveStudent(sid, aksi, k.KelasID, naikID, nama, tingkat.String); err != nil {
+			return err
+		}
+		p.sum[aksi]++
+	}
+	return nil
+}
+
+func (p *promoter) students(kelasID int64) ([]int64, error) {
+	rows, err := p.tx.Query(`SELECT id FROM users WHERE role='siswa' AND status='aktif' AND kelas_id=?`, kelasID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var ids []int64
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
+}
+
+// moveStudent: catat riwayat kelas lama, lalu naik / tinggal (kelas bernama sama di tahun baru) / lulus / keluar.
+func (p *promoter) moveStudent(sid int64, aksi string, kelasID, naikID int64, nama, tingkat string) error {
+	if _, err := p.tx.Exec(`INSERT OR REPLACE INTO class_members (siswa_id, kelas_id, tahun_id, status) VALUES (?,?,?,?)`, sid, kelasID, p.src, aksi); err != nil {
+		return err
+	}
+	var err error
+	switch aksi {
+	case "naik":
+		if naikID == 0 {
+			return bad("Siswa di kelas " + nama + " ditandai naik, tetapi kelas ini diluluskan. Pilih tinggal/lulus/keluar.")
+		}
+		_, err = p.tx.Exec(`UPDATE users SET kelas_id=? WHERE id=?`, naikID, sid)
+	case "tinggal":
+		var tid int64
+		if tid, err = p.kelas(nama, tingkat); err == nil {
+			_, err = p.tx.Exec(`UPDATE users SET kelas_id=? WHERE id=?`, tid, sid)
+		}
+	case "lulus", "keluar":
+		q := `UPDATE users SET kelas_id=NULL, status='nonaktif' WHERE id=?`
+		args := []any{sid}
+		if aksi == "lulus" {
+			q = `UPDATE users SET kelas_id=NULL, status='nonaktif', angkatan_lulus=? WHERE id=?`
+			args = []any{p.srcNama, sid}
+		}
+		if _, err = p.tx.Exec(q, args...); err == nil {
+			_, err = p.tx.Exec(`DELETE FROM sessions WHERE user_id=?`, sid) // akun nonaktif keluar dari semua perangkat
+		}
+	}
+	return err
+}
+
+// finish: tahun sumber ditandai sudah dinaikkan, tahun tujuan menjadi aktif.
+func (p *promoter) finish() error {
+	for _, q := range [][]any{{`UPDATE academic_years SET dinaikkan=1 WHERE id=?`, p.src}, {`UPDATE academic_years SET aktif=(id=?)`, p.dst},
+		{`UPDATE settings SET tahun_ajaran=? WHERE id=1`, p.tujuan}} {
+		if _, err := p.tx.Exec(q[0].(string), q[1:]...); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func apiPromote(c *Ctx) error {
+	var in promoteReq
 	if err := c.Bind(&in); err != nil {
 		return err
 	}
@@ -167,36 +366,14 @@ func apiPromote(c *Ctx) error {
 	if !yearRe.MatchString(tujuan) || tujuan == srcNama {
 		return bad("Isi tahun ajaran tujuan, misalnya 2027/2028.")
 	}
-	exc := map[int64]string{}
-	for _, e := range in.Kecuali {
-		switch e.Aksi {
-		case "naik", "tinggal", "lulus", "keluar":
-			exc[e.SiswaID] = e.Aksi
-		default:
-			return bad("Aksi siswa tidak valid.")
-		}
-	}
-
-	// semua kelas yang masih berisi siswa wajib diproses, agar tidak ada siswa tertinggal di tahun lama
-	listed := map[int64]bool{}
-	for _, k := range in.Kelas {
-		listed[k.KelasID] = true
-	}
-	rows, err := c.A.db.Query(`SELECT DISTINCT k.id, k.nama FROM classes k JOIN users u ON u.kelas_id=k.id
-		WHERE k.tahun_id=? AND u.role='siswa' AND u.status='aktif'`, src)
+	exc, err := in.exceptions()
 	if err != nil {
 		return err
 	}
-	var missing []string
-	for rows.Next() {
-		var id int64
-		var nm string
-		rows.Scan(&id, &nm)
-		if !listed[id] {
-			missing = append(missing, nm)
-		}
+	missing, err := unlistedClasses(c, src, &in)
+	if err != nil {
+		return err
 	}
-	rows.Close()
 	if len(missing) > 0 {
 		return bad("Kelas berikut masih berisi siswa dan belum diatur: " + strings.Join(missing, ", "))
 	}
@@ -206,134 +383,22 @@ func apiPromote(c *Ctx) error {
 		return err
 	}
 	defer tx.Rollback()
-	// tahun tujuan: pakai yang sudah ada (belum punya kelas) atau buat baru
-	var dst int64
-	if tx.QueryRow(`SELECT id FROM academic_years WHERE nama=?`, tujuan).Scan(&dst) != nil {
-		var mulai, selesai any
-		if v := str(in.Tujuan.Mulai); v != nil {
-			if d, err := cleanDate(v.(string)); err == nil {
-				mulai = d
-			}
-		}
-		if v := str(in.Tujuan.Selesai); v != nil {
-			if d, err := cleanDate(v.(string)); err == nil {
-				selesai = d
-			}
-		}
-		res, err := tx.Exec(`INSERT INTO academic_years (nama, mulai, selesai, created_at) VALUES (?,?,?,?)`, tujuan, mulai, selesai, nowStr())
-		if err != nil {
-			return err
-		}
-		dst, _ = res.LastInsertId()
+	p := &promoter{tx: tx, src: src, srcNama: srcNama, tujuan: tujuan, kelasTujuan: map[string]int64{}, sum: map[string]int{}}
+	if err := p.targetYear(&in); err != nil {
+		return err
 	}
-	// ambil / buat kelas di tahun tujuan
-	kelasTujuan := map[string]int64{}
-	getKelas := func(nama, tingkat string) (int64, error) {
-		key := strings.ToLower(strings.TrimSpace(nama))
-		if id, ok := kelasTujuan[key]; ok {
-			return id, nil
-		}
-		var id int64
-		if tx.QueryRow(`SELECT id FROM classes WHERE tahun_id=? AND nama=? COLLATE NOCASE`, dst, strings.TrimSpace(nama)).Scan(&id) != nil {
-			res, err := tx.Exec(`INSERT INTO classes (tahun_id, nama, tingkat, tahun_ajaran, created_at) VALUES (?,?,?,?,?)`, dst, strings.TrimSpace(nama), nullIfEmpty(tingkat), tujuan, nowStr())
-			if err != nil {
-				return 0, err
-			}
-			id, _ = res.LastInsertId()
-		}
-		kelasTujuan[key] = id
-		return id, nil
-	}
-	sum := map[string]int{}
 	for _, k := range in.Kelas {
-		var nama string
-		var tingkat sql.NullString
-		if tx.QueryRow(`SELECT nama, tingkat FROM classes WHERE id=? AND tahun_id=?`, k.KelasID, src).Scan(&nama, &tingkat) != nil {
-			return bad("Kelas sumber tidak valid.")
-		}
-		var naikID int64
-		if k.Aksi == "naik" {
-			if strings.TrimSpace(k.KeNama) == "" {
-				return bad("Isi nama kelas tujuan untuk " + nama + ".")
-			}
-			if naikID, err = getKelas(k.KeNama, nextTingkat(tingkat.String)); err != nil {
-				return err
-			}
-			if in.SalinMapel {
-				if _, err := tx.Exec(`INSERT INTO courses (kode, nama, deskripsi, kelas_id, guru_id, created_at)
-					SELECT kode, nama, deskripsi, ?, guru_id, ? FROM courses WHERE kelas_id=?
-					AND lower(kode) NOT IN (SELECT lower(kode) FROM courses WHERE kelas_id=?)`, naikID, nowStr(), k.KelasID, naikID); err != nil {
-					return err
-				}
-			}
-		} else if k.Aksi != "lulus" {
-			return bad("Aksi kelas harus naik atau lulus.")
-		}
-		rows, err := tx.Query(`SELECT id FROM users WHERE role='siswa' AND status='aktif' AND kelas_id=?`, k.KelasID)
-		if err != nil {
+		if err := p.processClass(k, exc, in.SalinMapel); err != nil {
 			return err
-		}
-		var ids []int64
-		for rows.Next() {
-			var id int64
-			if err := rows.Scan(&id); err != nil {
-				rows.Close()
-				return err
-			}
-			ids = append(ids, id)
-		}
-		if err := rows.Err(); err != nil {
-			rows.Close()
-			return err
-		}
-		rows.Close()
-		for _, sid := range ids {
-			aksi := k.Aksi
-			if e, ok := exc[sid]; ok {
-				aksi = e
-			}
-			if _, err := tx.Exec(`INSERT OR REPLACE INTO class_members (siswa_id, kelas_id, tahun_id, status) VALUES (?,?,?,?)`, sid, k.KelasID, src, aksi); err != nil {
-				return err
-			}
-			switch aksi {
-			case "naik":
-				if naikID == 0 {
-					return bad("Siswa di kelas " + nama + " ditandai naik, tetapi kelas ini diluluskan. Pilih tinggal/lulus/keluar.")
-				}
-				_, err = tx.Exec(`UPDATE users SET kelas_id=? WHERE id=?`, naikID, sid)
-			case "tinggal":
-				var tid int64
-				if tid, err = getKelas(nama, tingkat.String); err == nil {
-					_, err = tx.Exec(`UPDATE users SET kelas_id=? WHERE id=?`, tid, sid)
-				}
-			case "lulus":
-				_, err = tx.Exec(`UPDATE users SET kelas_id=NULL, status='nonaktif', angkatan_lulus=? WHERE id=?`, srcNama, sid)
-				if err == nil {
-					_, err = tx.Exec(`DELETE FROM sessions WHERE user_id=?`, sid)
-				}
-			case "keluar":
-				_, err = tx.Exec(`UPDATE users SET kelas_id=NULL, status='nonaktif' WHERE id=?`, sid)
-				if err == nil {
-					_, err = tx.Exec(`DELETE FROM sessions WHERE user_id=?`, sid)
-				}
-			}
-			if err != nil {
-				return err
-			}
-			sum[aksi]++
 		}
 	}
-	// kenaikan kelas: semua atau tidak sama sekali (tahun aktif & data siswa harus konsisten)
-	for _, q := range [][]any{{`UPDATE academic_years SET dinaikkan=1 WHERE id=?`, src}, {`UPDATE academic_years SET aktif=(id=?)`, dst},
-		{`UPDATE settings SET tahun_ajaran=? WHERE id=1`, tujuan}} {
-		if _, err := tx.Exec(q[0].(string), q[1:]...); err != nil {
-			return err
-		}
+	if err := p.finish(); err != nil {
+		return err
 	}
 	if err := tx.Commit(); err != nil {
 		return err
 	}
-	return c.JSON(map[string]any{"tahun_baru": tujuan, "naik": sum["naik"], "tinggal": sum["tinggal"], "lulus": sum["lulus"], "keluar": sum["keluar"], "kelas_baru": len(kelasTujuan)})
+	return c.JSON(map[string]any{"tahun_baru": tujuan, "naik": p.sum["naik"], "tinggal": p.sum["tinggal"], "lulus": p.sum["lulus"], "keluar": p.sum["keluar"], "kelas_baru": len(p.kelasTujuan)})
 }
 
 func nullIfEmpty(s string) any {

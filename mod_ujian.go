@@ -428,7 +428,8 @@ type examRow struct {
 func (c *Ctx) loadExam(id int64) (*examRow, error) {
 	e := &examRow{}
 	var as, ao, tn int
-	err := c.A.db.QueryRow(`SELECT judul, kelas_ids, mulai, selesai, durasi_menit, jumlah_opsi, acak_soal, acak_opsi, tampil_nilai, token FROM exams WHERE id=?`, id).
+	// baca saja: lewat kumpulan pembaca, agar 400 siswa yang mulai bersamaan tidak antre di koneksi tulis
+	err := c.A.reader().QueryRow(`SELECT judul, kelas_ids, mulai, selesai, durasi_menit, jumlah_opsi, acak_soal, acak_opsi, tampil_nilai, token FROM exams WHERE id=?`, id).
 		Scan(&e.judul, &e.kelasIDs, &e.mulai, &e.selesai, &e.durasi, &e.jopsi, &as, &ao, &tn, &e.token)
 	if err != nil {
 		return nil, notFound()
@@ -438,6 +439,119 @@ func (c *Ctx) loadExam(id int64) (*examRow, error) {
 		return nil, notFound()
 	}
 	return e, nil
+}
+
+// cbtAttempt: data attempt milik siswa (urutan soal & acakan pilihan miliknya).
+type cbtAttempt struct{ started, urutan, omap, jawaban string }
+
+// newAttempt membuat attempt baru: cek jadwal & token, acak urutan soal/pilihan, simpan.
+// Bila siswa mengklik ganda, attempt yang tersimpan lebih dulu yang dipakai.
+func newAttempt(c *Ctx, e *examRow, id int64, token string) (*cbtAttempt, error) {
+	now := time.Now().UTC()
+	mulai, _ := time.Parse(time.RFC3339, e.mulai)
+	selesai, _ := time.Parse(time.RFC3339, e.selesai)
+	if now.Before(mulai) {
+		return nil, bad("Ujian belum dimulai. Dibuka " + mulai.Local().Format("02/01/2006 15:04") + ".")
+	}
+	if now.After(selesai) {
+		return nil, bad("Waktu ujian sudah ditutup.")
+	}
+	if e.token.Valid && e.token.String != "" && !strings.EqualFold(strings.TrimSpace(token), e.token.String) {
+		key := fmt.Sprintf("tok:%d:%d", id, c.U.ID)
+		if c.A.limit.blockedN(key, 10) {
+			return nil, bad("Terlalu banyak token salah. Minta pengawas memeriksa, coba lagi 10 menit lagi.")
+		}
+		c.A.limit.fail(key)
+		return nil, apiErr{400, "TOKEN"}
+	}
+	qids, err := examQuestionIDs(c, id)
+	if err != nil {
+		return nil, err
+	}
+	if len(qids) == 0 {
+		return nil, bad("Ujian ini belum memiliki soal.")
+	}
+	if e.acakSoal {
+		shuffleInts(qids)
+	}
+	om := map[string]string{}
+	letters := "abcde"[:e.jopsi]
+	for _, q := range qids {
+		om[strconv.FormatInt(q, 10)] = letters
+		if e.acakOpsi {
+			om[strconv.FormatInt(q, 10)] = shuffleStr(letters)
+		}
+	}
+	ub, _ := json.Marshal(qids)
+	ob, _ := json.Marshal(om)
+	if _, err := c.A.db.Exec(`INSERT INTO exam_attempts (exam_id, siswa_id, started_at, urutan, opsi_map) VALUES (?,?,?,?,?)
+		ON CONFLICT (exam_id, siswa_id) DO NOTHING`, id, c.U.ID, nowStr(), string(ub), string(ob)); err != nil {
+		return nil, err
+	}
+	at := &cbtAttempt{}
+	if err := c.A.db.QueryRow(`SELECT started_at, urutan, opsi_map, jawaban FROM exam_attempts WHERE exam_id=? AND siswa_id=?`, id, c.U.ID).
+		Scan(&at.started, &at.urutan, &at.omap, &at.jawaban); err != nil {
+		return nil, err
+	}
+	return at, nil
+}
+
+func examQuestionIDs(c *Ctx, id int64) ([]int64, error) {
+	rows, err := c.A.reader().Query(`SELECT id FROM exam_questions WHERE exam_id=? ORDER BY id`, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var qids []int64
+	for rows.Next() {
+		var q int64
+		if err := rows.Scan(&q); err != nil {
+			return nil, err
+		}
+		qids = append(qids, q)
+	}
+	return qids, rows.Err()
+}
+
+// attemptQuestions menyusun soal sesuai urutan & acakan milik siswa, TANPA kunci jawaban, beserta
+// jawaban tersimpan yang diterjemahkan ke huruf tampilan (A–E setelah diacak).
+func attemptQuestions(c *Ctx, id int64, at *cbtAttempt) ([]map[string]any, map[string]string, error) {
+	var qids []int64
+	json.Unmarshal([]byte(at.urutan), &qids)
+	om := map[string]string{}
+	json.Unmarshal([]byte(at.omap), &om)
+	saved := map[string]string{}
+	json.Unmarshal([]byte(at.jawaban), &saved)
+	rows, err := c.A.reader().Query(`SELECT id, pertanyaan, gambar, opsi_a, opsi_b, opsi_c, opsi_d, opsi_e FROM exam_questions WHERE exam_id=?`, id)
+	if err != nil {
+		return nil, nil, err
+	}
+	all, err := rowsToMaps(rows)
+	if err != nil {
+		return nil, nil, err
+	}
+	byID := map[int64]map[string]any{}
+	for _, q := range all {
+		byID[q["id"].(int64)] = q
+	}
+	qs := []map[string]any{}
+	answers := map[string]string{}
+	for _, qid := range qids {
+		q, ok := byID[qid]
+		if !ok {
+			continue // soal dihapus guru setelah siswa mulai
+		}
+		k := strconv.FormatInt(qid, 10)
+		opsi := []any{}
+		for i, orig := range om[k] {
+			opsi = append(opsi, q["opsi_"+string(orig)])
+			if saved[k] == string(orig) {
+				answers[k] = string(rune('a' + i))
+			}
+		}
+		qs = append(qs, map[string]any{"id": qid, "pertanyaan": q["pertanyaan"], "gambar": q["gambar"], "opsi": opsi})
+	}
+	return qs, answers, nil
 }
 
 func apiCBTStart(c *Ctx) error {
@@ -450,110 +564,32 @@ func apiCBTStart(c *Ctx) error {
 	if err != nil {
 		return err
 	}
-	now := time.Now().UTC()
-	mulai, _ := time.Parse(time.RFC3339, e.mulai)
-	selesai, _ := time.Parse(time.RFC3339, e.selesai)
-	var started, urutan, omap string
+	at := &cbtAttempt{}
 	var done int
-	err = c.A.db.QueryRow(`SELECT started_at, selesai, urutan, opsi_map FROM exam_attempts WHERE exam_id=? AND siswa_id=?`, id, c.U.ID).Scan(&started, &done, &urutan, &omap)
-	if err == nil && done == 1 {
+	err = c.A.reader().QueryRow(`SELECT started_at, selesai, urutan, opsi_map, jawaban FROM exam_attempts WHERE exam_id=? AND siswa_id=?`, id, c.U.ID).
+		Scan(&at.started, &done, &at.urutan, &at.omap, &at.jawaban)
+	switch {
+	case err == nil && done == 1:
 		return bad("Ujian ini sudah Anda kerjakan.")
-	}
-	if err == sql.ErrNoRows {
-		if now.Before(mulai) {
-			return bad("Ujian belum dimulai. Dibuka " + mulai.Local().Format("02/01/2006 15:04") + ".")
-		}
-		if now.After(selesai) {
-			return bad("Waktu ujian sudah ditutup.")
-		}
-		if e.token.Valid && e.token.String != "" && !strings.EqualFold(strings.TrimSpace(in.Token), e.token.String) {
-			key := fmt.Sprintf("tok:%d:%d", id, c.U.ID)
-			if c.A.limit.blockedN(key, 10) {
-				return bad("Terlalu banyak token salah. Minta pengawas memeriksa, coba lagi 10 menit lagi.")
-			}
-			c.A.limit.fail(key)
-			return apiErr{400, "TOKEN"}
-		}
-		var qids []int64
-		rows, err := c.A.db.Query(`SELECT id FROM exam_questions WHERE exam_id=? ORDER BY id`, id)
-		if err != nil {
+	case err == sql.ErrNoRows:
+		if at, err = newAttempt(c, e, id, in.Token); err != nil {
 			return err
 		}
-		for rows.Next() {
-			var q int64
-			rows.Scan(&q)
-			qids = append(qids, q)
-		}
-		rows.Close()
-		if len(qids) == 0 {
-			return bad("Ujian ini belum memiliki soal.")
-		}
-		if e.acakSoal {
-			shuffleInts(qids)
-		}
-		om := map[string]string{}
-		letters := "abcde"[:e.jopsi]
-		for _, q := range qids {
-			if e.acakOpsi {
-				om[strconv.FormatInt(q, 10)] = shuffleStr(letters)
-			} else {
-				om[strconv.FormatInt(q, 10)] = letters
-			}
-		}
-		ub, _ := json.Marshal(qids)
-		ob, _ := json.Marshal(om)
-		started, urutan, omap = nowStr(), string(ub), string(ob)
-		if _, err := c.A.db.Exec(`INSERT INTO exam_attempts (exam_id, siswa_id, started_at, urutan, opsi_map) VALUES (?,?,?,?,?)
-			ON CONFLICT (exam_id, siswa_id) DO NOTHING`, id, c.U.ID, started, urutan, omap); err != nil {
-			return err
-		}
-		// klik ganda: pakai attempt yang sudah tersimpan lebih dulu
-		c.A.db.QueryRow(`SELECT started_at, urutan, opsi_map FROM exam_attempts WHERE exam_id=? AND siswa_id=?`, id, c.U.ID).Scan(&started, &urutan, &omap)
-	} else if err != nil {
+	case err != nil:
 		return err
 	}
-	// susun soal sesuai urutan & acakan milik siswa ini, TANPA kunci jawaban
-	var qids []int64
-	json.Unmarshal([]byte(urutan), &qids)
-	om := map[string]string{}
-	json.Unmarshal([]byte(omap), &om)
-	all, err := c.list(`SELECT id, pertanyaan, gambar, opsi_a, opsi_b, opsi_c, opsi_d, opsi_e FROM exam_questions WHERE exam_id=?`, id)
+	qs, answers, err := attemptQuestions(c, id, at)
 	if err != nil {
 		return err
 	}
-	byID := map[int64]map[string]any{}
-	for _, q := range all {
-		byID[q["id"].(int64)] = q
-	}
-	var saved map[string]string
-	var jaw string
-	c.A.db.QueryRow(`SELECT jawaban FROM exam_attempts WHERE exam_id=? AND siswa_id=?`, id, c.U.ID).Scan(&jaw)
-	json.Unmarshal([]byte(jaw), &saved)
-	qs := []map[string]any{}
-	answers := map[string]string{}
-	for _, qid := range qids {
-		q, ok := byID[qid]
-		if !ok {
-			continue
-		}
-		k := strconv.FormatInt(qid, 10)
-		order := om[k]
-		opsi := []any{}
-		for i, orig := range order {
-			opsi = append(opsi, q["opsi_"+string(orig)])
-			if saved[k] == string(orig) {
-				answers[k] = string(rune('a' + i))
-			}
-		}
-		qs = append(qs, map[string]any{"id": qid, "pertanyaan": q["pertanyaan"], "gambar": q["gambar"], "opsi": opsi})
-	}
-	st, _ := time.Parse(time.RFC3339, started)
+	selesai, _ := time.Parse(time.RFC3339, e.selesai)
+	st, _ := time.Parse(time.RFC3339, at.started)
 	end := st.Add(time.Duration(e.durasi) * time.Minute)
 	if end.After(selesai) {
 		end = selesai
 	}
 	return c.JSON(map[string]any{
-		"started_at": started,
+		"started_at": at.started,
 		"exam":       map[string]any{"id": id, "judul": e.judul, "durasi_menit": e.durasi},
 		"sisa_detik": math.Max(0, math.Floor(time.Until(end).Seconds())),
 		"questions":  qs,

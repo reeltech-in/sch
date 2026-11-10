@@ -8,6 +8,31 @@ Format versi: `MAYOR.MINOR.PERBAIKAN`
 Versi yang sedang berjalan terlihat di menu kiri aplikasi (bawah nama pengguna), di `GET /api/version`,
 di header respons `X-SCH-Version`, dan dengan perintah `sch-server -version`.
 
+## v1.21.0 — 2026-11-10 (Perbaikan bertahap: konsistensi, kerapian kode, aksesibilitas)
+**Perbaikan untuk pengguna**
+- **Input LJK** kini juga menampilkan siswa yang sudah naik kelas/lulus, sama seperti daftar hasil CBT
+  (nilai ujian tahun lalu tetap bisa diinput setelah kenaikan kelas).
+- **Pengaturan absensi**: jam masuk/pulang divalidasi & dirapikan ("7:15" → "07:15"; sebelumnya format salah membuat
+  tidak ada siswa tercatat terlambat), jam pulang harus setelah jam masuk, radius & koordinat diperiksa.
+- **Dasbor guru** menghitung materi/tugas/kuis/tugas belum dinilai untuk tahun ajaran aktif saja (lebih cepat, tidak
+  tercampur tahun lalu).
+- **Pindah menu lebih ringan**: permintaan halaman lama dibatalkan saat pindah menu, halaman publik (kelulusan/PPDB)
+  tidak saling menimpa di WiFi lambat, data rujukan yang berangkat sebelum ada perubahan tidak disimpan basi.
+- **Jendela dialog aksesibel**: halaman di belakang tidak bisa difokus selama jendela terbuka; fokus kembali ke tombol
+  pembuka saat ditutup.
+- Peringatan "ujian sedang berjalan" saat Keluar hanya muncul bila jawaban belum terkirim.
+- Daftar CBT guru/admin dibatasi 500 terbaru; e-voting & Asisten AI memuat datanya bersamaan.
+
+**Kerapian kode (tanpa perubahan tampilan)**
+- Mesin ujian kuis mapel & CBT memakai hitung mundur, kirim otomatis (dengan coba ulang), dan kartu hasil yang sama.
+- Satu inti permintaan ke server untuk semua fitur (versi aplikasi, koreksi jam, pesan jaringan, sesi habis).
+- Satu cara membuka/menutup kamera & mengambil foto (scan QR, selfie, buku tamu, LJK), satu penangan scanner USB,
+  satu formulir ganti password.
+- 57 deklarasi CSS yang selalu ditimpa dihapus — tampilan diverifikasi identik di desktop & HP.
+- Fungsi server yang terlalu panjang dipecah: kenaikan kelas, mulai ujian CBT (kini membaca lewat koneksi baca,
+  tidak antre di koneksi tulis saat ratusan siswa mulai bersamaan), dan pembuatan dokumen Asisten AI.
+- Tes baru: semua jalur kenaikan kelas, melanjutkan ujian CBT, Asisten AI dengan penyedia palsu (streaming, galat, kuota).
+
 ## v1.20.0 — 2026-11-10 (Hasil audit: keamanan, ujian, query, tampilan)
 **Keamanan**
 - Mode proxy (`-proxy` tanpa `-proxy-ip`) kini hanya mempercayai proxy di komputer yang sama (127.0.0.1). Sebelumnya

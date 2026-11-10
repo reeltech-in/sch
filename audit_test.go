@@ -7,6 +7,9 @@ import (
 	"fmt"
 	"image"
 	"image/jpeg"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -155,5 +158,133 @@ func TestKirimUlangSetelahDinilaiOtomatis(t *testing.T) {
 	}
 	if out.Skor == nil || *out.Skor != 100 {
 		t.Errorf("kirim ulang harus menampilkan nilai tersimpan 100, dapat %v", out.Skor)
+	}
+}
+
+// Kenaikan kelas lengkap: naik + tinggal + keluar + kelas lulus + salin mapel; tidak bisa dijalankan dua kali.
+func TestKenaikanKelasSemuaJalur(t *testing.T) {
+	e := newEnv(t)
+	a := e.login("admin", testAdminPW)
+	ty := e.id(`SELECT id FROM academic_years WHERE aktif=1`)
+	k7a := e.id(`SELECT id FROM classes WHERE nama='7A'`)
+	k7b := e.id(`SELECT id FROM classes WHERE nama='7B'`)
+	s2 := e.id(`SELECT id FROM users WHERE username='siswa002'`)
+	s3 := e.id(`SELECT id FROM users WHERE username='siswa003'`)
+	mapel7a := e.id(`SELECT COUNT(*) FROM courses WHERE kelas_id=?`, k7a)
+	body := map[string]any{
+		"tujuan":      map[string]any{"nama": "2027/2028"},
+		"kelas":       []map[string]any{{"kelas_id": k7a, "aksi": "naik", "ke_nama": "8A"}, {"kelas_id": k7b, "aksi": "lulus"}},
+		"kecuali":     []map[string]any{{"siswa_id": s2, "aksi": "tinggal"}, {"siswa_id": s3, "aksi": "keluar"}},
+		"salin_mapel": true,
+	}
+	code, b := a.do("POST", fmt.Sprintf("/api/tahun/%d/naik", ty), body)
+	expect(t, "kenaikan kelas", code, 200, b)
+	var r map[string]float64
+	json.Unmarshal(b, &r)
+	if r["naik"] != 3 || r["tinggal"] != 1 || r["keluar"] != 1 || r["lulus"] != 1 {
+		t.Errorf("ringkasan salah: %v (harusnya naik 3, tinggal 1, keluar 1, lulus 1)", r)
+	}
+	kelasDari := func(user string) string {
+		var k string
+		e.app.db.QueryRow(`SELECT COALESCE(c.nama,'') FROM users u LEFT JOIN classes c ON c.id=u.kelas_id WHERE u.username=?`, user).Scan(&k)
+		return k
+	}
+	dst := e.id(`SELECT id FROM academic_years WHERE nama='2027/2028'`)
+	if k := kelasDari("siswa002"); k != "7A" || e.id(`SELECT tahun_id FROM classes c JOIN users u ON u.kelas_id=c.id WHERE u.username='siswa002'`) != dst {
+		t.Errorf("siswa tinggal kelas: kelas %q, harusnya 7A tahun baru", k)
+	}
+	var st, lulusan string
+	e.app.db.QueryRow(`SELECT status FROM users WHERE username='siswa003'`).Scan(&st)
+	if st != "nonaktif" || kelasDari("siswa003") != "" {
+		t.Errorf("siswa keluar masih aktif/berkelas: %s", st)
+	}
+	e.app.db.QueryRow(`SELECT status || '|' || COALESCE(angkatan_lulus,'') FROM users WHERE username='siswa006'`).Scan(&lulusan)
+	if !strings.HasPrefix(lulusan, "nonaktif|") || strings.HasSuffix(lulusan, "|") {
+		t.Errorf("siswa kelas lulus: %q, harusnya nonaktif dengan angkatan lulus", lulusan)
+	}
+	if n := e.id(`SELECT COUNT(*) FROM courses c JOIN classes k ON k.id=c.kelas_id WHERE k.nama='8A'`); n != mapel7a {
+		t.Errorf("mapel tersalin ke 8A = %d, harusnya %d", n, mapel7a)
+	}
+	if n := e.id(`SELECT COUNT(*) FROM sessions WHERE user_id=?`, s3); n != 0 {
+		t.Error("sesi siswa yang keluar tidak dihapus")
+	}
+	// tahun baru sekarang aktif; tahun lama tidak bisa dinaikkan lagi
+	code, _ = a.do("POST", fmt.Sprintf("/api/tahun/%d/naik", ty), body)
+	if code < 400 {
+		t.Error("kenaikan kelas tahun yang sama bisa dijalankan dua kali")
+	}
+}
+
+// Membuka ujian lagi (HP mati/pindah perangkat): soal & acakan sama, jawaban tersimpan kembali tampil.
+func TestCBTLanjutkanMenampilkanJawaban(t *testing.T) {
+	e := newEnv(t)
+	s := e.login("siswa001", "siswa123")
+	exam := e.id(`SELECT id FROM exams LIMIT 1`)
+	type startRes struct {
+		StartedAt string `json:"started_at"`
+		Questions []struct {
+			ID int64 `json:"id"`
+		} `json:"questions"`
+		Answers map[string]string `json:"answers"`
+	}
+	var a, b startRes
+	if code := s.json("POST", fmt.Sprintf("/api/cbt/%d/start", exam), map[string]string{"token": "MTK26"}, &a); code != 200 || len(a.Questions) == 0 {
+		t.Fatalf("mulai: %d", code)
+	}
+	q1 := fmt.Sprint(a.Questions[0].ID)
+	if code, body := s.do("POST", fmt.Sprintf("/api/cbt/%d/save", exam), map[string]any{"answers": map[string]string{q1: "c"}}); code != 200 {
+		t.Fatalf("simpan: %d %s", code, body)
+	}
+	if code := s.json("POST", fmt.Sprintf("/api/cbt/%d/start", exam), map[string]string{}, &b); code != 200 {
+		t.Fatalf("lanjutkan: %d", code)
+	}
+	if b.StartedAt != a.StartedAt || len(b.Questions) != len(a.Questions) || b.Questions[0].ID != a.Questions[0].ID {
+		t.Error("melanjutkan ujian mengubah waktu mulai atau urutan soal")
+	}
+	if b.Answers[q1] != "c" {
+		t.Errorf("jawaban tersimpan tidak tampil lagi: %q, harusnya c", b.Answers[q1])
+	}
+}
+
+// Asisten AI dengan penyedia palsu: jawaban streaming tersimpan sebagai dokumen, galat penyedia tampil sebagai
+// pesan, dan kuota harian berlaku (dihitung dari pemakaian, bukan jumlah dokumen).
+func TestAsistenAIStreamingDanKuota(t *testing.T) {
+	e := newEnv(t)
+	mode := "ok"
+	fake := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		if mode == "galat" {
+			io.WriteString(w, "data: {\"error\":{\"message\":\"model tidak tersedia\"}}\n\n")
+			return
+		}
+		for _, p := range []string{"# LKPD", " Pecahan", "\\n1. Soal satu"} {
+			fmt.Fprintf(w, "data: {\"choices\":[{\"delta\":{\"content\":\"%s\"}}]}\n\n", p)
+		}
+		io.WriteString(w, "data: [DONE]\n\n")
+	}))
+	defer fake.Close()
+	kvSet(e.app.db, "cfg_ai", `{"base_url":"`+fake.URL+`","model":"palsu","kuota_harian":1,"suhu":0.7}`)
+	g := e.login("guru001", "guru123")
+	gen := func() (int, string) {
+		code, b := g.do("POST", "/api/ai/generate", map[string]any{"template": "bebas", "inputs": map[string]string{"pertanyaan": "buat LKPD pecahan"}})
+		return code, string(b)
+	}
+	code, out := gen()
+	if code != 200 || !strings.Contains(out, "# LKPD Pecahan") || !strings.Contains(out, "\x00DOC:") {
+		t.Fatalf("jawaban streaming: %d %q", code, out)
+	}
+	if n := e.id(`SELECT COUNT(*) FROM ai_documents`); n != 1 {
+		t.Errorf("dokumen tersimpan = %d, harusnya 1", n)
+	}
+	// kuota 1 sudah terpakai; menghapus dokumen tidak mengembalikan kuota
+	e.app.db.Exec(`DELETE FROM ai_documents`)
+	if code, out = gen(); code != 400 || !strings.Contains(out, "Kuota") {
+		t.Errorf("kuota harian tidak berlaku setelah dokumen dihapus: %d %s", code, out)
+	}
+	// galat dari penyedia tampil sebagai pesan yang bisa dibaca
+	kvSet(e.app.db, "cfg_ai", `{"base_url":"`+fake.URL+`","model":"palsu","kuota_harian":0,"suhu":0.7}`)
+	mode = "galat"
+	if code, out = gen(); code != 200 || !strings.Contains(out, "[Gagal: model tidak tersedia]") {
+		t.Errorf("galat penyedia: %d %q", code, out)
 	}
 }

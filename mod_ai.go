@@ -444,6 +444,126 @@ Isi wajib (heading Markdown):
 // ---------------------------------------------------------------------
 // Generate (streaming)
 // ---------------------------------------------------------------------
+// aiCleanInputs: isian formulir → teks bersih (kunci ≤30 huruf, nilai ≤3000 huruf).
+func aiCleanInputs(inputs map[string]any) map[string]string {
+	clean := map[string]string{}
+	for k, raw := range inputs {
+		if len(k) > 30 || raw == nil {
+			continue
+		}
+		r := []rune(strings.TrimSpace(fmt.Sprint(raw)))
+		if len(r) > 3000 {
+			r = r[:3000]
+		}
+		clean[k] = string(r)
+	}
+	return clean
+}
+
+// aiReserve memesan satu "slot" pembuatan dokumen: maksimal 2 berjalan bersamaan per pengguna dan kuota harian
+// (yang sedang berjalan ikut dihitung). release() wajib dipanggil setelah selesai.
+func (c *Ctx) aiReserve(cfg map[string]any) (release func(), err error) {
+	aiInflight.Lock()
+	defer aiInflight.Unlock()
+	running := aiInflight.m[c.U.ID]
+	if running >= 2 {
+		return nil, bad("Tunggu dokumen sebelumnya selesai dibuat.")
+	}
+	if kuota, _ := cfg["kuota_harian"].(float64); c.U.Role != "admin" && kuota > 0 && float64(c.aiUsedToday()+running) >= kuota {
+		return nil, bad(fmt.Sprintf("Kuota harian Anda (%d dokumen) sudah habis. Coba lagi besok.", int(kuota)))
+	}
+	aiInflight.m[c.U.ID]++
+	return func() {
+		aiInflight.Lock()
+		if aiInflight.m[c.U.ID]--; aiInflight.m[c.U.ID] <= 0 {
+			delete(aiInflight.m, c.U.ID)
+		}
+		aiInflight.Unlock()
+	}, nil
+}
+
+// aiMessages: pesan sistem (identitas sekolah, gaya bahasa) + permintaan dari templat.
+func (c *Ctx) aiMessages(template string, tpl aiTemplate, clean map[string]string) []map[string]string {
+	var sekolah, alamat, kepsek, nip string
+	c.A.reader().QueryRow(`SELECT nama_sekolah, COALESCE(alamat,''), COALESCE(kepala_sekolah,''), COALESCE(nip_kepala,'') FROM settings WHERE id=1`).Scan(&sekolah, &alamat, &kepsek, &nip)
+	sekolahInfo := sekolah
+	if alamat != "" {
+		sekolahInfo += ", " + alamat
+	}
+	if template == "surat" && clean["ttd"] == "" && kepsek != "" {
+		clean["ttd"] = "Kepala Sekolah, " + kepsek + " (NIP " + nip + ")"
+	}
+	system := "Anda adalah asisten administrasi dan perencanaan pembelajaran untuk guru di " + sekolah +
+		", Indonesia. Jawab dalam Bahasa Indonesia yang baku, jelas, dan sesuai Kurikulum Merdeka bila relevan. " +
+		"Gunakan format Markdown (heading, daftar, tabel bila perlu). Jangan mengarang data pribadi siswa."
+	return []map[string]string{{"role": "system", "content": system}, {"role": "user", "content": tpl.Prompt(clean, sekolahInfo)}}
+}
+
+// aiProviderError: pesan galat dari penyedia (format OpenAI {"error":{"message":…}} atau teks).
+func aiProviderError(e any) string {
+	log.Printf("ai: penyedia mengirim galat: %v", e)
+	if m, ok := e.(map[string]any); ok {
+		if s, ok := m["message"].(string); ok && s != "" {
+			return s
+		}
+	} else if s, ok := e.(string); ok && s != "" {
+		return s
+	}
+	return "penyedia AI menolak permintaan (kuota habis, model tidak tersedia, atau isi diblokir)"
+}
+
+// aiReadStream membaca jawaban penyedia — streaming (SSE) atau satu JSON utuh — dan meneruskan tiap potongan ke write.
+func aiReadStream(res *http.Response, write func(string)) {
+	if !strings.Contains(res.Header.Get("Content-Type"), "text/event-stream") {
+		// penyedia yang tidak mendukung streaming
+		var full struct {
+			Choices []struct {
+				Message struct {
+					Content string `json:"content"`
+				} `json:"message"`
+			} `json:"choices"`
+		}
+		if json.NewDecoder(res.Body).Decode(&full) == nil && len(full.Choices) > 0 {
+			write(full.Choices[0].Message.Content)
+		}
+		return
+	}
+	sc := bufio.NewScanner(res.Body)
+	sc.Buffer(make([]byte, 64*1024), 4<<20)
+	for sc.Scan() {
+		line := strings.TrimSpace(sc.Text())
+		if !strings.HasPrefix(line, "data:") {
+			continue
+		}
+		data := strings.TrimSpace(strings.TrimPrefix(line, "data:"))
+		if data == "[DONE]" {
+			return
+		}
+		var ev struct {
+			Choices []struct {
+				Delta struct {
+					Content string `json:"content"`
+				} `json:"delta"`
+			} `json:"choices"`
+			Error any `json:"error"`
+		}
+		if json.Unmarshal([]byte(data), &ev) != nil {
+			continue
+		}
+		if ev.Error != nil {
+			write("\n\n[Gagal: " + aiProviderError(ev.Error) + "]")
+			return
+		}
+		if len(ev.Choices) > 0 {
+			write(ev.Choices[0].Delta.Content)
+		}
+	}
+	if err := sc.Err(); err != nil {
+		// sambungan ke penyedia putus di tengah jalan: tandai agar dokumen tidak tersimpan seolah lengkap
+		write("\n\n[Jawaban terpotong: sambungan ke penyedia AI terputus. Coba buat ulang.]")
+	}
+}
+
 func apiAIGenerate(c *Ctx) error {
 	var in struct {
 		Template string         `json:"template"`
@@ -456,17 +576,7 @@ func apiAIGenerate(c *Ctx) error {
 	if !ok {
 		return bad("Jenis dokumen tidak dikenal.")
 	}
-	clean := map[string]string{}
-	for k, raw := range in.Inputs {
-		if len(k) > 30 || raw == nil {
-			continue
-		}
-		r := []rune(strings.TrimSpace(fmt.Sprint(raw)))
-		if len(r) > 3000 {
-			r = r[:3000]
-		}
-		clean[k] = string(r)
-	}
+	clean := aiCleanInputs(in.Inputs)
 	if in.Template == "bebas" && clean["pertanyaan"] == "" {
 		return bad("Tulis pertanyaan terlebih dahulu.")
 	}
@@ -474,50 +584,15 @@ func apiAIGenerate(c *Ctx) error {
 	base, _ := cfg["base_url"].(string)
 	model, _ := cfg["model"].(string)
 	if base == "" || model == "" {
-		return bad("Asisten AI belum diatur. Admin perlu mengisi endpoint dan memilih model di menu Asisten AI → Pengaturan.")
+		return bad("Asisten AI belum diatur. Admin perlu mengisi endpoint dan memilih model di menu Pengaturan → Asisten AI.")
 	}
-	aiInflight.Lock()
-	running := aiInflight.m[c.U.ID]
-	if running >= 2 {
-		aiInflight.Unlock()
-		return bad("Tunggu dokumen sebelumnya selesai dibuat.")
+	release, err := c.aiReserve(cfg)
+	if err != nil {
+		return err
 	}
-	if kuota, _ := cfg["kuota_harian"].(float64); c.U.Role != "admin" && kuota > 0 && float64(c.aiUsedToday()+running) >= kuota {
-		aiInflight.Unlock()
-		return bad(fmt.Sprintf("Kuota harian Anda (%d dokumen) sudah habis. Coba lagi besok.", int(kuota)))
-	}
-	aiInflight.m[c.U.ID]++
-	aiInflight.Unlock()
-	defer func() {
-		aiInflight.Lock()
-		if aiInflight.m[c.U.ID]--; aiInflight.m[c.U.ID] <= 0 {
-			delete(aiInflight.m, c.U.ID)
-		}
-		aiInflight.Unlock()
-	}()
+	defer release()
 	suhu, _ := cfg["suhu"].(float64)
-	var sekolah, alamat, kepsek, nip string
-	c.A.db.QueryRow(`SELECT nama_sekolah, COALESCE(alamat,''), COALESCE(kepala_sekolah,''), COALESCE(nip_kepala,'') FROM settings WHERE id=1`).Scan(&sekolah, &alamat, &kepsek, &nip)
-	sekolahInfo := sekolah
-	if alamat != "" {
-		sekolahInfo += ", " + alamat
-	}
-	if in.Template == "surat" && clean["ttd"] == "" && kepsek != "" {
-		clean["ttd"] = "Kepala Sekolah, " + kepsek + " (NIP " + nip + ")"
-	}
-	system := "Anda adalah asisten administrasi dan perencanaan pembelajaran untuk guru di " + sekolah +
-		", Indonesia. Jawab dalam Bahasa Indonesia yang baku, jelas, dan sesuai Kurikulum Merdeka bila relevan. " +
-		"Gunakan format Markdown (heading, daftar, tabel bila perlu). Jangan mengarang data pribadi siswa."
-
-	body := map[string]any{
-		"model":       model,
-		"stream":      true,
-		"temperature": suhu,
-		"messages": []map[string]string{
-			{"role": "system", "content": system},
-			{"role": "user", "content": tpl.Prompt(clean, sekolahInfo)},
-		},
-	}
+	body := map[string]any{"model": model, "stream": true, "temperature": suhu, "messages": c.aiMessages(in.Template, tpl, clean)}
 	ctx, cancel := context.WithTimeout(c.R.Context(), 10*time.Minute)
 	defer cancel()
 	res, err := aiRequest(ctx, "POST", base+"/chat/completions", kvGet(c.A.db, "ai_key"), body)
@@ -538,71 +613,14 @@ func apiAIGenerate(c *Ctx) error {
 	c.W.Header().Set("X-Accel-Buffering", "no")
 	c.W.WriteHeader(200)
 	var out strings.Builder
-	write := func(s string) {
+	aiReadStream(res, func(s string) {
 		if s == "" {
 			return
 		}
 		out.WriteString(s)
 		io.WriteString(c.W, s)
 		rc.Flush()
-	}
-	if strings.Contains(res.Header.Get("Content-Type"), "text/event-stream") {
-		sc := bufio.NewScanner(res.Body)
-		sc.Buffer(make([]byte, 64*1024), 4<<20)
-		for sc.Scan() {
-			line := strings.TrimSpace(sc.Text())
-			if !strings.HasPrefix(line, "data:") {
-				continue
-			}
-			data := strings.TrimSpace(strings.TrimPrefix(line, "data:"))
-			if data == "[DONE]" {
-				break
-			}
-			var ev struct {
-				Choices []struct {
-					Delta struct {
-						Content string `json:"content"`
-					} `json:"delta"`
-				} `json:"choices"`
-				Error any `json:"error"`
-			}
-			if json.Unmarshal([]byte(data), &ev) != nil {
-				continue
-			}
-			if ev.Error != nil {
-				log.Printf("ai: penyedia mengirim galat: %v", ev.Error)
-				msg := "penyedia AI menolak permintaan (kuota habis, model tidak tersedia, atau isi diblokir)"
-				if m, ok := ev.Error.(map[string]any); ok {
-					if s, ok := m["message"].(string); ok && s != "" {
-						msg = s
-					}
-				} else if s, ok := ev.Error.(string); ok && s != "" {
-					msg = s
-				}
-				write("\n\n[Gagal: " + msg + "]")
-				break
-			}
-			if len(ev.Choices) > 0 {
-				write(ev.Choices[0].Delta.Content)
-			}
-		}
-		if err := sc.Err(); err != nil {
-			// sambungan ke penyedia putus di tengah jalan: tandai agar dokumen tidak tersimpan seolah lengkap
-			write("\n\n[Jawaban terpotong: sambungan ke penyedia AI terputus. Coba buat ulang.]")
-		}
-	} else {
-		// penyedia yang tidak mendukung streaming
-		var full struct {
-			Choices []struct {
-				Message struct {
-					Content string `json:"content"`
-				} `json:"message"`
-			} `json:"choices"`
-		}
-		if json.NewDecoder(res.Body).Decode(&full) == nil && len(full.Choices) > 0 {
-			write(full.Choices[0].Message.Content)
-		}
-	}
+	})
 	text := strings.TrimSpace(out.String())
 	if text == "" {
 		io.WriteString(c.W, "[Tidak ada jawaban dari model. Coba model lain.]")
