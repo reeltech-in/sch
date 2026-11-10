@@ -80,8 +80,8 @@
     "hash": "cb1e14e2eb27ebabfd99397a8fe5120d"
   },
   "web/app.js": {
-    "mtime": 1794299214999.9604,
-    "hash": "75d02ac4619c88d21e246530ef64733a"
+    "mtime": 1794300019422.2498,
+    "hash": "841eef7ca765f0553a2a03618d818145"
   },
   "web/mod-ai.js": {
     "mtime": 1794285706818.7947,
@@ -120,8 +120,8 @@
     "hash": "e23343d8c9827b32230cc0d7b142ab21"
   },
   "CHANGELOG.md": {
-    "mtime": 1794299800176.5422,
-    "hash": "18333e04a6ea1eb184c7eeaca0823c56"
+    "mtime": 1794300064239.8616,
+    "hash": "820d57fde7824d6c6ab4d10ad53f8df9"
   },
   "README.md": {
     "mtime": 1794284325950.1606,
@@ -288,8 +288,8 @@
     "hash": "659cf2388215daebdbc71f62c2c866a9"
   },
   ".graphify/GRAPH_REPORT.md": {
-    "mtime": 1794299259470.4941,
-    "hash": "eb5a041af1fc16833a9f46a95a17f676"
+    "mtime": 1794299802566.133,
+    "hash": "45fc1b1f042d7dc4194272698d244cf6"
   },
   "docs/INSTALL-UBUNTU.md": {
     "mtime": 1794267381424.0015,
