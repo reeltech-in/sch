@@ -228,7 +228,8 @@ async function guruAbsensi() {
       <div class="acts">${btn('Semua hadir', 'absenAll', {}, 'ghost sm')}${saved ? btn('Hapus', 'absenDel', {}, 'danger sm') : ''}${btn('Simpan absensi', 'absenSave', {}, 'sm', 'check')}</div></div>
       <div class="tw" id="absBox"><table><thead><tr><th>Siswa</th><th>Kehadiran</th></tr></thead><tbody>
       ${st.map(s => `<tr><td><b>${esc(s.nama_lengkap)}</b><small class="muted">${esc(s.username)}</small></td><td>${seg(s.id, rec[s.id] || 'hadir')}</td></tr>`).join('')}
-      </tbody></table></div>` : `<div class="card">${empty('Belum ada siswa di kelas ini.', 'users')}</div>`}</section>
+      </tbody></table></div>
+      <div class="save-bar">${btn('Simpan absensi (' + st.length + ' siswa)', 'absenSave', {}, '', 'check')}</div>` : `<div class="card">${empty('Belum ada siswa di kelas ini.', 'users')}</div>`}</section>
     <section class="card"><div class="card-head"><h3>Riwayat</h3></div>
       ${at.dates.length ? at.dates.map(d => `<div class="li"><div><b>${fmtDate(d.tanggal)}</b><small class="muted">${d.hadir}/${d.jumlah} hadir</small></div>
         ${d.tanggal === tgl ? tag('Dibuka', 'brand') : btn('Buka', 'go', { page: 'absensi', params: JSON.stringify({ course: S.course, tanggal: d.tanggal }) }, 'ghost sm')}</div>`).join('') : empty('Belum ada riwayat absensi.', 'cal')}</section></div>`;
@@ -263,8 +264,8 @@ async function guruRekap() {
       <h2 style="text-align:center;margin-bottom:6px">REKAP NILAI</h2>
       <p>Mata pelajaran: <b>${esc(c.nama)}</b> · Kelas: <b>${esc(c.kelas_nama)}</b> · Tahun ajaran: <b>${esc(st.tahun_ajaran || '–')}</b> · Guru: <b>${esc(S.user.nama_lengkap)}</b></p><br></div>
     <p class="muted no-print" style="margin-bottom:12px">${r.assignments.length} tugas · ${r.quizzes.length} kuis · ${new Set(r.attendance.map(a => a.tanggal)).size} pertemuan tercatat</p>
-    ${rows.length ? `<div class="tw no-stack"><table><thead><tr><th class="n">No</th><th>Nama</th><th>NIS</th><th class="n">Tugas</th><th class="n">Kuis</th><th class="n">Hadir</th><th class="n">Akhir</th><th>Predikat</th></tr></thead><tbody>
-      ${rows.map((x, i) => { const [p, k] = predikat(x.akhir); return `<tr><td class="n">${i + 1}</td><td><b>${esc(x.s.nama_lengkap)}</b></td><td>${esc(x.s.username)}</td>
+    ${rows.length ? `<div class="tw no-stack"><table><thead><tr><th class="n">No</th><th class="fz">Nama</th><th>NIS</th><th class="n">Tugas</th><th class="n">Kuis</th><th class="n">Hadir</th><th class="n">Akhir</th><th>Predikat</th></tr></thead><tbody>
+      ${rows.map((x, i) => { const [p, k] = predikat(x.akhir); return `<tr><td class="n">${i + 1}</td><td class="fz"><b>${esc(x.s.nama_lengkap)}</b></td><td>${esc(x.s.username)}</td>
         <td class="n">${fmtN(x.tugas)}</td><td class="n">${fmtN(x.kuis)}</td><td class="n">${x.hadir == null ? '–' : fmtN(x.hadir) + '%'}</td><td class="n"><b>${fmtN(x.akhir)}</b></td><td>${tag(p, k)}</td></tr>`; }).join('')}
     </tbody></table></div>` : `<div class="card">${empty('Belum ada siswa di kelas ini.', 'users')}</div>`}
     <div class="print-only"><div class="print-sign">

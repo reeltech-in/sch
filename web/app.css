@@ -200,6 +200,10 @@ td small { display: block; }
 .seg input:checked + span.sakit { background: var(--warn); color: #fff; }
 .seg input:checked + span.alfa { background: var(--bad); color: #fff; }
 .seg input:focus-visible + span { outline: 2px solid var(--brand); outline-offset: -2px; }
+.save-bar { display: none; }
+/* kolom nama di tabel matriks yang digeser tetap terlihat */
+.tw.no-stack .fz { position: sticky; left: 0; z-index: 1; background: var(--surface); box-shadow: 1px 0 0 var(--border); }
+.tw.no-stack th.fz { background: var(--surface-2); }
 
 /* Kuis */
 .quiz-head { position: sticky; top: 0; z-index: 10; display: flex; justify-content: space-between; align-items: center; gap: 12px; background: var(--surface); border: 1px solid var(--border); padding: 12px 16px; margin-bottom: 14px; box-shadow: var(--shadow); }
@@ -568,6 +572,13 @@ input[readonly] { color: var(--text-2); background: var(--surface-2); cursor: de
   .stat b { font-size: 20px; overflow-wrap: anywhere; } /* angka panjang (mis. Rp 2.080.600.000) dipatahkan, tidak melebarkan halaman */
   .stat > div { min-width: 0; }
   .stat small { font-size: 12px; }
+  /* absensi: tombol status selebar kartu & mudah disentuh, tombol simpan selalu terjangkau */
+  .tw.stack td .seg { display: flex; width: 100%; margin-top: 4px; }
+  .tw.stack td:has(.seg)::before { display: none; }
+  .seg label { flex: 1; }
+  .seg span { padding: 11px 6px; text-align: center; font-size: 14px; }
+  .save-bar { display: block; position: sticky; bottom: 0; z-index: 5; padding: 10px 0 calc(10px + env(safe-area-inset-bottom)); background: linear-gradient(transparent, var(--bg) 30%); }
+  .save-bar .btn { width: 100%; justify-content: center; }
 }
 /* bobot teks isian seragam (pilihan tidak tampak lebih tebal dari kotak ketik) */
 input, select, textarea { font-weight: 500; }

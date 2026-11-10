@@ -35,7 +35,7 @@ async function siswaDash() {
       ${kuis.length ? `<div class="card-head" style="margin-top:16px"><h3>Kuis tersedia</h3></div>${kuis.slice(0, 4).map(q => `<div class="li"><div><b>${esc(q.judul)}</b><small class="muted">${esc(d.cm[q.course_id]?.nama)} · ${q.jumlah_soal} soal · ${q.durasi_menit} menit</small></div>${btn(d.att[q.id] ? 'Lanjutkan' : 'Kerjakan', 'kuisStart', { id: q.id, judul: q.judul, durasi: q.durasi_menit, lanjut: d.att[q.id] ? 1 : 0 }, 'sm')}</div>`).join('')}` : ''}</section>
     <section class="card"><div class="card-head"><h3>Progres materi</h3></div>
       ${d.courses.length ? d.courses.map(c => { const p = d.prog(c.id); return `<div class="li" style="cursor:pointer" data-act="go" data-page="course" data-params='${esc(JSON.stringify({ course: c.id }))}'><div style="flex:1"><b>${esc(c.nama)}</b>
-        <small class="muted" style="margin-bottom:6px">${p.done}/${p.total} materi selesai</small>${prog(p.total ? p.done / p.total * 100 : 0)}</div></div>`; }).join('') : empty('Belum ada mapel di kelas Anda.', 'book')}</section></div>`;
+        <small class="muted" style="margin-bottom:6px">${p.total ? `${p.done}/${p.total} materi selesai` : 'Belum ada materi'}</small>${p.total ? prog(p.done / p.total * 100) : ''}</div></div>`; }).join('') : empty('Belum ada mapel di kelas Anda.', 'book')}</section></div>`;
 }
 
 async function siswaMapel() {
@@ -45,7 +45,7 @@ async function siswaMapel() {
     const tugas = d.assignments.filter(a => a.course_id === c.id && !d.sub[a.id]).length;
     return `<section class="card course-card" data-act="go" data-page="course" data-params='${esc(JSON.stringify({ course: c.id }))}' tabindex="0" role="button">
       <div class="top">${tag(c.kode, 'brand')}${tugas ? tag(tugas + ' tugas', 'warn') : ''}</div><h3>${esc(c.nama)}</h3>
-      <small class="muted">${esc(c.guru_nama || 'Guru belum ditentukan')}</small>${prog(p.total ? p.done / p.total * 100 : 0)}<small class="muted">${p.done}/${p.total} materi selesai</small></section>`; }).join('')}</div>`
+      <small class="muted">${esc(c.guru_nama || 'Guru belum ditentukan')}</small>${p.total ? prog(p.done / p.total * 100) : ''}<small class="muted">${p.total ? `${p.done}/${p.total} materi selesai` : 'Belum ada materi'}</small></section>`; }).join('')}</div>`
     : `<div class="card">${empty('Belum ada mapel di kelas Anda.', 'book')}</div>`);
 }
 
@@ -192,7 +192,7 @@ async function siswaNilai() {
   return head('Nilai & Kehadiran', RUMUS) +
     (rows.length ? `<div class="tw"><table><thead><tr><th>Mapel</th><th class="n">Tugas</th><th class="n">Kuis</th><th class="n">Hadir</th><th class="n">Akhir</th><th>Kehadiran</th></tr></thead><tbody>
     ${rows.map(x => `<tr><td><b>${esc(x.c.nama)}</b></td><td class="n">${fmtN(x.tugas)}</td><td class="n">${fmtN(x.kuis)}</td><td class="n">${x.hadir == null ? '–' : fmtN(x.hadir) + '%'}</td>
-      <td class="n"><b>${fmtN(x.akhir)}</b></td><td><small>H ${x.cnt.hadir} · I ${x.cnt.izin} · S ${x.cnt.sakit} · A ${x.cnt.alfa}</small></td></tr>`).join('')}
+      <td class="n"><b>${fmtN(x.akhir)}</b></td><td><small>Hadir ${x.cnt.hadir} · Izin ${x.cnt.izin} · Sakit ${x.cnt.sakit} · Alfa ${x.cnt.alfa}</small></td></tr>`).join('')}
     </tbody></table></div>` : `<div class="card">${empty('Belum ada mapel.', 'chart')}</div>`) +
     `<section class="card" style="margin-top:16px"><div class="card-head"><h3>Tugas yang sudah dinilai</h3></div>
       ${graded.length ? graded.map(a => { const s = d.sub[a.id]; return `<div class="li"><div><b>${esc(a.judul)}</b><small class="muted">${esc(d.cm[a.course_id]?.nama)}${s.feedback ? ' · “' + esc(s.feedback) + '”' : ''}</small></div>${tag(fmtN(s.nilai) + '/' + fmtN(a.nilai_maks), 'ok')}</div>`; }).join('') : empty('Belum ada tugas yang dinilai.', 'clip')}</section>`;

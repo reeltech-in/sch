@@ -160,8 +160,8 @@ async function pageWaliKelas() {
       ${monthInput(bulan, 'waliBulan')}<span style="flex:1"></span>
       ${btn('Catatan kelas', 'go', { page: 'catatan', params: JSON.stringify({ kelas: kid }) }, 'ghost sm', 'check')}${btn('Cetak rekap', 'waliPrint', {}, 'ghost sm', 'print')}</div>
     <div class="stats">${stat('check', sum('hadir'), 'Kehadiran ' + monthLabel(bulan))}${stat('clock', sum('terlambat'), 'Terlambat')}${stat('x', sum('alfa'), 'Alfa')}${stat('chart', sum('poin_pelanggaran'), 'Poin pelanggaran')}</div>` +
-    (rows.length ? `<div class="tw no-stack"><table><thead><tr><th>No</th><th>Siswa</th><th>L/P</th><th class="n">Hadir</th><th class="n">Telat</th><th class="n">S</th><th class="n">I</th><th class="n">A</th><th class="n">Poin −</th><th class="n">Poin +</th><th>HP orang tua</th><th></th></tr></thead><tbody>
-    ${rows.map((r, i) => `<tr><td>${i + 1}</td><td><b>${esc(r.nama_lengkap)}</b><small class="muted">${esc(r.username)}${r.nisn ? ' · ' + esc(r.nisn) : ''}</small></td><td>${esc(r.jk || '–')}</td>
+    (rows.length ? `<div class="tw no-stack"><table><thead><tr><th>No</th><th class="fz">Siswa</th><th>L/P</th><th class="n">Hadir</th><th class="n">Telat</th><th class="n">S</th><th class="n">I</th><th class="n">A</th><th class="n">Poin −</th><th class="n">Poin +</th><th>HP orang tua</th><th></th></tr></thead><tbody>
+    ${rows.map((r, i) => `<tr><td>${i + 1}</td><td class="fz"><b>${esc(r.nama_lengkap)}</b><small class="muted">${esc(r.username)}${r.nisn ? ' · ' + esc(r.nisn) : ''}</small></td><td>${esc(r.jk || '–')}</td>
       <td class="n">${r.hadir}</td><td class="n">${r.terlambat || '–'}</td><td class="n">${r.sakit || '–'}</td><td class="n">${r.izin || '–'}</td><td class="n">${r.alfa ? tag(String(r.alfa), 'bad') : '–'}</td>
       <td class="n">${r.poin_pelanggaran ? tag(String(r.poin_pelanggaran), r.poin_pelanggaran >= 50 ? 'bad' : 'warn') : '–'}</td><td class="n">${r.poin_prestasi ? tag(String(r.poin_prestasi), 'ok') : '–'}</td>
       <td>${r.hp_ortu ? `<a href="${esc(waLink(r.hp_ortu))}" target="_blank" rel="noopener">${esc(r.hp_ortu)}</a>` : '<small class="muted">–</small>'}</td>

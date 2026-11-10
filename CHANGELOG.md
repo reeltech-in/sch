@@ -8,6 +8,13 @@ Format versi: `MAYOR.MINOR.PERBAIKAN`
 Versi yang sedang berjalan terlihat di menu kiri aplikasi (bawah nama pengguna), di `GET /api/version`,
 di header respons `X-SCH-Version`, dan dengan perintah `sch-server -version`.
 
+## v1.23.1 — 2026-11-10 (Kerapian menu guru & siswa di HP)
+- **Absensi mapel (guru, HP)**: tombol Hadir/Izin/Sakit/Alfa selebar kartu dan lebih tinggi (±43 px) agar tidak salah sentuh;
+  tombol **Simpan absensi** menempel di bawah layar sehingga kelas panjang tidak perlu digulir ke atas.
+- **Rekap nilai, rekap absensi harian, rekap wali kelas**: kolom nama siswa tetap terlihat saat tabel digeser ke samping.
+- **Nilai & Kehadiran (siswa)**: kehadiran ditulis lengkap ("Hadir 3 · Izin 0 · Sakit 0 · Alfa 0"), bukan singkatan H/I/S/A.
+- **Beranda & Mata Pelajaran (siswa)**: mapel yang belum punya materi menampilkan "Belum ada materi", bukan "0/0" dengan bilah kosong.
+
 ## v1.23.0 — 2026-11-10 (Jenjang sekolah di satu tempat)
 - **Jenjang sekolah** (SD/MI, SMP/MTs, SMA/MA, SMK/MAK) diatur sekali di **Pengaturan → Identitas sekolah**. Setelah
   diatur, semua yang terkait jenjang mengikuti:

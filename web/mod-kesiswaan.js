@@ -192,7 +192,7 @@ async function absenRekap(ks, kid) {
     return { s, rec, cnt, pct: tot ? (cnt.hadir + cnt.terlambat) / tot * 100 : null };
   });
   const table = `<table class="mgrid"><thead><tr><th>Nama</th>${Array.from({ length: days }, (_, i) => `<th>${i + 1}</th>`).join('')}<th>H</th><th>T</th><th>I</th><th>S</th><th>A</th><th>%</th></tr></thead><tbody>
-    ${rows.map(x => `<tr><td>${esc(x.s.nama_lengkap)}</td>${Array.from({ length: days }, (_, i) => {
+    ${rows.map(x => `<tr><td class="fz">${esc(x.s.nama_lengkap)}</td>${Array.from({ length: days }, (_, i) => {
       const d = i + 1, st = x.rec[d], wd = new Date(y, m - 1, d).getDay();
       return `<td class="${st ? 'st-' + STL[st] : ''} ${!st && (wd === 0 || libur(d)) ? 'st-L' : ''}">${st ? STL[st] : ''}</td>`; }).join('')}
       <td>${x.cnt.hadir}</td><td>${x.cnt.terlambat}</td><td>${x.cnt.izin}</td><td>${x.cnt.sakit}</td><td>${x.cnt.alfa}</td><td>${x.pct == null ? '–' : fmtN(x.pct)}</td></tr>`).join('')}
