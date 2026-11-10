@@ -8,6 +8,23 @@ Format versi: `MAYOR.MINOR.PERBAIKAN`
 Versi yang sedang berjalan terlihat di menu kiri aplikasi (bawah nama pengguna), di `GET /api/version`,
 di header respons `X-SCH-Version`, dan dengan perintah `sch-server -version`.
 
+## v1.25.0 — 2026-11-10 (e-Rapor Kurikulum Merdeka & Portofolio Siswa)
+- **e-Rapor per semester** (modul baru "e-Rapor", menu e-Rapor untuk admin, guru, dan siswa) sesuai komponen
+  laporan hasil belajar Panduan Pembelajaran & Asesmen 2025 / Permendikdasmen 13/2025:
+  - **Semester ganjil/genap** pada tiap tahun ajaran (atur tanggal akhir ganjil; bawaan 31 Desember).
+  - **Nilai & capaian kompetensi per mapel** oleh guru pengampu: nilai awal otomatis dari rumus 40/40/20 untuk
+    rentang semester, bisa disesuaikan; deskripsi capaian tertinggi & perlu ditingkatkan dengan saran dari nilai
+    per materi, atau **saran Asisten AI** untuk satu kelas sekaligus (1 kuota; nama siswa tidak dikirim ke AI).
+  - **Kokurikuler** 8 dimensi profil lulusan (SB/BSH/MB/BB) dengan deskripsi otomatis, **catatan wali kelas**,
+    **ketidakhadiran** dari absensi harian (bisa dikoreksi), **keputusan naik/tinggal/lulus** di semester genap.
+  - **Ekstrakurikuler**: daftar kegiatan & pembina, anggota per tahun ajaran, predikat & keterangan oleh pembina.
+  - **Terbitkan per kelas** (hanya bila semua mapel lengkap): siswa melihat rapornya, isi rapor terkunci sampai
+    terbit dibatalkan. **Cetak** satu siswa atau satu kelas (A4, satu rapor per halaman) dan **unduh Word**.
+- **Portofolio siswa** (internal): siswa mengunggah karya (gambar/PDF/tautan, per mapel), guru mapel & wali kelas
+  memberi catatan dan nilai; jumlah karya tampil di tab Nilai mapel e-Rapor. Karya yang sudah dinilai tidak bisa
+  diubah siswa.
+- Tes otomatis untuk alur rapor, ekstrakurikuler, portofolio, saran deskripsi, dan saran AI.
+
 ## v1.24.3 — 2026-11-10 (Judul halaman di header)
 - Judul halaman (Beranda, Tugas, Rekap Nilai, …) pindah ke header di kiri, sejajar dengan jam dan menu akun; di HP
   menggantikan nama sekolah. Keterangan dan tombol halaman tetap di bawahnya. Judul juga dipakai sebagai judul tab

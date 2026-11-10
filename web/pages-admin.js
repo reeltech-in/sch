@@ -115,7 +115,7 @@ ACT.userForm = async el => {
   });
 };
 const STAFF_MODS = [['bukuinduk', 'Buku Induk'], ['absensi', 'Absensi & Kartu'], ['kalender', 'Kalender'], ['ujian', 'Manajemen Ujian'], ['kelulusan', 'Kelulusan'],
-  ['sarpras', 'Sarpras'], ['perpus', 'Perpustakaan'], ['ppdb', 'PPDB'], ['surat', 'Surat'], ['bukutamu', 'Buku Tamu'], ['evoting', 'E-Voting'], ['kasir', 'Kasir/Koperasi'], ['admguru', 'BK / Kesiswaan (semua jurnal & catatan siswa)']];
+  ['sarpras', 'Sarpras'], ['perpus', 'Perpustakaan'], ['ppdb', 'PPDB'], ['surat', 'Surat'], ['bukutamu', 'Buku Tamu'], ['evoting', 'E-Voting'], ['kasir', 'Kasir/Koperasi'], ['admguru', 'BK / Kesiswaan (semua jurnal & catatan siswa)'], ['rapor', 'e-Rapor (semua kelas, mapel & ekstrakurikuler)']];
 ACT.userDel = el => del('/users/' + el.dataset.id, `Hapus akun <b>${esc(el.dataset.nama)}</b>? Semua tugas, nilai, dan absensi miliknya ikut terhapus. Untuk sekadar memblokir login, ubah status menjadi Nonaktif.`);
 
 // --- Impor CSV ---
@@ -291,7 +291,7 @@ const SET_PAGES = {
   async modul() {
     const MODS = [['lms', 'Pembelajaran (materi, tugas, kuis, rekap nilai)'], ['bukuinduk', 'Buku Induk Siswa'], ['absensi', 'Absensi Harian & Kartu QR'], ['kalender', 'Kalender Akademik'],
       ['ujian', 'Ujian CBT & Manajemen Ujian'], ['kelulusan', 'Pengumuman Kelulusan'], ['sarpras', 'Inventaris Sarpras (KIB)'], ['perpus', 'Perpustakaan'],
-      ['ai', 'Asisten AI'], ['ppdb', 'PPDB Online'], ['surat', 'Surat Masuk/Keluar'], ['bukutamu', 'Buku Tamu'], ['evoting', 'E-Voting OSIS'], ['kasir', 'Kasir / Koperasi'], ['admguru', 'Administrasi Guru & Wali Kelas (jurnal, catatan siswa)']];
+      ['ai', 'Asisten AI'], ['ppdb', 'PPDB Online'], ['surat', 'Surat Masuk/Keluar'], ['bukutamu', 'Buku Tamu'], ['evoting', 'E-Voting OSIS'], ['kasir', 'Kasir / Koperasi'], ['admguru', 'Administrasi Guru & Wali Kelas (jurnal, catatan siswa)'], ['rapor', 'e-Rapor & Portofolio Siswa']];
     const fields = MODS.map(([k, l]) => ({ n: k, l, t: 'check' }));
     const id = registerForm(fields, async v => { await PUT('/modules', v); S.settings = await GET('/settings'); await loadModules(); toast('Modul diperbarui.'); renderShell(); route(); });
     return setCard('Modul aplikasi', 'Matikan modul yang tidak dipakai sekolah. Datanya tetap tersimpan dan muncul lagi bila dinyalakan.', formHtml(id, fields, S.settings.modul || {}, { cancel: false }));

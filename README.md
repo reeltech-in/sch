@@ -7,6 +7,8 @@ Satu login dan satu data siswa/guru/kelas dipakai bersama oleh semua modul.
 | Modul | Isi |
 |---|---|
 | **Pembelajaran (LMS)** | materi (teks, video, tautan, gambar), tugas & penilaian, kuis, absensi per mapel, rekap nilai |
+| **e-Rapor** | rapor Kurikulum Merdeka per semester: nilai akhir otomatis (bisa disesuaikan) & capaian kompetensi per mapel dengan saran dari nilai atau Asisten AI, kokurikuler 8 dimensi profil lulusan, ekstrakurikuler (pembina), ketidakhadiran dari absensi harian, catatan wali, keputusan naik kelas; terbitkan per kelas, cetak A4 & unduh Word |
+| **Portofolio Siswa** | siswa mengunggah karya (gambar/PDF/tautan) per mapel; guru mapel & wali kelas memberi catatan dan nilai; tampil di rapor mapel |
 | **Buku Induk** | biodata lengkap siswa & orang tua, foto, cetak per siswa |
 | **Absensi Harian** | scan kartu QR di gerbang (scanner USB / kamera HP), ceklist per kelas, absen selfie + lokasi, rekap bulanan cetak/CSV |
 | **Kartu Siswa** | kartu QR bertanda tangan digital (tidak bisa dipalsukan), cetak 10 kartu per A4 |
@@ -130,6 +132,18 @@ Menu **Tahun Ajaran** (admin). Setiap kelas, mapel, nilai, dan absensi tersimpan
 **Kenaikan kelas** → atur kelas tujuan (otomatis disarankan, mis. 7A → 8A), tandai siswa yang tinggal kelas,
 lulus, atau keluar → jalankan. Tahun baru langsung aktif; data tahun lalu tetap bisa dibuka lewat pilihan tahun di
 halaman Kelas, Mapel, dan Mapel Saya (guru).
+
+### e-Rapor (per semester)
+Menu **e-Rapor**. Atur dulu di tab **Pengaturan**: tanggal akhir semester ganjil (bawaan 31 Desember) dan daftar
+ekstrakurikuler beserta pembinanya (minimal Pramuka). Lalu:
+1. **Guru mapel** (tab Nilai mapel): nilai awal terisi otomatis dari rumus 40% tugas + 40% kuis + 20% kehadiran
+   semester itu; sesuaikan bila perlu, isi capaian tertinggi & yang perlu ditingkatkan (tombol "Isi dari nilai
+   otomatis" atau "Saran deskripsi AI"), lalu **Simpan semua**.
+2. **Pembina ekstrakurikuler** (tab Ekstrakurikuler): atur anggota, isi predikat & keterangan.
+3. **Wali kelas** (tab Wali kelas): per siswa isi kokurikuler (8 dimensi), catatan, koreksi ketidakhadiran bila
+   perlu, dan keputusan naik/tinggal/lulus di semester genap. Setelah semua mapel lengkap → **Terbitkan rapor**:
+   siswa bisa melihat & mengunduh rapornya, dan isinya terkunci (batalkan terbit untuk mengubah).
+4. Cetak satu siswa, **Cetak semua** satu kelas (A4, satu rapor per halaman), atau **Unduh Word**.
 
 ### Pemeliharaan otomatis
 Setiap hari (setelah pukul 01.00) server membuat backup database, menghapus foto selfie/buku tamu yang melewati

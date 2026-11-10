@@ -1259,6 +1259,7 @@ const MOD_FILES = [
   ['mod-evoting.js', () => modOn('evoting')],
   ['mod-kasir.js', () => isAdm('kasir') && modOn('kasir')],
   ['mod-admguru.js', () => modOn('admguru')],
+  ['mod-rapor.js', () => modOn('rapor')],
   ['mod-ljk.js', u => u.role !== 'siswa' && modOn('ujian')],
   ['mod-tahun.js', u => u.role === 'admin'],
   ['mod-audit.js', u => u.role === 'admin'],
