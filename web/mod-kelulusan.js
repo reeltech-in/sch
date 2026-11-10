@@ -9,9 +9,13 @@ addNav('admin', ['kelulusan', 'Kelulusan', 'check', 'kelulusan', 'Ujian']);
 const GRAD = [['lulus', 'Lulus'], ['tidak_lulus', 'Tidak lulus'], ['ditunda', 'Ditunda']];
 async function pageKelulusan() {
   const [ks, cfg] = await Promise.all([GET('/classes'), GET('/config/kelulusan')]);
-  const kid = S.params.kelas || '';
-  const rows = await GET('/kelulusan' + (kid ? '?kelas_id=' + encodeURIComponent(kid) : ''));
-  const kurang = rows.filter(r => !r.nisn || !r.tgl_lahir).length;
+  // bawaan: kelas tingkat akhir (mis. 9A untuk SMP); "Semua kelas" tetap bisa dipilih
+  const akhir = Math.max(0, ...ks.map(k => Number(k.tingkat) || 0));
+  const kid = S.params.kelas ?? (ks.find(k => Number(k.tingkat) === akhir)?.id || '');
+  const pg = await GETpage('/kelulusan?' + qs({ kelas_id: kid === 'semua' ? '' : kid, q: S.params.q || '', ...pageQ(50) }));
+  const rows = pg.rows;
+  if (pageOverflow(pg.total, rows.length)) return '';
+  const kurang = Number(pg.headers.get('X-Kurang-Data') || 0); // seluruh hasil saringan
   const cid = registerForm([{ n: 'judul' }, { n: 'buka', t: 'datetime' }, { n: 'pesan' }, { n: 'pesan_tidak' }], async v => { await PUT('/config/kelulusan', v); toast('Pengaturan pengumuman tersimpan.'); refresh(true); });
   const url = location.origin + '/#/kelulusan';
   const open = cfg.buka && new Date(cfg.buka) <= new Date(nowMs());
@@ -28,15 +32,17 @@ async function pageKelulusan() {
       <div class="acts" style="justify-content:flex-start;margin:10px 0">${btn('Buka halaman', 'gradOpenPublic', {}, 'ghost sm', 'eye')}</div>
       <div style="text-align:center">${qrImg(url, 150)}</div>
       ${kurang ? `<div class="hint" style="margin-top:12px"><b>${kurang} siswa</b> belum punya NISN atau tanggal lahir di Buku Induk, sehingga tidak bisa mengecek.</div>` : ''}</section></div>
-    <div class="card-head" style="margin-top:18px"><h2>Status siswa</h2><div class="acts">${btn('Semua lulus', 'gradAll', {}, 'ghost sm')}${btn('Simpan status', 'gradSave', {}, 'sm', 'check')}</div></div>
-    <div class="bar"><input class="search" type="search" placeholder="Cari nama atau NISN…" data-filter="tblG2" aria-label="Cari">${`<select data-change="gradKelas" aria-label="Kelas"><option value="">Semua kelas</option>${opts(ks.map(k => [k.id, k.nama]), kid)}</select>`}</div>
+    <div class="card-head" style="margin-top:18px"><h2>Status siswa</h2><div class="acts">${btn(pg.total > rows.length ? 'Semua lulus (halaman ini)' : 'Semua lulus', 'gradAll', {}, 'ghost sm')}${btn('Simpan status', 'gradSave', {}, 'sm', 'check')}</div></div>
+    <div class="bar"><input class="search" type="search" placeholder="Cari nama, NIS, NISN… (Enter)" value="${esc(S.params.q || '')}" data-srv="kelulusan" aria-label="Cari">
+      <select data-change="gradKelas" aria-label="Kelas"><option value="semua">Semua kelas</option>${opts(ks.map(k => [k.id, k.nama]), kid)}</select>
+      <small class="muted">${pagerInfo(pg.total, rows.length, 'siswa')}</small></div>
     ${rows.length ? `<div class="tw"><table id="tblG2"><thead><tr><th>Siswa</th><th>Kelas</th><th>NISN / tgl lahir</th><th>Status</th><th>Catatan</th></tr></thead><tbody>
     ${rows.map(r => `<tr data-sid="${r.id}"><td><b>${esc(r.nama_lengkap)}</b><small class="muted">${esc(r.username)}</small></td><td>${esc(r.kelas_nama || '–')}</td>
       <td>${r.nisn && r.tgl_lahir ? `${esc(r.nisn)}<small class="muted">${fmtDate(r.tgl_lahir)}</small>` : tag('Lengkapi Buku Induk', 'warn')}</td>
       <td><select name="st" aria-label="Status">${opts(GRAD, r.status || '', '—')}</select></td><td><input name="cat" value="${esc(r.catatan || '')}" placeholder="Opsional" aria-label="Catatan"></td></tr>`).join('')}
-    </tbody></table></div>` : `<div class="card">${empty('Belum ada siswa.', 'users')}</div>`}`;
+    </tbody></table></div>${pagerNav(pg.total)}` : `<div class="card">${empty('Belum ada siswa.', 'users')}</div>`}`;
 }
-CHG.gradKelas = el => go('kelulusan', { kelas: el.value });
+CHG.gradKelas = el => go('kelulusan', { kelas: el.value, per: S.params.per || '' });
 ACT.gradAll = () => $$('#tblG2 select[name=st]').forEach(s => { s.value = 'lulus'; });
 ACT.gradSave = async el => {
   const items = $$('#tblG2 tr[data-sid]').map(tr => ({ siswa_id: Number(tr.dataset.sid), status: $('select', tr).value, catatan: $('input[name=cat]', tr).value }));

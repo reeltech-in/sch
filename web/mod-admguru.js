@@ -87,19 +87,23 @@ const ttdBlock = (nama, nip = '', jabatan = 'Guru') => `<table style="width:100%
 async function pageCatatan() {
   const p = { ...S.params, bulan: validBulan(S.params.bulan) };
   const query = qs({ kelas_id: p.kelas || '', jenis: p.jenis || '', bulan: p.bulan || '', siswa_id: p.siswa || '' });
-  const [rows, ref] = await Promise.all([GET('/catatan' + (query ? '?' + query : '')), GET('/catatan/siswa')]);
+  S.catQ = '/catatan' + (query ? '?' + query : '');
+  const [pg, ref] = await Promise.all([GETpage(S.catQ + (query ? '&' : '?') + qs(pageQ(50))), GET('/catatan/siswa')]);
+  const rows = pg.rows;
+  if (pageOverflow(pg.total, rows.length)) return '';
   S.catRef = ref; S.catatan = Object.fromEntries(rows.map(r => [r.id, r]));
   const kelas = uniqList(ref.siswa.map(s => s.kelas_id + '|' + s.kelas_nama)).map(x => x.split('|'));
-  const pel = rows.filter(r => r.jenis === 'pelanggaran').reduce((s, r) => s + r.poin, 0);
-  const pre = rows.filter(r => r.jenis === 'prestasi').reduce((s, r) => s + r.poin, 0);
+  // jumlah & poin atas seluruh hasil saringan (header dari server), bukan hanya halaman ini
+  const pel = Number(pg.headers.get('X-Poin-Pelanggaran') || 0), pre = Number(pg.headers.get('X-Poin-Prestasi') || 0);
   const sis = p.siswa ? ref.siswa.find(s => String(s.id) === String(p.siswa)) : null;
   return head('Catatan Siswa', sis ? `Riwayat <b>${esc(sis.nama_lengkap)}</b> (${esc(sis.kelas_nama)})` : 'Prestasi, pelanggaran (poin), catatan wali kelas, dan catatan BK.',
     ref.siswa.length ? btn('Tambah catatan', 'catForm', p.siswa ? { siswa: p.siswa } : {}, '', 'plus') : '') +
-    `<div class="stats">${stat('check', rows.length, 'Catatan')}${stat('chart', pre, 'Poin prestasi')}${stat('x', pel, 'Poin pelanggaran')}</div>
+    `<div class="stats">${stat('check', angka(pg.total), 'Catatan')}${stat('chart', pre, 'Poin prestasi')}${stat('x', pel, 'Poin pelanggaran')}</div>
     <div class="bar no-print">
       ${sis ? btn('Semua siswa', 'go', { page: 'catatan', params: '{}' }, 'ghost sm', 'back') : `<label class="sel">Kelas <select data-change="catKelas"><option value="">Semua</option>${opts(kelas, p.kelas || '')}</select></label>`}
       <label class="sel">Jenis <select data-change="catJenis"><option value="">Semua</option>${opts(Object.entries(JENIS_CAT).map(([k, [l]]) => [k, l]), p.jenis || '')}</select></label>
       ${monthInput(p.bulan || '', 'catBulan')}${p.bulan ? btn('Semua bulan', 'catBulanAll', {}, 'ghost sm') : ''}
+      <small class="muted">${pagerInfo(pg.total, rows.length, 'catatan')}</small>
       <span style="flex:1"></span>${rows.length ? btn('Cetak', 'catPrint', {}, 'ghost sm', 'print') + btn('CSV', 'catCSV', {}, 'ghost sm', 'download') : ''}</div>` +
     (rows.length ? `<div class="tw"><table><thead><tr><th>Tanggal</th>${sis ? '' : '<th>Siswa</th>'}<th>Jenis</th><th>Keterangan</th><th class="n">Poin</th><th>Penulis</th><th></th></tr></thead><tbody>
     ${rows.map(r => `<tr><td>${fmtDate(r.tanggal)}</td>${sis ? '' : `<td><a href="#" data-act="go" data-page="catatan" data-params='${esc(JSON.stringify({ siswa: r.siswa_id }))}'><b>${esc(r.siswa_nama)}</b></a><small class="muted">${esc(r.kelas_nama || '')}</small></td>`}
@@ -107,7 +111,7 @@ async function pageCatatan() {
       <td>${esc(r.keterangan)}${r.tindak_lanjut ? `<small>Tindak lanjut: ${esc(r.tindak_lanjut)}</small>` : ''}</td>
       <td class="n">${r.poin ? (r.jenis === 'pelanggaran' ? '−' : '+') + r.poin : '–'}</td><td><small>${esc(r.penulis || '–')}</small></td>
       <td><div class="acts">${S.catRef.staf || r.created_by === S.user.id ? iconBtn('edit', 'catForm', { id: r.id }, 'Ubah') + iconBtn('trash', 'catDel', { id: r.id }, 'Hapus', 'danger') : ''}</div></td></tr>`).join('')}
-    </tbody></table></div>` : `<div class="card">${empty(ref.siswa.length ? 'Belum ada catatan.' : 'Anda belum mengajar atau menjadi wali kelas mana pun.', 'check')}</div>`);
+    </tbody></table></div>${pagerNav(pg.total)}` : `<div class="card">${empty(ref.siswa.length ? 'Belum ada catatan.' : 'Anda belum mengajar atau menjadi wali kelas mana pun.', 'check')}</div>`);
 }
 CHG.catKelas = el => go('catatan', { ...S.params, kelas: el.value });
 CHG.catJenis = el => go('catatan', { ...S.params, jenis: el.value });
@@ -133,13 +137,14 @@ ACT.catForm = async el => {
   const f = $$('.modal form').pop();
   f.jenis.addEventListener('change', () => { setComboOptions(f.kategori, KATEGORI_CAT[f.jenis.value] || []); });
 };
-const catRows = () => Object.values(S.catatan).sort((a, b) => a.tanggal.localeCompare(b.tanggal));
-ACT.catCSV = () => downloadText('catatan-siswa.csv', toCSV([['Tanggal', 'Siswa', 'NIS', 'Kelas', 'Jenis', 'Kategori', 'Poin', 'Keterangan', 'Tindak lanjut', 'Penulis'],
-  ...catRows().map(r => [r.tanggal, r.siswa_nama, r.nis, r.kelas_nama, JENIS_CAT[r.jenis][0], r.kategori, r.poin, r.keterangan, r.tindak_lanjut, r.penulis])]));
-ACT.catPrint = () => printDoc(`<h2 style="text-align:center;margin:0">CATATAN SISWA</h2><p style="text-align:center;margin:4px 0 14px">${esc(S.settings.nama_sekolah || '')}</p>
+// cetak & CSV: seluruh catatan hasil saringan (semua halaman), urut tanggal
+const catRows = async () => (await semuaHalaman(S.catQ)).sort((a, b) => a.tanggal.localeCompare(b.tanggal));
+ACT.catCSV = async () => downloadText('catatan-siswa.csv', toCSV([['Tanggal', 'Siswa', 'NIS', 'Kelas', 'Jenis', 'Kategori', 'Poin', 'Keterangan', 'Tindak lanjut', 'Penulis'],
+  ...(await catRows()).map(r => [r.tanggal, r.siswa_nama, r.nis, r.kelas_nama, JENIS_CAT[r.jenis][0], r.kategori, r.poin, r.keterangan, r.tindak_lanjut, r.penulis])]));
+ACT.catPrint = async () => { const semua = await catRows(); printDoc(`<h2 style="text-align:center;margin:0">CATATAN SISWA</h2><p style="text-align:center;margin:4px 0 14px">${esc(S.settings.nama_sekolah || '')}</p>
   <table><thead><tr><th>No</th><th>Tanggal</th><th>Siswa</th><th>Kelas</th><th>Jenis</th><th>Keterangan</th><th>Poin</th><th>Tindak lanjut</th></tr></thead><tbody>
-  ${catRows().map((r, i) => `<tr><td>${i + 1}</td><td>${fmtDate(r.tanggal)}</td><td>${esc(r.siswa_nama)}</td><td>${esc(r.kelas_nama || '')}</td><td>${esc(JENIS_CAT[r.jenis][0])}${r.kategori ? ' – ' + esc(r.kategori) : ''}</td>
-    <td>${esc(r.keterangan)}</td><td>${r.poin || ''}</td><td>${esc(r.tindak_lanjut || '')}</td></tr>`).join('')}</tbody></table>${ttdBlock(S.user.nama_lengkap, S.user.nip || '', S.user.role === 'admin' ? 'Petugas' : 'Guru')}`);
+  ${semua.map((r, i) => `<tr><td>${i + 1}</td><td>${fmtDate(r.tanggal)}</td><td>${esc(r.siswa_nama)}</td><td>${esc(r.kelas_nama || '')}</td><td>${esc(JENIS_CAT[r.jenis][0])}${r.kategori ? ' – ' + esc(r.kategori) : ''}</td>
+    <td>${esc(r.keterangan)}</td><td>${r.poin || ''}</td><td>${esc(r.tindak_lanjut || '')}</td></tr>`).join('')}</tbody></table>${ttdBlock(S.user.nama_lengkap, S.user.nip || '', S.user.role === 'admin' ? 'Petugas' : 'Guru')}`); };
 
 // ---------------------------------------------------------------------
 // Wali kelas

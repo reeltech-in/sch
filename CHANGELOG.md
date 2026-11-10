@@ -8,6 +8,20 @@ Format versi: `MAYOR.MINOR.PERBAIKAN`
 Versi yang sedang berjalan terlihat di menu kiri aplikasi (bawah nama pengguna), di `GET /api/version`,
 di header respons `X-SCH-Version`, dan dengan perintah `sch-server -version`.
 
+## v1.26.0 — 2026-11-10 (Pagination bernomor di semua daftar besar)
+- **Pagination bernomor** seragam di 7 daftar: Siswa/Guru, Kelulusan, Catatan siswa, Log aktivitas, PPDB,
+  Inventaris, dan Perpustakaan (katalog & rak). Info "Menampilkan 51–100 dari 2.886 siswa", tombol ‹ Sebelumnya ·
+  1 … 4 5 6 … 58 · Berikutnya ›, pilihan 25/50/100/200 per halaman; halaman tersimpan di alamat (kembali ke halaman
+  yang sama), halaman yang melewati batas otomatis ke halaman terakhir. Di HP cukup ‹ › agar muat satu baris.
+- **Siswa**: saringan kelas, status (bawaan **aktif**; alumni/nonaktif lewat saringan), dan pencarian dijalankan di
+  server. Uji 2.886 siswa (5 tahun alumni): 516 KB → 9 KB per halaman, tampil ±300 ms → ±9 ms.
+- **Kelulusan**: bawaan kelas tingkat akhir, hanya siswa aktif, cari di server; jumlah "belum lengkap datanya" untuk
+  seluruh hasil. **Catatan siswa**: jumlah & poin prestasi/pelanggaran dihitung atas seluruh hasil saringan.
+  **Inventaris**: jumlah "perlu perbaikan" atas seluruh hasil.
+- **Cetak & CSV** (catatan, PPDB, label/KIB inventaris, label buku) tetap mencakup **semua** hasil saringan, bukan hanya
+  halaman yang tampil (diambil bertahap 1.000 baris).
+- Perbaikan: peringatan Beranda "siswa belum punya kelas" tidak lagi menghitung alumni/siswa nonaktif.
+
 ## v1.25.3 — 2026-11-10 (Header & sidebar rapi sejajar)
 - **Header** kini dua baris: label kecil berwarna (grup menu, mis. "Pembelajaran"; Beranda: "Ringkasan hari ini") di
   atas judul halaman yang tebal; tinggi header 72 px.

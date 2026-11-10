@@ -404,7 +404,7 @@ func apiDashboard(c *Ctx) error {
 			"guru":        count(`SELECT COUNT(*) FROM users WHERE role='guru' AND status='aktif'`),
 			"kelas":       count(`SELECT COUNT(*) FROM classes WHERE tahun_id=(SELECT id FROM academic_years WHERE aktif=1)`),
 			"mapel":       count(`SELECT COUNT(*) FROM courses co JOIN classes k ON k.id=co.kelas_id WHERE k.tahun_id=(SELECT id FROM academic_years WHERE aktif=1)`),
-			"tanpa_kelas": count(`SELECT COUNT(*) FROM users WHERE role='siswa' AND kelas_id IS NULL`),
+			"tanpa_kelas": count(`SELECT COUNT(*) FROM users WHERE role='siswa' AND status='aktif' AND kelas_id IS NULL`),
 			"tanpa_guru":  count(`SELECT COUNT(*) FROM courses co JOIN classes k ON k.id=co.kelas_id WHERE co.guru_id IS NULL AND k.tahun_id=(SELECT id FROM academic_years WHERE aktif=1)`),
 			"tahun":       kvTahun(c),
 			"penyimpanan": c.A.storageInfo(),

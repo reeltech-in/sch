@@ -102,11 +102,12 @@ func apiAssets(c *Ctx) error {
 		args = append(args, like, like, like, like)
 	}
 	limit, offset := pageParams(c, 500)
-	var total int
+	var total, rusak int
 	var nilai float64
-	c.A.db.QueryRow(`SELECT COUNT(*), COALESCE(SUM(harga*jumlah),0) FROM assets WHERE `+where, args...).Scan(&total, &nilai)
+	c.A.reader().QueryRow(`SELECT COUNT(*), COALESCE(SUM(harga*jumlah),0), COALESCE(SUM(kondisi<>'baik'),0) FROM assets WHERE `+where, args...).Scan(&total, &nilai, &rusak)
 	c.W.Header().Set("X-Total-Count", strconv.Itoa(total))
 	c.W.Header().Set("X-Total-Nilai", strconv.FormatFloat(nilai, 'f', 0, 64))
+	c.W.Header().Set("X-Total-Rusak", strconv.Itoa(rusak))
 	rows, err := c.list(`SELECT * FROM assets WHERE `+where+` ORDER BY kib, kode LIMIT ? OFFSET ?`, append(args, limit, offset)...)
 	if err != nil {
 		return err

@@ -20,22 +20,24 @@ async function pagePPDB() {
     return hd + t + `<div class="cols"><section class="card">${formHtml(id, fields, c, { cancel: false })}</section>${linkCard(location.origin + '/#/ppdb', 'Alamat formulir pendaftaran')}</div>`;
   }
   const f = S.params.status || '';
-  const pg = await GETpage('/ppdb?' + qs({ status: f, q: S.params.q || '', limit: S.params.lim || 300 }));
+  const pg = await GETpage('/ppdb?' + qs({ status: f, q: S.params.q || '', ...pageQ(50) }));
   const rows = pg.rows;
+  if (pageOverflow(pg.total, rows.length)) return '';
+  S.ppdbQ = '/ppdb?' + qs({ status: f, q: S.params.q || '' });
   S.ppdb = Object.fromEntries(rows.map(r => [r.id, r]));
   S.ppdbRows = rows;
-  return hd + t + `<div class="bar"><input class="search" type="search" placeholder="Cari nama, nomor, NISN, asal sekolah… (Enter)" value="${esc(S.params.q || '')}" data-srv="ppdb" aria-label="Cari"><small class="muted">${rows.length < pg.total ? `Menampilkan ${rows.length} dari ${pg.total}` : `${pg.total} pendaftar`}</small>
+  return hd + t + `<div class="bar"><input class="search" type="search" placeholder="Cari nama, nomor, NISN, asal sekolah… (Enter)" value="${esc(S.params.q || '')}" data-srv="ppdb" aria-label="Cari"><small class="muted">${pagerInfo(pg.total, rows.length, 'pendaftar')}</small>
     <select data-change="ppdbF" aria-label="Status"><option value="">Semua status</option>${opts(PPDB_ST, f)}</select>${btn('Unduh CSV', 'ppdbCSV', {}, 'ghost sm', 'download')}</div>` +
     (rows.length ? `<div class="tw"><table id="tblPP"><thead><tr><th>Pendaftar</th><th>Asal sekolah</th><th>Jalur</th><th>Berkas</th><th>Daftar</th><th>Status</th><th></th></tr></thead><tbody>
     ${rows.map(r => `<tr><td><b>${esc(r.nama)}</b><small class="muted"><code>${esc(r.no_daftar)}</code> · ${esc(r.hp || '')}</small></td><td>${esc(r.asal_sekolah || '–')}</td><td>${esc(r.jalur || '–')}</td>
       <td>${Object.keys(r.berkas || {}).length ? tag(Object.keys(r.berkas).length + ' file', 'info') : tag('Kosong', 'warn')}</td><td>${fmtDate(r.created_at)}</td><td>${ppdbTag(r.status)}${r.user_id ? ' ' + tag('Akun dibuat', 'ok') : ''}</td>
       <td><div class="acts">${btn('Periksa', 'ppdbOpen', { id: r.id }, 'sm')}${iconBtn('trash', 'ppdbDel', { id: r.id, nama: r.nama }, 'Hapus', 'danger')}</div></td></tr>`).join('')}
-    </tbody></table></div>` : `<div class="card">${empty('Belum ada pendaftar.', 'users')}</div>`);
+    </tbody></table></div>${pagerNav(pg.total)}` : `<div class="card">${empty('Belum ada pendaftar.', 'users')}</div>`);
 }
-CHG.ppdbF = el => go('ppdb', { status: el.value });
+CHG.ppdbF = el => go('ppdb', { status: el.value, q: S.params.q || '', per: S.params.per || '' });
 ACT.ppdbDel = el => del('/ppdb/' + el.dataset.id, `Hapus data pendaftar <b>${esc(el.dataset.nama)}</b>?`);
-ACT.ppdbCSV = () => downloadText('pendaftar-ppdb.csv', toCSV([['No daftar', 'Nama', 'NISN', 'JK', 'Tempat lahir', 'Tgl lahir', 'Asal sekolah', 'Ayah', 'Ibu', 'HP', 'Jalur', 'Status'],
-  ...S.ppdbRows.map(r => [r.no_daftar, r.nama, r.nisn, r.jk, r.tempat_lahir, r.tgl_lahir, r.asal_sekolah, r.nama_ayah, r.nama_ibu, r.hp, r.jalur, r.status])]));
+ACT.ppdbCSV = async () => downloadText('pendaftar-ppdb.csv', toCSV([['No daftar', 'Nama', 'NISN', 'JK', 'Tempat lahir', 'Tgl lahir', 'Asal sekolah', 'Ayah', 'Ibu', 'HP', 'Jalur', 'Status'],
+  ...(await semuaHalaman(S.ppdbQ)).map(r => [r.no_daftar, r.nama, r.nisn, r.jk, r.tempat_lahir, r.tgl_lahir, r.asal_sekolah, r.nama_ayah, r.nama_ibu, r.hp, r.jalur, r.status])]));
 const BERKAS = { kk: 'Kartu Keluarga', akta: 'Akta Kelahiran', foto: 'Pas foto', lain: 'Lainnya (rapor/sertifikat)' };
 ACT.ppdbOpen = async el => {
   const r = S.ppdb[el.dataset.id];

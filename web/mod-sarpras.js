@@ -23,22 +23,24 @@ const kondisiTag = k => tag(KONDISI.find(x => x[0] === k)?.[1] || k, k === 'baik
 
 async function pageAset() {
   const kib = 'ABCDEF'.includes(S.params.tab || '-') && S.params.tab ? S.params.tab : 'all';
-  const pg = await GETpage('/aset?' + (kib !== 'all' ? 'kib=' + kib + '&' : '') + qs({ q: S.params.q || '', limit: S.params.lim || 300 }));
+  S.asetQ = '/aset?' + (kib !== 'all' ? 'kib=' + kib + '&' : '') + qs({ q: S.params.q || '' });
+  const pg = await GETpage(S.asetQ + '&' + qs(pageQ(50)));
   const rows = pg.rows, total = pg.total;
+  if (pageOverflow(total, rows.length)) return '';
   S.aset = rows;
   S.asetMap = Object.fromEntries(rows.map(r => [r.id, r]));
   const nilai = Number(pg.headers.get('X-Total-Nilai') || rows.reduce((s, r) => s + r.harga * r.jumlah, 0));
-  const rusak = rows.filter(r => r.kondisi !== 'baik').length;
+  const rusak = Number(pg.headers.get('X-Total-Rusak') ?? rows.filter(r => r.kondisi !== 'baik').length); // seluruh hasil saringan
   return head('Inventaris Sarpras', 'Kartu Inventaris Barang (KIB) A–F, lengkap dengan foto dan label QR.',
       btn('Cetak label QR', 'asetLabels', {}, 'ghost', 'print') + btn('Cetak KIB', 'asetKIB', {}, 'ghost', 'print') + btn('Tambah barang', 'asetForm', { kib: kib === 'all' ? 'B' : kib }, '', 'plus')) +
     tabs([['all', 'Semua'], ...Object.entries(KIB).map(([k, [n]]) => [k, `KIB ${k}`])], kib) +
     `<div class="stats">${stat('db', total, kib === 'all' ? 'Jenis barang' : 'KIB ' + kib + ' · ' + KIB[kib][0])}${statRp('chart', nilai, 'Nilai aset')}${stat('trash', rusak, 'Perlu perbaikan')}</div>` +
-    (rows.length ? `${pagerBar('aset', total, rows.length, 'Cari kode, nama, lokasi, merk… (Enter)')}
+    (rows.length ? `${pagerBar('aset', total, rows.length, 'Cari kode, nama, lokasi, merk… (Enter)', 'barang')}
     <div class="tw"><table id="tblA"><thead><tr><th>Barang</th><th>KIB</th><th>Lokasi</th><th>Tahun</th><th class="n">Jumlah</th><th>Kondisi</th><th class="n">Harga satuan</th><th></th></tr></thead><tbody>
     ${rows.map(r => `<tr><td><div class="cell-user">${r.foto ? `<img class="avatar" src="${esc(r.foto)}" alt="">` : `<span class="avatar">${ico('db')}</span>`}<div><b>${esc(r.nama)}</b><small class="muted"><code>${esc(r.kode)}</code> ${esc(r.merk || '')}</small></div></div></td>
       <td>${tag(r.kib, 'brand')}</td><td>${esc(r.lokasi || '–')}</td><td>${esc(r.tahun || '–')}</td><td class="n">${r.jumlah} ${esc(r.satuan || '')}</td><td>${kondisiTag(r.kondisi)}</td><td class="n">${rupiah(r.harga)}</td>
       <td><div class="acts">${iconBtn('edit', 'asetForm', { id: r.id }, 'Ubah')}${iconBtn('trash', 'asetDel', { id: r.id, nama: r.nama }, 'Hapus', 'danger')}</div></td></tr>`).join('')}
-    </tbody></table></div>${moreBtn('aset', total, rows.length)}` : `<div class="card">${empty('Belum ada barang di daftar ini.', 'db')}</div>`);
+    </tbody></table></div>${pagerNav(total)}` : `<div class="card">${empty('Belum ada barang di daftar ini.', 'db')}</div>`);
 }
 const kibDetailHtml = (kib, det = {}) => `<div class="form" id="kibDetail" style="gap:12px;background:var(--surface-2);padding:14px;border-radius:10px">
   <b style="font-size:13px">Rincian KIB ${kib} · ${esc(KIB[kib][0])}</b><div class="row2">${KIB[kib][1].map(([k, l]) =>
@@ -69,16 +71,17 @@ ACT.asetForm = async el => {
   sel?.addEventListener('change', () => { $$('.modal #kibDetail').pop().outerHTML = kibDetailHtml(sel.value, a.detail || {}); });
 };
 ACT.asetDel = el => del('/aset/' + el.dataset.id, `Hapus <b>${esc(el.dataset.nama)}</b> dari inventaris?`);
-ACT.asetLabels = () => {
-  if (!S.aset.length) return toast('Tidak ada barang untuk dicetak.', 'bad');
+ACT.asetLabels = async () => {
+  const semua = await semuaHalaman(S.asetQ); // seluruh hasil saringan, bukan hanya halaman yang tampil
+  if (!semua.length) return toast('Tidak ada barang untuk dicetak.', 'bad');
   const lab = r => `<div class="label">${qrImg(r.kode, 84)}<div><b>${esc(r.kode)}</b><br>${esc(r.nama)}<br>${esc(r.lokasi || '')}<br><small>${esc(S.settings.nama_sekolah || '')}</small></div></div>`;
   const pages = [];
-  for (let i = 0; i < S.aset.length; i += 24) pages.push(`<div class="pg"><div class="labels">${S.aset.slice(i, i + 24).map(lab).join('')}</div></div>`);
+  for (let i = 0; i < semua.length; i += 24) pages.push(`<div class="pg"><div class="labels">${semua.slice(i, i + 24).map(lab).join('')}</div></div>`);
   printDoc(pages.join(''));
 };
-ACT.asetKIB = () => {
+ACT.asetKIB = async () => {
   const groups = {};
-  S.aset.forEach(r => (groups[r.kib] = groups[r.kib] || []).push(r));
+  (await semuaHalaman(S.asetQ)).forEach(r => (groups[r.kib] = groups[r.kib] || []).push(r));
   if (!Object.keys(groups).length) return toast('Tidak ada barang untuk dicetak.', 'bad');
   const st = S.settings;
   printDoc(Object.keys(groups).sort().map(k => {
@@ -177,19 +180,21 @@ ACT.circCam = async () => {
 };
 
 async function perpusKatalog() {
-  const pg = await GETpage('/buku?' + qs({ q: S.params.q || '', limit: S.params.lim || 300 }));
+  S.bukuQ = '/buku?' + qs({ q: S.params.q || '' });
+  const pg = await GETpage(S.bukuQ + '&' + qs(pageQ(50)));
   const bs = pg.rows;
+  if (pageOverflow(pg.total, bs.length)) return '';
   S.buku = Object.fromEntries(bs.map(b => [b.id, b]));
   S.bukuList = bs;
-  return `<div class="card-head"><p class="muted">${bs.length} judul · ${bs.reduce((s, b) => s + b.stok, 0)} eksemplar</p>
+  return `<div class="card-head"><p class="muted">${angka(pg.total)} judul</p>
     <div class="acts">${btn('Impor e-book Kemendikbud', 'sibiOpen', {}, 'ghost sm', 'download')}${btn('Cetak label buku', 'bukuLabels', {}, 'ghost sm', 'print')}${btn('Tambah buku', 'bukuForm', {}, 'sm', 'plus')}</div></div>` +
-    (bs.length ? `${pagerBar('perpus', pg.total, bs.length, 'Cari judul, pengarang, kode, ISBN… (Enter)')}
+    (bs.length ? `${pagerBar('perpus', pg.total, bs.length, 'Cari judul, pengarang, kode, ISBN… (Enter)', 'judul')}
     <div class="tw"><table id="tblB"><thead><tr><th>Buku</th><th>Kategori</th><th>Rak</th><th class="n">Tersedia</th><th></th></tr></thead><tbody>
     ${bs.map(b => `<tr><td><div class="cell-user">${bookCover(b) ? `<img class="avatar" src="${esc(bookCover(b))}" alt="" loading="lazy" style="height:52px;width:40px;object-fit:cover">` : `<span class="avatar">${ico('book')}</span>`}
       <div><b>${esc(b.judul)}</b><small class="muted"><code>${esc(b.kode)}</code> ${esc(b.pengarang || '')}${b.tahun ? ' · ' + esc(b.tahun) : ''}</small>${hasEbook(b) ? tag(b.ebook_url ? 'E-book Kemendikbud' : 'E-book', 'info') : ''}</div></div></td>
       <td>${esc(b.kategori || '–')}</td><td>${esc(b.rak || '–')}</td><td class="n">${!b.stok && hasEbook(b) ? 'Digital' : `${b.tersedia}/${b.stok}`}</td>
       <td><div class="acts">${iconBtn('edit', 'bukuForm', { id: b.id }, 'Ubah')}${iconBtn('trash', 'bukuDel', { id: b.id, judul: b.judul }, 'Hapus', 'danger')}</div></td></tr>`).join('')}
-    </tbody></table></div>${moreBtn('perpus', pg.total, bs.length)}` : `<div class="card">${empty('Belum ada buku.', 'book')}</div>`);
+    </tbody></table></div>${pagerNav(pg.total)}` : `<div class="card">${empty('Belum ada buku.', 'book')}</div>`);
 }
 ACT.bukuForm = async el => {
   const [kat, rak, pen] = await Promise.all([saran('buku.kategori', ['Pelajaran', 'Fiksi', 'Nonfiksi', 'Referensi', 'Sains', 'Agama', 'Sejarah', 'Biografi', 'Kamus/Ensiklopedia']),
@@ -207,10 +212,11 @@ ACT.bukuForm = async el => {
   });
 };
 ACT.bukuDel = el => del('/buku/' + el.dataset.id, `Hapus buku <b>${esc(el.dataset.judul)}</b>? Buku yang pernah dipinjam tidak bisa dihapus agar riwayat & dendanya tetap utuh.`);
-ACT.bukuLabels = () => {
-  if (!S.bukuList.length) return toast('Belum ada buku.', 'bad');
+ACT.bukuLabels = async () => {
+  const semua = await semuaHalaman(S.bukuQ); // seluruh katalog hasil pencarian, bukan hanya halaman yang tampil
+  if (!semua.length) return toast('Belum ada buku.', 'bad');
   const lab = b => `<div class="label">${qrImg(b.kode, 84)}<div><b>${esc(b.kode)}</b><br>${esc(b.judul.slice(0, 50))}<br>${esc(b.rak ? 'Rak ' + b.rak : '')}<br><small>Perpustakaan ${esc(S.settings.nama_sekolah || '')}</small></div></div>`;
-  const items = S.bukuList.filter(b => b.stok > 0 || !hasEbook(b)).flatMap(b => Array.from({ length: Math.max(1, b.stok) }, () => b));
+  const items = semua.filter(b => b.stok > 0 || !hasEbook(b)).flatMap(b => Array.from({ length: Math.max(1, b.stok) }, () => b));
   const pages = [];
   for (let i = 0; i < items.length; i += 24) pages.push(`<div class="pg"><div class="labels">${items.slice(i, i + 24).map(lab).join('')}</div></div>`);
   printDoc(pages.join(''));
@@ -261,15 +267,16 @@ document.addEventListener('error', e => {
 // rak buku: siswa/guru (semua buku atau e-book saja) dan tab E-book pengelola
 async function perpusRak(adminEbook = false) {
   const ebook = adminEbook || S.params.rak === 'ebook';
-  const query = qs({ q: S.params.q || '', limit: S.params.lim || 300, ebook: ebook ? 1 : '' });
+  const query = qs({ q: S.params.q || '', ebook: ebook ? 1 : '', ...pageQ(50) });
   const pg = await GETpage('/buku?' + query);
   const bs = pg.rows;
+  if (pageOverflow(pg.total, bs.length)) return '';
   const chips = adminEbook ? '' : `<div class="acts" style="justify-content:flex-start;margin-bottom:10px">${[['', 'Semua buku'], ['ebook', 'E-book']].map(([k, l]) =>
     btn(l, 'go', { page: 'perpus', params: JSON.stringify({ rak: k }) }, (S.params.rak || '') === k ? 'sm' : 'ghost sm')).join('')}</div>`;
   const tools = adminEbook ? `<div class="card-head"><p class="muted">E-book dibaca lewat server sekolah. Buku dari Kemendikbud diunduh sekali saat pertama dibuka, lalu tersimpan untuk pembaca berikutnya.</p>
     <div class="acts">${btn('Impor e-book Kemendikbud', 'sibiOpen', {}, 'sm', 'download')}</div></div>` : '';
-  return tools + chips + `${pagerBar('perpus', pg.total, bs.length, 'Cari judul, pengarang, kategori… (Enter)')}
-    ${bs.length ? `<div class="grid" id="bookGrid">${bs.map(bookCard).join('')}</div>${moreBtn('perpus', pg.total, bs.length)}`
+  return tools + chips + `${pagerBar('perpus', pg.total, bs.length, 'Cari judul, pengarang, kategori… (Enter)', 'judul')}
+    ${bs.length ? `<div class="grid" id="bookGrid">${bs.map(bookCard).join('')}</div>${pagerNav(pg.total)}`
       : `<div class="card">${empty(ebook ? 'Belum ada e-book.' + (isAdm('perpus') ? ' Klik "Impor e-book Kemendikbud".' : '') : 'Katalog perpustakaan masih kosong.', 'book')}</div>`}`;
 }
 async function perpusAnggota() {

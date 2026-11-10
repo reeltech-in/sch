@@ -60,39 +60,35 @@ function tingkatDariNama(nama) {
 ACT.kelasDel = el => del('/classes/' + el.dataset.id, `Hapus kelas <b>${esc(el.dataset.nama)}</b>? Semua mapel di kelas ini beserta materi, tugas, kuis, dan absensinya ikut terhapus. Akun siswa tetap ada tetapi tanpa kelas.`);
 
 async function adminUsers(role) {
-  const [us, ks] = await Promise.all([GET('/users?role=' + role), GET('/classes')]);
   const fk = S.params.kelas || '';
-  // semua baris dirender sekali; saringan kelas berjalan di browser (tanpa memuat ulang daftar dari server)
-  const rows = us;
+  // status bawaan: siswa aktif saja (alumni & nonaktif lewat saringan); guru: semua
+  const st = S.params.status ?? (role === 'siswa' ? 'aktif' : '');
+  const filt = { role, kelas_id: role === 'siswa' ? fk : '', status: st === 'semua' ? '' : st, q: S.params.q || '' };
+  const [pg, ks] = await Promise.all([GETpage('/users?' + qs({ ...filt, ...pageQ(50) })), GET('/classes')]);
+  const us = pg.rows, rows = us;
+  if (pageOverflow(pg.total, us.length)) return '';
   S.usersById = Object.fromEntries(us.map(u => [u.id, u]));
-  if (role === 'siswa') S.after = () => applyKelasFilter(fk);
   const title = role === 'siswa' ? 'Siswa' : 'Guru';
-  const filter = role === 'siswa' ? `<select data-change="fKelas" aria-label="Saring kelas"><option value="">Semua kelas</option>${opts(ks.map(k => [k.id, k.nama]), fk)}<option value="none" ${fk === 'none' ? 'selected' : ''}>Belum punya kelas</option></select>` : '';
+  const stOpt = [['aktif', 'Aktif'], ['nonaktif', 'Nonaktif / alumni'], ['semua', 'Semua status']];
+  const filter = (role === 'siswa' ? `<select data-change="fKelas" aria-label="Saring kelas"><option value="">Semua kelas</option>${opts(ks.map(k => [k.id, k.nama]), fk)}<option value="none" ${fk === 'none' ? 'selected' : ''}>Belum punya kelas</option></select>` : '') +
+    `<select data-change="fStatus" aria-label="Saring status">${opts(stOpt, st || 'semua')}</select>`;
   const cols = role === 'siswa'
     ? ['Nama', 'Username / NIS', 'Kelas', 'Status']
     : ['Nama', 'Username', 'NIP', 'Mapel', 'Status'];
-  return head(title, `${us.length} akun ${role}.`, btn('Impor CSV', 'importForm', { role }, 'ghost', 'upload') + btn('Tambah ' + role, 'userForm', { role }, '', 'plus')) +
-    `<div class="bar"><input class="search" type="search" placeholder="Cari nama atau username…" data-filter="tblU" aria-label="Cari">${filter}</div>` +
+  return head(title, `${angka(pg.total)} akun ${role}${st === 'aktif' ? ' aktif' : st === 'nonaktif' ? ' nonaktif' : ''}${fk ? ' di kelas terpilih' : ''}.`, btn('Impor CSV', 'importForm', { role }, 'ghost', 'upload') + btn('Tambah ' + role, 'userForm', { role }, '', 'plus')) +
+    `<div class="bar"><input class="search" type="search" placeholder="Cari nama, username, email… (Enter)" value="${esc(S.params.q || '')}" data-srv="${role}" aria-label="Cari">${filter}
+      <small class="muted">${pagerInfo(pg.total, us.length, role)}</small></div>` +
     (rows.length ? `<div class="tw"><table id="tblU"><thead><tr>${cols.map(c => `<th${c === 'Mapel' ? ' class="n"' : ''}>${c}</th>`).join('')}<th></th></tr></thead><tbody>
     ${rows.map(u => `<tr data-kelas="${u.kelas_id || 'none'}"><td><b>${esc(u.nama_lengkap)}</b>${u.email ? `<small class="muted">${esc(u.email)}</small>` : ''}</td><td>${esc(u.username)}</td>
       ${role === 'siswa' ? `<td>${u.kelas_nama ? esc(u.kelas_nama) : tag('Belum ada', 'warn')}</td>` : `<td>${esc(u.nip || '–')}${(u.akses || []).length ? `<small class="muted">Kelola: ${esc(u.akses.map(a => (STAFF_MODS.find(m => m[0] === a) || [a, a])[1]).join(', '))}</small>` : ''}</td><td class="n">${u.jumlah_mapel}</td>`}
       <td>${u.status === 'aktif' ? tag('Aktif', 'ok') : tag('Nonaktif')}</td>
       <td><div class="acts">${iconBtn('edit', 'userForm', { role, id: u.id }, 'Ubah')}${iconBtn('trash', 'userDel', { id: u.id, nama: u.nama_lengkap }, 'Hapus', 'danger')}</div></td></tr>`).join('')}
-    </tbody></table></div><div class="card" id="uKosong" hidden>${empty('Tidak ada siswa di kelas ini.', 'users')}</div>`
-      : `<div class="card">${empty(`Belum ada ${role}. Tambah satu per satu atau impor dari file CSV.`, 'users')}</div>`);
+    </tbody></table></div>${pagerNav(pg.total)}`
+      : `<div class="card">${empty(S.params.q || fk || (st && st !== 'aktif') ? `Tidak ada ${role} yang cocok dengan saringan.` : `Belum ada ${role}. Tambah satu per satu atau impor dari file CSV.`, 'users')}</div>`);
 }
-// saring kelas di browser: baris kelas lain disembunyikan (kelas CSS terpisah dari [hidden] milik kotak cari,
-// jadi keduanya bisa dipakai bersamaan)
-function applyKelasFilter(fk) {
-  let n = 0;
-  $$('#tblU tbody tr').forEach(tr => { const off = !!fk && tr.dataset.kelas !== fk; tr.classList.toggle('f-off', off); if (!off) n++; });
-  const k = $('#uKosong'); if (k) k.hidden = n > 0;
-}
-CHG.fKelas = el => {
-  S.params.kelas = el.value; // dipakai juga sebagai kelas bawaan saat menambah siswa
-  history.replaceState(null, '', '#/siswa' + (el.value ? '?kelas=' + encodeURIComponent(el.value) : '')); // tanpa memuat ulang
-  applyKelasFilter(el.value);
-};
+// saringan kelas & status dijalankan di server (daftar bisa ribuan siswa termasuk alumni); halaman kembali ke 1
+CHG.fKelas = el => go('siswa', { ...S.params, kelas: el.value, hal: '' });
+CHG.fStatus = el => go(S.page, { ...S.params, status: el.value === 'aktif' && S.page === 'siswa' ? '' : el.value, hal: '' });
 
 ACT.userForm = async el => {
   const role = el.dataset.role;

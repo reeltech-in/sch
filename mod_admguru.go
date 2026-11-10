@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -284,7 +285,15 @@ func apiNotes(c *Ctx) error {
 		sqlq += ` AND n.tanggal >= ? AND n.tanggal <= ?`
 		args = append(args, m1, m2)
 	}
-	rows, err := c.list(sqlq+` ORDER BY n.tanggal DESC, n.id DESC LIMIT 1000`, args...)
+	// total & poin dihitung atas SELURUH hasil saringan (bukan hanya halaman yang ditampilkan)
+	var total, pre, pel int
+	c.A.reader().QueryRow(`SELECT COUNT(*), COALESCE(SUM(CASE WHEN n.jenis='prestasi' THEN n.poin END),0), COALESCE(SUM(CASE WHEN n.jenis='pelanggaran' THEN n.poin END),0)
+		FROM student_notes n JOIN users s ON s.id=n.siswa_id WHERE `+sqlq[strings.Index(sqlq, "WHERE ")+6:], args...).Scan(&total, &pre, &pel)
+	c.W.Header().Set("X-Total-Count", strconv.Itoa(total))
+	c.W.Header().Set("X-Poin-Prestasi", strconv.Itoa(pre))
+	c.W.Header().Set("X-Poin-Pelanggaran", strconv.Itoa(pel))
+	limit, offset := pageParams(c, 50)
+	rows, err := c.list(sqlq+` ORDER BY n.tanggal DESC, n.id DESC LIMIT ? OFFSET ?`, append(args, limit, offset)...)
 	if err != nil {
 		return err
 	}

@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -12,15 +13,25 @@ import (
 // Pengumuman kelulusan
 // ---------------------------------------------------------------------
 func apiGradList(c *Ctx) error {
-	q := `SELECT u.id, u.username, u.nama_lengkap, k.nama AS kelas_nama, u.kelas_id, sp.nisn, sp.tgl_lahir, g.status, g.catatan
-		FROM users u LEFT JOIN classes k ON k.id=u.kelas_id LEFT JOIN student_profiles sp ON sp.siswa_id=u.id LEFT JOIN graduation g ON g.siswa_id=u.id
-		WHERE u.role='siswa'`
+	from := `FROM users u LEFT JOIN classes k ON k.id=u.kelas_id LEFT JOIN student_profiles sp ON sp.siswa_id=u.id LEFT JOIN graduation g ON g.siswa_id=u.id
+		WHERE u.role='siswa' AND u.status='aktif'` // alumni/nonaktif tidak ikut daftar kelulusan
 	args := []any{}
 	if kid := c.QInt("kelas_id"); kid > 0 {
-		q += ` AND u.kelas_id=?`
+		from += ` AND u.kelas_id=?`
 		args = append(args, kid)
 	}
-	rows, err := c.list(q+` ORDER BY k.nama, u.nama_lengkap`, args...)
+	if s := strings.TrimSpace(c.R.URL.Query().Get("q")); s != "" {
+		like := "%" + s + "%"
+		from += ` AND (u.nama_lengkap LIKE ? OR u.username LIKE ? OR sp.nisn LIKE ?)`
+		args = append(args, like, like, like)
+	}
+	var total, kurang int
+	c.A.reader().QueryRow(`SELECT COUNT(*), COALESCE(SUM(sp.nisn IS NULL OR sp.nisn='' OR sp.tgl_lahir IS NULL OR sp.tgl_lahir=''),0) `+from, args...).Scan(&total, &kurang)
+	c.W.Header().Set("X-Total-Count", strconv.Itoa(total))
+	c.W.Header().Set("X-Kurang-Data", strconv.Itoa(kurang))
+	limit, offset := pageParams(c, 50)
+	rows, err := c.list(`SELECT u.id, u.username, u.nama_lengkap, k.nama AS kelas_nama, u.kelas_id, sp.nisn, sp.tgl_lahir, g.status, g.catatan `+from+
+		` ORDER BY k.nama, u.nama_lengkap, u.id LIMIT ? OFFSET ?`, append(args, limit, offset)...)
 	if err != nil {
 		return err
 	}

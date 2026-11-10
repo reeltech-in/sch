@@ -135,7 +135,7 @@ function checkVersion(v) {
 }
 const GET_CACHE = new Map(), GET_INFLIGHT = new Map();
 const CACHE_TTL = 120000;
-const cacheable = p => /^\/(courses|classes|tahun|rapor\/periode|rapor\/tugas)(\?|$)/.test(p);
+const cacheable = p => /^\/(courses|classes|tahun|rapor\/periode|rapor\/tugas|catatan\/siswa)(\?|$)/.test(p);
 const clone = v => (v == null ? v : JSON.parse(JSON.stringify(v)));
 function GET(p) {
   const hit = GET_CACHE.get(p);
@@ -1117,20 +1117,75 @@ async function GETpage(path) {
   const data = await apiJSON(res, path);
   return { rows: data || [], total: Number(res.headers.get('X-Total-Count') || (data || []).length), headers: res.headers };
 }
-// Bilah cari (server) + info jumlah + tombol muat lebih banyak
-function pagerBar(page, total, shown, ph) {
-  return `<div class="bar"><input class="search" type="search" placeholder="${esc(ph)}" value="${esc(S.params.q || '')}" data-srv="${page}" aria-label="Cari">
-    <small class="muted">${shown < total ? `Menampilkan ${shown} dari ${total}` : `${total} data`}</small></div>`;
+// ---- Pagination bernomor (semua daftar besar): ?hal= & ?per= di alamat halaman; server memakai LIMIT/OFFSET
+// (data per daftar paling banyak ribuan baris dengan indeks urutan, jadi OFFSET tetap cepat).
+const PER_OPTS = [25, 50, 100, 200];
+// pageQ: halaman & ukuran dari alamat → {limit, offset} untuk dikirim ke server; disimpan di S.pq untuk tampilan
+function pageQ(def = 50) {
+  const per = PER_OPTS.includes(Number(S.params.per)) ? Number(S.params.per) : def;
+  const hal = Math.max(1, parseInt(S.params.hal, 10) || 1);
+  S.pq = { per, hal, def };
+  return { limit: per, offset: (hal - 1) * per };
 }
-const moreBtn = (page, total, shown) => shown < total ? `<div style="text-align:center;margin-top:12px">${btn('Muat lebih banyak', 'pageMore', { page }, 'ghost')}</div>` : '';
-ACT.pageMore = el => go(el.dataset.page, { ...S.params, lim: Number(S.params.lim || 300) + 300 });
+const angka = n => Number(n || 0).toLocaleString('id-ID');
+// "Menampilkan 51–100 dari 2.886 siswa"
+function pagerInfo(total, shown, satuan = 'data') {
+  if (!total) return `0 ${satuan}`;
+  const pq = S.pq || { per: shown, hal: 1 };
+  const a = (pq.hal - 1) * pq.per + 1;
+  return shown < total ? `Menampilkan ${angka(a)}–${angka(a + shown - 1)} dari ${angka(total)} ${satuan}` : `${angka(total)} ${satuan}`;
+}
+// halaman yang diminta melewati halaman terakhir (mis. setelah menghapus): pindah ke halaman terakhir
+function pageOverflow(total, shown) {
+  const pq = S.pq;
+  if (!pq || shown || !total || pq.hal <= 1) return false;
+  go(S.page, { ...S.params, hal: Math.max(1, Math.ceil(total / pq.per)) });
+  return true;
+}
+// ‹ Sebelumnya · 1 … 4 5 6 … 58 · Berikutnya ›  +  pilihan jumlah per halaman
+function pagerNav(total) {
+  const pq = S.pq;
+  if (!pq || total <= PER_OPTS[0]) return '';
+  const last = Math.max(1, Math.ceil(total / pq.per)), cur = Math.min(pq.hal, last);
+  const nums = [...new Set([1, cur - 1, cur, cur + 1, last].filter(n => n >= 1 && n <= last))].sort((a, b) => a - b);
+  let html = '', prev = 0;
+  for (const n of nums) {
+    if (n - prev > 1) html += '<span class="pg-gap" aria-hidden="true">…</span>';
+    html += n === cur ? `<button type="button" class="pg-n on" aria-current="page" aria-label="Halaman ${n}">${n}</button>`
+      : `<button type="button" class="pg-n" data-act="pageGo" data-hal="${n}" aria-label="Halaman ${n}">${n}</button>`;
+    prev = n;
+  }
+  // di HP teks "Sebelumnya/Berikutnya" disembunyikan (cukup ‹ ›) agar nomor halaman muat satu baris
+  const nav = (h, arrow, label, after, dis) => `<button type="button" class="btn ghost sm pg-nav" aria-label="${label}" ${dis ? 'disabled' : `data-act="pageGo" data-hal="${h}"`}>${after ? `<span class="pg-lbl">${label}</span> ${arrow}` : `${arrow} <span class="pg-lbl">${label}</span>`}</button>`;
+  return `<nav class="pager no-print" aria-label="Halaman">
+    <div class="pg-btns">${nav(cur - 1, '‹', 'Sebelumnya', false, cur <= 1)}<span class="pg-nums">${html}</span>${nav(cur + 1, '›', 'Berikutnya', true, cur >= last)}</div>
+    <label class="pg-per">Per halaman <select data-change="pagePer" aria-label="Jumlah per halaman">${opts(PER_OPTS.map(n => [n, n]), pq.per)}</select></label></nav>`;
+}
+ACT.pageGo = el => { go(S.page, { ...S.params, hal: el.dataset.hal }); window.scrollTo(0, 0); };
+CHG.pagePer = el => go(S.page, { ...S.params, per: Number(el.value) === S.pq?.def ? '' : el.value, hal: '' });
+// semua baris hasil saringan (untuk cetak / CSV), bukan hanya halaman yang tampil
+async function semuaHalaman(path) {
+  const sep = path.includes('?') ? '&' : '?';
+  const out = [];
+  for (let off = 0; off < 20000; off += 1000) { // server membatasi 1000 baris per permintaan
+    const pg = await GETpage(`${path}${sep}limit=1000&offset=${off}`);
+    out.push(...pg.rows);
+    if (pg.rows.length < 1000 || out.length >= pg.total) break;
+  }
+  return out;
+}
+// Bilah cari (server, Enter) + info jumlah
+function pagerBar(page, total, shown, ph, satuan) {
+  return `<div class="bar"><input class="search" type="search" placeholder="${esc(ph)}" value="${esc(S.params.q || '')}" data-srv="${page}" aria-label="Cari">
+    <small class="muted">${pagerInfo(total, shown, satuan)}</small></div>`;
+}
 document.addEventListener('keydown', e => {
   const el = e.target.closest && e.target.closest('[data-srv]');
-  if (el && e.key === 'Enter') { e.preventDefault(); go(el.dataset.srv, { ...S.params, q: el.value.trim(), lim: '' }); }
+  if (el && e.key === 'Enter') { e.preventDefault(); go(el.dataset.srv, { ...S.params, q: el.value.trim(), hal: '' }); }
 });
 document.addEventListener('search', e => { // tombol x pada input pencarian
   const el = e.target.closest && e.target.closest('[data-srv]');
-  if (el && !el.value) go(el.dataset.srv, { ...S.params, q: '', lim: '' });
+  if (el && !el.value) go(el.dataset.srv, { ...S.params, q: '', hal: '' });
 }, true);
 ACT.camStop = () => { Scanner.stop(); const v = $('#scanVideo'); if (v) v.hidden = true; };
 

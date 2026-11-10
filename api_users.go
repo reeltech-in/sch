@@ -15,15 +15,41 @@ import (
 // Pengguna
 // ---------------------------------------------------------------------
 func apiUsers(c *Ctx) error {
-	q := `SELECT u.id, u.username, u.nama_lengkap, u.role, u.email, u.status, u.kelas_id, u.nip, u.akses, k.nama AS kelas_nama,
-		(SELECT COUNT(*) FROM courses co WHERE co.guru_id=u.id) AS jumlah_mapel
-		FROM users u LEFT JOIN classes k ON k.id=u.kelas_id`
-	args := []any{}
-	if r := c.R.URL.Query().Get("role"); r != "" {
-		q += ` WHERE u.role=?`
+	qp := c.R.URL.Query()
+	where, args := `1=1`, []any{}
+	if r := qp.Get("role"); r != "" {
+		where += ` AND u.role=?`
 		args = append(args, r)
 	}
-	rows, err := c.list(q+` ORDER BY u.nama_lengkap`, args...)
+	switch st := qp.Get("status"); st {
+	case "aktif", "nonaktif":
+		where += ` AND u.status=?`
+		args = append(args, st)
+	}
+	switch k := qp.Get("kelas_id"); {
+	case k == "none":
+		where += ` AND u.kelas_id IS NULL`
+	case k != "":
+		where += ` AND u.kelas_id=?`
+		args = append(args, k)
+	}
+	if s := strings.TrimSpace(qp.Get("q")); s != "" {
+		like := "%" + s + "%"
+		where += ` AND (u.nama_lengkap LIKE ? OR u.username LIKE ? OR u.email LIKE ? OR u.nip LIKE ?)`
+		args = append(args, like, like, like, like)
+	}
+	q := `SELECT u.id, u.username, u.nama_lengkap, u.role, u.email, u.status, u.kelas_id, u.nip, u.akses, k.nama AS kelas_nama,
+		(SELECT COUNT(*) FROM courses co WHERE co.guru_id=u.id) AS jumlah_mapel
+		FROM users u LEFT JOIN classes k ON k.id=u.kelas_id WHERE ` + where + ` ORDER BY u.nama_lengkap, u.id`
+	if qp.Get("limit") != "" { // halaman: LIMIT/OFFSET (data ribuan baris; indeks role+nama)
+		var total int
+		c.A.reader().QueryRow(`SELECT COUNT(*) FROM users u WHERE `+where, args...).Scan(&total)
+		c.W.Header().Set("X-Total-Count", strconv.Itoa(total))
+		limit, offset := pageParams(c, 50)
+		q += ` LIMIT ? OFFSET ?`
+		args = append(args, limit, offset)
+	}
+	rows, err := c.list(q, args...)
 	if err != nil {
 		return err
 	}

@@ -30,6 +30,7 @@ func init() {
 			`CREATE INDEX IF NOT EXISTS idx_notes_created_by ON student_notes(created_by)`,
 			`CREATE INDEX IF NOT EXISTS idx_exams_created_by ON exams(created_by)`,
 			// cari buku per ISBN (pinjam dengan scan ISBN, cegah duplikat impor e-book)
+			`CREATE INDEX IF NOT EXISTS idx_users_role_nama ON users(role, nama_lengkap)`,
 			`CREATE INDEX IF NOT EXISTS idx_books_isbn ON books(isbn) WHERE isbn IS NOT NULL`,
 			// jumlah peserta selesai per ujian (daftar CBT guru/admin) tanpa membaca baris jawaban
 			`CREATE INDEX IF NOT EXISTS idx_exam_att_done ON exam_attempts(exam_id) WHERE selesai=1`,

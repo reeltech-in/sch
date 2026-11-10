@@ -1,7 +1,9 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"net/http"
 	"strings"
 	"testing"
 )
@@ -372,5 +374,58 @@ func TestSemesterDiTahunAjaran(t *testing.T) {
 	a.json("GET", "/api/tahun", nil, &ys)
 	if ys[0]["ganjil_akhir"] != "2026-12-31" {
 		t.Fatalf("akhir ganjil kosong = 31 Desember, dapat %v", ys[0]["ganjil_akhir"])
+	}
+}
+
+// Pagination daftar besar: total di X-Total-Count, saringan & pencarian di server, halaman tidak tumpang tindih,
+// ringkasan (poin, data belum lengkap) dihitung atas seluruh hasil saringan.
+func TestPaginationDaftarBesar(t *testing.T) {
+	e := newEnv(t)
+	a := e.login("admin", testAdminPW)
+	for i := 0; i < 120; i++ {
+		e.app.db.Exec(`INSERT INTO users (username,password_hash,nama_lengkap,role,status,created_at) VALUES (?,?,?,?,?,?)`,
+			fmt.Sprintf("alum%03d", i), "x", fmt.Sprintf("Alumni %03d", i), "siswa", "nonaktif", nowStr())
+	}
+	ambil := func(path string) ([]map[string]any, string) {
+		req, _ := http.NewRequest("GET", e.srv.URL+path, nil)
+		res, err := a.hc.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer res.Body.Close()
+		var rows []map[string]any
+		json.NewDecoder(res.Body).Decode(&rows)
+		return rows, res.Header.Get("X-Total-Count")
+	}
+	aktif := fmt.Sprint(e.id(`SELECT COUNT(*) FROM users WHERE role='siswa' AND status='aktif'`))
+	if rows, tot := ambil("/api/users?role=siswa&status=aktif&limit=50&offset=0"); tot != aktif || len(rows) != int(e.id(`SELECT MIN(50, COUNT(*)) FROM users WHERE role='siswa' AND status='aktif'`)) {
+		t.Fatalf("siswa aktif: total %s (harus %s), %d baris", tot, aktif, len(rows))
+	}
+	h1, tot := ambil("/api/users?role=siswa&limit=50&offset=0")
+	h2, _ := ambil("/api/users?role=siswa&limit=50&offset=50")
+	if tot != fmt.Sprint(e.id(`SELECT COUNT(*) FROM users WHERE role='siswa'`)) || len(h1) != 50 || len(h2) != 50 || h1[49]["id"] == h2[0]["id"] {
+		t.Fatalf("halaman 1 & 2 harus berurutan tanpa tumpang tindih (total %s)", tot)
+	}
+	if rows, tot := ambil("/api/users?role=siswa&q=Alumni%2011&limit=50&offset=0"); tot != "10" || len(rows) != 10 {
+		t.Fatalf("pencarian di server: total %s, %d baris", tot, len(rows))
+	}
+	if rows, _ := ambil("/api/users?role=guru"); len(rows) < 2 { // tanpa ?limit= tetap semua (pilihan guru di formulir)
+		t.Fatalf("daftar guru tanpa limit harus lengkap")
+	}
+	// kelulusan: siswa aktif saja; jumlah data belum lengkap untuk seluruh hasil
+	if rows, tot := ambil("/api/kelulusan?limit=50&offset=0"); tot != aktif || len(rows) == 0 {
+		t.Fatalf("kelulusan hanya siswa aktif: total %s (harus %s)", tot, aktif)
+	}
+	// catatan: total & poin atas seluruh hasil, bukan halaman
+	sid := e.id(`SELECT id FROM users WHERE username='siswa001'`)
+	for i := 0; i < 60; i++ {
+		e.app.db.Exec(`INSERT INTO student_notes (siswa_id,tanggal,jenis,poin,keterangan,created_at) VALUES (?,?,?,?,?,?)`, sid, "2026-11-02", "prestasi", 2, "uji", nowStr())
+	}
+	req, _ := http.NewRequest("GET", e.srv.URL+"/api/catatan?limit=10&offset=0", nil)
+	res, _ := a.hc.Do(req)
+	res.Body.Close()
+	nPre := e.id(`SELECT COALESCE(SUM(poin),0) FROM student_notes WHERE jenis='prestasi'`)
+	if res.Header.Get("X-Total-Count") != fmt.Sprint(e.id(`SELECT COUNT(*) FROM student_notes`)) || res.Header.Get("X-Poin-Prestasi") != fmt.Sprint(nPre) {
+		t.Fatalf("ringkasan catatan: total %s poin %s (harus %d)", res.Header.Get("X-Total-Count"), res.Header.Get("X-Poin-Prestasi"), nPre)
 	}
 }
