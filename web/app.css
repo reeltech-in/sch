@@ -637,3 +637,16 @@ select[multiple] { background-image: none; padding-right: 11px; }
 @media (pointer: coarse) { input, select, textarea { font-size: 16px; } }
 /* saringan kelas (menu Siswa) — terpisah dari [hidden] milik kotak cari */
 tr.f-off { display: none !important; }
+.hint.ok { background: var(--ok-bg); color: var(--ok); display: flex; gap: 8px; align-items: center; margin-bottom: 12px; }
+.hint.ok svg { width: 16px; height: 16px; flex: none; }
+.hint.warn { background: var(--warn-bg); color: var(--text); margin-bottom: 12px; }
+/* penyunting dokumen AI: teks kiri, pratinjau kanan (HP: bertumpuk) */
+.ai-ed { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
+.ai-ed textarea { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; line-height: 1.5; min-height: 52vh; }
+.ai-ed-prev { border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px; max-height: 60vh; overflow: auto; background: var(--surface); }
+@media (max-width: 760px) { .ai-ed { grid-template-columns: 1fr; } .ai-ed textarea { min-height: 40vh; } .ai-ed-prev { max-height: none; } }
+.sheet.wide:has(.ai-ed) { width: min(1100px, 100%); } /* hanya jendela penyunting */
+/* tanda tangan dokumen cetak: dua kolom, tidak terpotong antarhalaman */
+#printArea .ttd { width: 100%; margin-top: 28px; border-collapse: collapse; page-break-inside: avoid; break-inside: avoid; }
+#printArea .ttd td { width: 50%; vertical-align: top; text-align: center; border: 0; padding: 0 12px; font-size: 11pt; line-height: 1.5; }
+#printArea .ttd .ttd-ruang { height: 64px; }

@@ -8,6 +8,22 @@ Format versi: `MAYOR.MINOR.PERBAIKAN`
 Versi yang sedang berjalan terlihat di menu kiri aplikasi (bawah nama pengguna), di `GET /api/version`,
 di header respons `X-SCH-Version`, dan dengan perintah `sch-server -version`.
 
+## v1.22.0 — 2026-11-10 (RPP Kurikulum Merdeka terbaru: format, sunting, cetak resmi, Word)
+- **Asisten AI → RPP / RPM / Modul Ajar**, mengikuti Kurikulum Merdeka dengan Pembelajaran Mendalam
+  (Permendikdasmen No. 13 Tahun 2025, 8 dimensi profil lulusan; CP Kepka BSKAP No. 046/H/KR/2025):
+  - **Pilihan format**: RPM – Rencana Pembelajaran Mendalam (bawaan), Modul Ajar lengkap, atau RPP satu lembar.
+  - **Fase otomatis** dari kelas (7A → Fase D) dan **lama 1 JP** sesuai jenjang (SD 35, SMP 40, SMA/SMK 45 menit,
+    bisa diubah); isian JP per pertemuan & jumlah pertemuan.
+  - **Pemeriksa alokasi waktu**: tiap pertemuan wajib berjumlah tepat (JP × menit); bila hasil AI meleset, tampil
+    peringatan per pertemuan.
+  - **Capaian Pembelajaran**: guru bisa menempel CP resmi; bila kosong, ringkasan CP dari AI diberi tanda "cocokkan
+    dengan dokumen CP resmi".
+  - Dimensi profil lulusan dibatasi 1–3.
+- **Sunting** hasil AI (judul & isi, dengan pratinjau langsung) lalu simpan ulang — hanya dokumen milik sendiri.
+- **Cetak resmi**: kop sekolah (logo, nama, alamat), kolom tanda tangan "Mengetahui Kepala Sekolah" & "Guru Mata
+  Pelajaran" lengkap dengan NIP, tempat dan tanggal (nama & NIP terisi otomatis, bisa diubah).
+- **Unduh Word (.docx)** dengan kop, tabel, daftar, dan tanda tangan yang sama — siap dirapikan atau dikirim.
+
 ## v1.21.1 — 2026-11-10 (Kuis tersimpan otomatis, menu lebih ringan)
 - **Kuis mapel tersimpan ke server selama dikerjakan** (seperti CBT): jawaban tidak hilang bila HP mati, bisa dilanjutkan
   dari perangkat lain, kiriman terlambat menilai jawaban yang sudah tersimpan (sebelumnya nilainya 0), kuis yang tidak

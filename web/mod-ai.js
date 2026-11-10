@@ -41,7 +41,9 @@ function mdToHtml(src) {
 
 // ---------- Pilihan isian ----------
 const FASE = [['Fase A (Kelas 1–2)'], ['Fase B (Kelas 3–4)'], ['Fase C (Kelas 5–6)'], ['Fase D (Kelas 7–9)'], ['Fase E (Kelas 10)'], ['Fase F (Kelas 11–12)']].map(([x]) => x);
-const WAKTU = ['1 x 35 menit', '2 x 35 menit', '1 x 40 menit', '2 x 40 menit', '3 x 40 menit', '1 x 45 menit', '2 x 45 menit', '3 x 45 menit'];
+// Format perencanaan (Kurikulum Merdeka – Pembelajaran Mendalam, Permendikdasmen 13/2025)
+const RPP_FORMAT = [['rpm', 'RPM – Rencana Pembelajaran Mendalam (terbaru)'], ['modul', 'Modul Ajar (lengkap)'], ['rpp1', 'RPP satu lembar (ringkas)']];
+const MENIT_JP = [['', 'Otomatis sesuai jenjang (SD 35 · SMP 40 · SMA/SMK 45)'], ['35', '35 menit'], ['40', '40 menit'], ['45', '45 menit']];
 const MODEL_BELAJAR = ['Problem Based Learning (PBL)', 'Project Based Learning (PjBL)', 'Discovery Learning', 'Inquiry Learning', 'Cooperative Learning',
   'Contextual Teaching and Learning (CTL)', 'Problem Solving', 'Pembelajaran Berdiferensiasi', 'Direct Instruction'].map(x => [x, x]);
 const PROFIL_LULUSAN = ['Keimanan dan ketakwaan terhadap Tuhan YME', 'Kewargaan', 'Penalaran kritis', 'Kreativitas', 'Kolaborasi', 'Kemandirian', 'Kesehatan', 'Komunikasi'].map(x => [x, x]);
@@ -53,12 +55,17 @@ const AI_KELAS = { n: 'kelas', l: 'Kelas', req: true, t: 'combo', o: () => [...(
 
 // ---------- Template (field untuk tiap jenis dokumen; prompt ada di server) ----------
 const AI_TPL = {
-  rpm: { judul: 'RPM / Modul Ajar', desc: 'Rencana Pembelajaran Mendalam Kurikulum Merdeka, lengkap dengan asesmen.', icon: 'layers',
-    fields: [[AI_MAPEL, { n: 'kelas', l: 'Fase / kelas', req: true, t: 'combo', o: () => [...FASE, ...S.aiKelas] }], { n: 'materi', l: 'Materi pokok', req: true },
-      [{ n: 'waktu', l: 'Alokasi waktu', t: 'combo', o: WAKTU }, { n: 'pertemuan', l: 'Jumlah pertemuan', t: 'number', min: 1, max: 20, v: 1 }],
+  rpm: { judul: 'RPP / RPM / Modul Ajar', desc: 'Perencanaan Kurikulum Merdeka terbaru (Pembelajaran Mendalam): RPM, Modul Ajar, atau RPP satu lembar, lengkap dengan asesmen.', icon: 'layers',
+    fields: [{ n: 'format', l: 'Format', t: 'select', o: RPP_FORMAT },
+      [AI_MAPEL, { n: 'kelas', l: 'Fase / kelas', req: true, t: 'combo', o: () => [...FASE, ...S.aiKelas], hint: 'Fase dihitung otomatis dari kelas (mis. 7A → Fase D).' }],
+      { n: 'materi', l: 'Materi pokok', req: true },
+      [{ n: 'jp', l: 'JP per pertemuan', t: 'number', min: 1, max: 6, v: 2 }, { n: 'pertemuan', l: 'Jumlah pertemuan', t: 'number', min: 1, max: 20, v: 1 }],
+      { n: 'menit_jp', l: 'Lama 1 JP', t: 'select', o: MENIT_JP },
       { n: 'model', l: 'Model pembelajaran', t: 'select', o: MODEL_BELAJAR, blank: 'Pilih yang paling sesuai (biar AI memilih)' },
-      { n: 'profil', l: 'Dimensi profil lulusan (kosongkan = AI memilih)', t: 'checks', o: PROFIL_LULUSAN },
-      { n: 'tujuan', l: 'Tujuan pembelajaran', t: 'textarea', rows: 2 }, { n: 'catatan', l: 'Catatan tambahan', t: 'textarea', rows: 2, ph: 'Karakteristik siswa, sarana yang ada…' }] },
+      { n: 'profil', l: 'Dimensi profil lulusan (pilih 1–3; kosongkan = AI memilih)', t: 'checks', o: PROFIL_LULUSAN },
+      { n: 'tujuan', l: 'Tujuan pembelajaran', t: 'textarea', rows: 2 },
+      { n: 'cp', l: 'Capaian Pembelajaran (opsional)', t: 'textarea', rows: 3, ph: 'Tempel CP resmi dari Kepka BSKAP 046/H/KR/2025 untuk fase & mapel ini', hint: 'Bila kosong, AI menulis ringkasan CP yang ditandai "cocokkan dengan dokumen CP resmi".' },
+      { n: 'catatan', l: 'Catatan tambahan', t: 'textarea', rows: 2, ph: 'Karakteristik siswa, sarana yang ada…' }] },
   lkpd: { judul: 'LKPD', desc: 'Lembar Kerja Peserta Didik siap cetak dengan ruang jawaban.', icon: 'file',
     fields: [[AI_MAPEL, AI_KELAS], { n: 'materi', l: 'Materi', req: true },
       { n: 'tujuan', l: 'Tujuan pembelajaran', t: 'textarea', rows: 2 }, [{ n: 'kegiatan', l: 'Jenis kegiatan', t: 'select', o: KEGIATAN_LKPD, blank: 'Pilih yang paling sesuai' }, { n: 'jumlah', l: 'Jumlah soal/aktivitas', t: 'number', min: 1, max: 30, v: 5 }],
@@ -111,7 +118,38 @@ async function pageAI() {
     <section class="card"><div class="card-head"><h3>Hasil</h3><div class="acts" id="aiActs"></div></div><div id="aiOut" class="md">${empty('Isi formulir lalu klik "Buat dengan AI".', 'spark')}</div></section></div>`;
 }
 
+// ---- Pemeriksa alokasi waktu RPP: tiap pertemuan wajib punya baris
+// "Rincian waktu: awal A menit + inti B menit + penutup C menit = T menit" (diminta di prompt server, rpp.go).
+function rppTarget(inp) {
+  const kelas = String(inp.kelas || '');
+  let t = 0, fase = (kelas.match(/fase\s+([a-f])/i) || [])[1];
+  if (!fase) {
+    // sama dengan server (tingkatRe di guards.go): "7A", "VIII B", "10 IPA"; selain itu angka pertama ("Kelas 10")
+    const m = kelas.toUpperCase().match(/^\s*(\d{1,2}|XII|XI|X|IX|VIII|VII|VI|V|IV|III|II|I)(?:[^A-Za-z0-9]|[A-Z]\b|$|[A-Z]\d|\s)/);
+    if (m) t = /^\d/.test(m[1]) ? Number(m[1]) : ({ I: 1, II: 2, III: 3, IV: 4, V: 5, VI: 6, VII: 7, VIII: 8, IX: 9, X: 10, XI: 11, XII: 12 })[m[1]];
+    else t = Number((kelas.match(/\d+/) || [0])[0]);
+  }
+  fase = fase ? fase.toUpperCase() : t ? (t <= 2 ? 'A' : t <= 4 ? 'B' : t <= 6 ? 'C' : t <= 9 ? 'D' : t === 10 ? 'E' : 'F') : '';
+  const clamp = (v, d, lo, hi) => { const n = parseInt(v, 10); return n >= lo && n <= hi ? n : d; };
+  const menit = clamp(inp.menit_jp, 0, 20, 60) || ('ABC'.includes(fase) && fase ? 35 : fase === 'D' ? 40 : 45);
+  return { total: clamp(inp.jp, 2, 1, 6) * menit, pertemuan: clamp(inp.pertemuan, 1, 1, 20) };
+}
+function rppCekHtml(text, inp) {
+  if (!inp) return '';
+  const { total, pertemuan } = rppTarget(inp);
+  const rows = [...text.matchAll(/Rincian waktu:\s*awal\s*(\d+)\s*menit\s*\+\s*inti\s*(\d+)\s*menit\s*\+\s*penutup\s*(\d+)\s*menit\s*=\s*(\d+)\s*menit/gi)]
+    .map(m => ({ a: +m[1], b: +m[2], c: +m[3], t: +m[4] }));
+  const salah = rows.map((r, i) => ({ ...r, i: i + 1 })).filter(r => r.a + r.b + r.c !== total || r.t !== total);
+  if (rows.length >= pertemuan && !salah.length)
+    return `<div class="hint ok" role="status">${ico('check')} Alokasi waktu sesuai: ${pertemuan} pertemuan × ${total} menit.</div>`;
+  const msg = !rows.length ? 'Rincian waktu per pertemuan tidak ditemukan.'
+    : [rows.length < pertemuan ? `Rincian waktu hanya untuk ${rows.length} dari ${pertemuan} pertemuan.` : '',
+      ...salah.map(r => `Pertemuan ${r.i}: ${r.a} + ${r.b} + ${r.c} = ${r.a + r.b + r.c} menit, seharusnya ${total} menit.`)].filter(Boolean).join(' ');
+  return `<div class="hint warn" role="status"><b>Periksa alokasi waktu.</b> ${esc(msg)} Perbaiki lewat tombol <b>Sunting</b> sebelum dicetak.</div>`;
+}
+
 async function aiRun(tpl, raw) {
+  if (tpl === 'rpm' && Array.isArray(raw.profil) && raw.profil.length > 3) throw new Error('Pilih paling banyak 3 dimensi profil lulusan.');
   const inputs = Object.fromEntries(Object.entries(raw).map(([k, v]) => [k, v == null ? '' : Array.isArray(v) ? v.join(', ') : String(v)]));
   const out = $('#aiOut'), acts = $('#aiActs');
   out.innerHTML = '<p class="muted">Menghubungi AI…</p>';
@@ -129,14 +167,99 @@ async function aiRun(tpl, raw) {
     if (Date.now() - last > 120 + text.length / 50) { out.innerHTML = mdToHtml(text.split('\n\u0000DOC:')[0]); last = Date.now(); out.scrollTop = out.scrollHeight; }
   }
   const [body, docId] = text.split('\n\u0000DOC:');
-  out.innerHTML = mdToHtml(body);
-  S.aiDoc = { id: Number(docId) || null, template: tpl, output: body, judul: AI_TPL[tpl].judul };
+  S.aiDoc = { id: Number(docId) || null, template: tpl, output: body, judul: AI_TPL[tpl].judul, input: inputs };
+  out.innerHTML = (tpl === 'rpm' ? rppCekHtml(body, inputs) : '') + mdToHtml(body);
   acts.innerHTML = aiActions(tpl);
   if (S.aiStatus) S.aiStatus.terpakai++;
 }
-const aiActions = tpl => btn('Salin', 'aiCopy', {}, 'ghost sm') + btn('Cetak', 'aiPrint', {}, 'ghost sm', 'print') + (tpl === 'soal' ? btn('Masukkan ke CBT/Kuis', 'aiImport', {}, 'sm', 'upload') : '');
+// tombol hasil: sunting & unduh Word hanya untuk dokumen yang sudah tersimpan
+const aiActions = tpl => btn('Salin', 'aiCopy', {}, 'ghost sm') +
+  (S.aiDoc?.id ? btn('Sunting', 'aiEdit', {}, 'ghost sm', 'edit') : '') +
+  btn('Cetak', 'aiPrint', {}, 'ghost sm', 'print') +
+  (S.aiDoc?.id ? btn('Word', 'aiDocx', {}, 'ghost sm', 'download') : '') +
+  (tpl === 'soal' ? btn('Masukkan ke CBT/Kuis', 'aiImport', {}, 'sm', 'upload') : '');
+// tampilkan ulang dokumen di mana pun sedang terbuka (halaman hasil atau jendela Riwayat)
+function aiRefreshView() {
+  const v = $('#aiDocView'); if (v) v.innerHTML = aiDocHtml();
+  const o = $('#aiOut'); if (o && !v) o.innerHTML = aiDocHtml();
+}
+
+// ---- Sunting: teks Markdown + pratinjau langsung, lalu simpan ulang ke server
+ACT.aiEdit = () => {
+  const d = S.aiDoc;
+  openModal({ title: 'Sunting dokumen', wide: true, body: `<form class="form" id="aiEdForm">
+    <label class="f"><span>Judul</span><input name="judul" value="${esc(d.judul)}" required maxlength="200"></label>
+    <div class="ai-ed">
+      <label class="f"><span>Isi (format Markdown: # judul, - daftar, | tabel |, **tebal**)</span>
+        <textarea name="output" id="aiEdTxt" rows="22" spellcheck="true" required>${esc(d.output)}</textarea></label>
+      <div class="ai-ed-prev"><span class="muted" style="font-size:13px;font-weight:600">Pratinjau</span><div id="aiEdPrev"></div></div>
+    </div>
+    <div class="form-err" role="alert"></div>
+    <div class="sheet-foot">${btn('Batal', 'closeModal', {}, 'ghost')}<button class="btn" type="button" data-act="aiEdSave">${ico('check')} Simpan</button></div></form>` });
+  aiEdPreview();
+};
+function aiEdPreview() {
+  const t = $('#aiEdTxt'), p = $('#aiEdPrev');
+  if (t && p) p.innerHTML = (S.aiDoc.template === 'rpm' && S.aiDoc.input?.jp != null ? rppCekHtml(t.value, S.aiDoc.input) : '') + `<div class="md">${mdToHtml(t.value)}</div>`;
+}
+let aiEdT = null;
+document.addEventListener('input', e => { if (e.target.id === 'aiEdTxt') { clearTimeout(aiEdT); aiEdT = setTimeout(aiEdPreview, 250); } });
+ACT.aiEdSave = async () => {
+  const f = $('#aiEdForm'), err = $('.form-err', f);
+  const judul = f.judul.value.trim(), output = f.output.value.trim();
+  if (!judul || !output) { err.textContent = 'Judul dan isi wajib diisi.'; return; }
+  try { await PUT('/ai/docs/' + S.aiDoc.id, { judul, output }); }
+  catch (e) { err.textContent = e.message; return; }
+  Object.assign(S.aiDoc, { judul, output });
+  closeModal();
+  aiRefreshView();
+  toast('Perubahan tersimpan.');
+};
 ACT.aiCopy = async () => { try { await navigator.clipboard.writeText(S.aiDoc.output); toast('Teks disalin.'); } catch { toast('Browser menolak menyalin. Blok teks lalu salin manual.', 'bad'); } };
-ACT.aiPrint = () => printDoc(`<div class="md">${mdToHtml(S.aiDoc.output)}</div>`);
+// ---- Cetak resmi: kop sekolah + isi + tanda tangan (Mengetahui Kepala Sekolah & Guru Mata Pelajaran)
+const AI_TTD = ['rpm', 'lkpd', 'soal', 'prota', 'kktp']; // dokumen perangkat ajar; surat sudah punya tanda tangan sendiri
+const tglPanjang = d => new Date(d + 'T00:00:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+function aiPrintOpts() {
+  let tempat = '';
+  try { tempat = localStorage.getItem('ttd_tempat') || ''; } catch { /* abaikan */ }
+  const s = S.settings, u = S.user;
+  return { kop: true, ttd: AI_TTD.includes(S.aiDoc.template), tempat, tanggal: today(),
+    guru: u.nama_lengkap || '', nip_guru: u.nip || '', kepsek: s.kepala_sekolah || '', nip_kepsek: s.nip_kepala || '' };
+}
+ACT.aiPrint = () => aiOutDialog('print');
+ACT.aiDocx = () => aiOutDialog('docx');
+// pilihan kop & tanda tangan — dipakai untuk cetak maupun unduh Word
+function aiOutDialog(mode) {
+  const o = aiPrintOpts();
+  const fields = [[{ n: 'kop', l: 'Kop sekolah (logo, nama, alamat)', t: 'check' }, { n: 'ttd', l: 'Kolom tanda tangan', t: 'check' }],
+    [{ n: 'tempat', l: 'Tempat', ph: 'Nama kota / kecamatan' }, { n: 'tanggal', l: 'Tanggal', t: 'date' }],
+    [{ n: 'kepsek', l: 'Kepala sekolah' }, { n: 'nip_kepsek', l: 'NIP kepala sekolah' }],
+    [{ n: 'guru', l: 'Guru mata pelajaran' }, { n: 'nip_guru', l: 'NIP guru' }]];
+  // bukan openForm: itu memuat ulang halaman setelah simpan (hasil AI yang belum disunting bisa hilang dari layar)
+  const id = registerForm(fields, async v => {
+    try { localStorage.setItem('ttd_tempat', v.tempat || ''); } catch { /* abaikan */ }
+    closeModal();
+    if (mode === 'docx') {
+      // unduh lewat tautan biasa (cookie sesi ikut), nama file diberikan server
+      const q = qs({ kop: v.kop ? 1 : 0, ttd: v.ttd ? 1 : 0, tempat: v.tempat, tanggal: v.tanggal, guru: v.guru, nip_guru: v.nip_guru, kepsek: v.kepsek, nip_kepsek: v.nip_kepsek });
+      const a = Object.assign(document.createElement('a'), { href: `/api/ai/docs/${S.aiDoc.id}/docx?${q}`, download: '' });
+      document.body.append(a); a.click(); a.remove();
+      return;
+    }
+    setTimeout(() => printDoc(aiPrintHtml(v)), 50); // setelah jendela pilihan tertutup
+  });
+  openModal({ title: mode === 'docx' ? 'Unduh Word (.docx)' : 'Cetak dokumen', body: formHtml(id, fields, o, { submit: mode === 'docx' ? 'Unduh Word' : 'Cetak' }) });
+}
+function aiPrintHtml(v) {
+  const s = S.settings;
+  const nip = n => n ? `NIP. ${esc(n)}` : 'NIP. ……………………';
+  const nama = n => `<b><u>${esc(n || '……………………………')}</u></b>`;
+  const ttd = v.ttd ? `<table class="ttd"><tr>
+      <td>Mengetahui,<br>Kepala ${esc(s.nama_sekolah || 'Sekolah')}<div class="ttd-ruang"></div>${nama(v.kepsek)}<br>${nip(v.nip_kepsek)}</td>
+      <td>${esc(v.tempat || '……………')}, ${v.tanggal ? esc(tglPanjang(v.tanggal)) : '……………'}<br>Guru Mata Pelajaran<div class="ttd-ruang"></div>${nama(v.guru)}<br>${nip(v.nip_guru)}</td>
+    </tr></table>` : '';
+  return (v.kop ? schoolHead() : '') + `<div class="md">${mdToHtml(S.aiDoc.output)}</div>` + ttd;
+}
 
 async function aiRiwayat() {
   const ds = await GET('/ai/docs');
@@ -147,9 +270,14 @@ async function aiRiwayat() {
 }
 ACT.aiOpen = async el => {
   const d = await GET('/ai/docs/' + el.dataset.id);
-  S.aiDoc = { id: d.id, template: d.template, output: d.output, judul: d.judul };
-  openModal({ title: d.judul, wide: true, body: `<div class="acts" style="justify-content:flex-start;margin-bottom:12px">${aiActions(d.template)}</div><div class="md">${mdToHtml(d.output)}</div>` });
+  let input = {};
+  try { input = JSON.parse(d.input || '{}'); } catch { /* dokumen lama */ }
+  S.aiDoc = { id: d.id, template: d.template, output: d.output, judul: d.judul, input };
+  openModal({ title: d.judul, wide: true, body: `<div class="acts" style="justify-content:flex-start;margin-bottom:12px">${aiActions(d.template)}</div>
+    <div id="aiDocView">${aiDocHtml()}</div>` });
 };
+// isi dokumen + hasil pemeriksaan alokasi waktu (khusus RPP)
+const aiDocHtml = () => (S.aiDoc.template === 'rpm' && S.aiDoc.input?.jp != null ? rppCekHtml(S.aiDoc.output, S.aiDoc.input) : '') + `<div class="md">${mdToHtml(S.aiDoc.output)}</div>`;
 ACT.aiDel = el => del('/ai/docs/' + el.dataset.id, `Hapus dokumen <b>${esc(el.dataset.judul)}</b>?`);
 
 // Masukkan soal hasil AI ke ujian CBT atau kuis mapel

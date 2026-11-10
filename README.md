@@ -16,7 +16,7 @@ Satu login dan satu data siswa/guru/kelas dipakai bersama oleh semua modul.
 | **Kelulusan** | pengumuman online dengan NISN + tanggal lahir, terbuka otomatis pada waktu yang ditentukan |
 | **Inventaris Sarpras** | KIB A–F lengkap, foto, kondisi, nilai aset, cetak KIB & label QR |
 | **Perpustakaan** | katalog, pinjam/kembali dengan scan kartu & label buku, denda otomatis, rak **E-book**: unggah PDF sendiri atau impor gratis dari Buku Kemendikbud (±1.600 judul; PDF disimpan di server saat pertama dibaca) |
-| **Asisten AI** | generator RPM, LKPD, soal (langsung masuk CBT/Kuis), surat, tanya bebas; penyedia apa pun yang kompatibel OpenAI |
+| **Asisten AI** | RPP/RPM/Modul Ajar Kurikulum Merdeka terbaru (cek alokasi waktu, sunting, cetak resmi berkop & tanda tangan, unduh Word), LKPD, soal (langsung masuk CBT/Kuis), surat, tanya bebas; penyedia apa pun yang kompatibel OpenAI |
 | **PPDB Online** | formulir publik + unggah berkas, nomor & PIN cek status, verifikasi, "jadikan siswa" sekali klik |
 | **Buku Tamu** | mode kiosk untuk tablet di meja piket, foto opsional, rekap & CSV |
 | **Surat Masuk/Keluar** | agenda, arsip scan, disposisi, nomor surat keluar otomatis, cetak agenda & lembar disposisi |
@@ -105,7 +105,7 @@ Di jaringan sekolah, aplikasi tetap bisa dibuka langsung lewat IP server bila se
 `-addr :3220` (tanpa `127.0.0.1`).
 
 ## 4. Asisten AI
-Menu **Asisten AI → Pengaturan** (admin):
+Menu **Pengaturan → Asisten AI** (admin):
 1. Isi **URL endpoint** yang kompatibel OpenAI (ada contoh: OpenAI, Gemini, Anthropic, OpenRouter, Ollama lokal).
 2. Tempel **API key**. Key disimpan di server sekolah dan tidak pernah dikirim ke browser pengguna.
 3. Klik **Refresh model**: daftar model diambil langsung dari endpoint `/models` penyedia, pilih dari dropdown.

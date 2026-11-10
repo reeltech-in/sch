@@ -46,6 +46,8 @@ CREATE INDEX IF NOT EXISTS idx_aidocs_user ON ai_documents(user_id, created_at);
 		m.HandleFunc("GET /api/ai/docs", x("admin,guru", apiAIDocs))
 		m.HandleFunc("GET /api/ai/docs/{id}", x("admin,guru", apiAIDoc))
 		m.HandleFunc("DELETE /api/ai/docs/{id}", x("admin,guru", apiAIDocDelete))
+		m.HandleFunc("PUT /api/ai/docs/{id}", x("admin,guru", apiAIDocSave))
+		m.HandleFunc("GET /api/ai/docs/{id}/docx", x("admin,guru", apiAIDocDocx))
 	})
 }
 
@@ -294,33 +296,8 @@ func v(in map[string]string, k, def string) string {
 }
 
 var aiTemplates = map[string]aiTemplate{
-	"rpm": {
-		Judul: func(in map[string]string) string { return "RPM " + v(in, "mapel", "") + " – " + v(in, "materi", "") },
-		Prompt: func(in map[string]string, sekolah string) string {
-			return fmt.Sprintf(`Susun Rencana Pembelajaran Mendalam (RPM) Kurikulum Merdeka dengan pendekatan Pembelajaran Mendalam (berkesadaran/mindful, bermakna/meaningful, menggembirakan/joyful).
-
-Data:
-- Satuan pendidikan: %s
-- Mata pelajaran: %s
-- Fase/Kelas: %s
-- Materi pokok: %s
-- Alokasi waktu: %s, %s pertemuan
-- Model/metode yang diinginkan: %s
-- Dimensi profil lulusan yang ditekankan: %s
-- Tujuan pembelajaran (jika diisi guru): %s
-- Catatan guru: %s
-
-Struktur wajib (gunakan heading Markdown):
-1. Identitas
-2. Identifikasi (kesiapan peserta didik, karakteristik materi, dimensi profil lulusan)
-3. Desain Pembelajaran (capaian pembelajaran, lintas disiplin ilmu, tujuan pembelajaran, topik, praktik pedagogis, kemitraan, lingkungan belajar, pemanfaatan digital)
-4. Pengalaman Belajar per pertemuan: Awal (berkesadaran), Inti (memahami, mengaplikasi, merefleksi), Penutup – sertakan estimasi menit
-5. Asesmen (awal, proses, akhir) beserta contoh instrumen dan rubrik singkat dalam tabel
-6. Lampiran singkat (LKPD ringkas / bahan bacaan / glosarium)`,
-				sekolah, v(in, "mapel", "-"), v(in, "kelas", "-"), v(in, "materi", "-"), v(in, "waktu", "2 x 40 menit"), v(in, "pertemuan", "1"),
-				v(in, "model", "pilih yang paling sesuai"), v(in, "profil", "pilih yang paling sesuai"), v(in, "tujuan", "rumuskan sendiri"), v(in, "catatan", "-"))
-		},
-	},
+	// RPP/RPM/Modul Ajar: lihat rpp.go (format, fase, alokasi waktu, CP)
+	"rpm": {Judul: rppJudul, Prompt: rppPrompt},
 	"lkpd": {
 		Judul: func(in map[string]string) string { return "LKPD " + v(in, "mapel", "") + " – " + v(in, "materi", "") },
 		Prompt: func(in map[string]string, sekolah string) string {
@@ -660,6 +637,36 @@ func apiAIDoc(c *Ctx) error {
 		delete(rows[0], "model")
 	}
 	return c.JSON(rows[0])
+}
+
+// apiAIDocSave: guru menyunting hasil AI (judul & isi Markdown) lalu menyimpan ulang. Hanya dokumen milik sendiri.
+func apiAIDocSave(c *Ctx) error {
+	var in struct {
+		Judul  string `json:"judul"`
+		Output string `json:"output"`
+	}
+	if err := c.Bind(&in); err != nil {
+		return err
+	}
+	judul, err := required(in.Judul, "Judul dokumen")
+	if err != nil {
+		return err
+	}
+	out := strings.TrimSpace(in.Output)
+	if out == "" {
+		return bad("Isi dokumen tidak boleh kosong.")
+	}
+	if len([]rune(judul)) > 200 || len(out) > 300_000 {
+		return bad("Dokumen terlalu panjang.")
+	}
+	res, err := c.A.db.Exec(`UPDATE ai_documents SET judul=?, output=? WHERE id=? AND user_id=?`, judul, out, c.ID("id"), c.U.ID)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return notFound()
+	}
+	return c.OK()
 }
 
 func apiAIDocDelete(c *Ctx) error {
