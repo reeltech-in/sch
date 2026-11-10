@@ -12,8 +12,8 @@
     "hash": "51d9a30ee5aa29913fa07b5e3dc37149"
   },
   "db.go": {
-    "mtime": 1794214721331.0698,
-    "hash": "19054bb435cec3d2b664eb7f3dbe9bbd"
+    "mtime": 1794314974304.3022,
+    "hash": "be85dad23bd49a0f0e7e477ab24681b2"
   },
   "demo.go": {
     "mtime": 1794214721331.3706,
@@ -24,8 +24,8 @@
     "hash": "ebb9451fd5e16a5568142d86a0327734"
   },
   "maintenance.go": {
-    "mtime": 1794269464732.2678,
-    "hash": "42fa646d7c3a2182539d1c17f93172ea"
+    "mtime": 1794314974305.1965,
+    "hash": "51509c9f945fb0767a7f1c0a82419cef"
   },
   "migrate.go": {
     "mtime": 1794214721333.3853,
@@ -80,8 +80,8 @@
     "hash": "cb1e14e2eb27ebabfd99397a8fe5120d"
   },
   "web/app.js": {
-    "mtime": 1794313606441.4668,
-    "hash": "732a43de5041a885f5a7a8f79d8876b0"
+    "mtime": 1794315060436.886,
+    "hash": "c514ae03773095394ab0c4b41bf2f03a"
   },
   "web/mod-ai.js": {
     "mtime": 1794285706818.7947,
@@ -108,8 +108,8 @@
     "hash": "3f665d152571e3e4b621a8a0f50bd926"
   },
   "web/pages-guru.js": {
-    "mtime": 1794301941162.9963,
-    "hash": "df8f1561dd7205481cc897404f6675fd"
+    "mtime": 1794315019917.5388,
+    "hash": "07b647e538bd79f86ac963b095ba00f8"
   },
   "web/pages-siswa.js": {
     "mtime": 1794301941163.238,
@@ -120,8 +120,8 @@
     "hash": "e23343d8c9827b32230cc0d7b142ab21"
   },
   "CHANGELOG.md": {
-    "mtime": 1794314360860.6665,
-    "hash": "e8dee733910f97822ae32742a228638f"
+    "mtime": 1794315151217.5786,
+    "hash": "aa2edc0caa6a49449e401892513a6291"
   },
   "README.md": {
     "mtime": 1794313945032.836,
@@ -180,16 +180,16 @@
     "hash": "65089f4cda8135f5bfecafd561e8deb6"
   },
   "api_absensi_mapel.go": {
-    "mtime": 1794301946318.2817,
-    "hash": "08b47106fd8bb67445638a5889182222"
+    "mtime": 1794315019917.1821,
+    "hash": "d138063e009ea16c3f185debf7ccfdbb"
   },
   "api_kuis.go": {
     "mtime": 1794301873090.1187,
     "hash": "816b6c1fb62ced5cb9dff48100b4dc23"
   },
   "app.go": {
-    "mtime": 1794278749677.7292,
-    "hash": "a1ab0208bcdf8bf1b3b5560e0f241bd0"
+    "mtime": 1794314974304.6318,
+    "hash": "a9d389d7d7565edaf000ad21f7e9b36c"
   },
   "auth.go": {
     "mtime": 1794301108312.9287,
@@ -288,8 +288,8 @@
     "hash": "659cf2388215daebdbc71f62c2c866a9"
   },
   ".graphify/GRAPH_REPORT.md": {
-    "mtime": 1794314157667.25,
-    "hash": "6643820295fcc80856746181e771b928"
+    "mtime": 1794314364073.8623,
+    "hash": "e8a78453c562679bf6c4882db8231035"
   },
   "docs/INSTALL-UBUNTU.md": {
     "mtime": 1794267381424.0015,
@@ -312,8 +312,8 @@
     "hash": "8e59784dfb05896510a3ee846499248a"
   },
   "tahap2_test.go": {
-    "mtime": 1794314300915.3167,
-    "hash": "eac20a70ca2003b5c76ddabde42fcb1c"
+    "mtime": 1794315019917.7063,
+    "hash": "e94c53fd153266cf5c664904aa85abad"
   },
   "nilai.go": {
     "mtime": 1794301921234.385,
@@ -328,15 +328,15 @@
     "hash": "bf69478b69644c0434f08731c0174596"
   },
   "mod_rapor.go": {
-    "mtime": 1794314079727.43,
-    "hash": "75b2f6b8bda900d3b39fed449a8f585a"
+    "mtime": 1794315060435.808,
+    "hash": "c7c1dd1e55502dca3885074a88da28ce"
   },
   "rapor_test.go": {
-    "mtime": 1794313719965.245,
-    "hash": "380d9de711c8e59b05888f41eded8790"
+    "mtime": 1794315070515.4866,
+    "hash": "8864ac0aef9010d892f7efbf3f7dd925"
   },
   "web/mod-rapor.js": {
-    "mtime": 1794313819614.2349,
-    "hash": "86fea75c94c5897442c1ab1ac5015bb0"
+    "mtime": 1794315060436.5857,
+    "hash": "392046395098e4f9e0ce6e138271fae6"
   }
 }
