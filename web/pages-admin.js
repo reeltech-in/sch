@@ -267,11 +267,12 @@ async function saveSettings(patch) {
 }
 const SET_PAGES = {
   async sekolah() {
-    const [s, tas] = [S.settings, await tahunAjaranOpts()];
+    const s = S.settings;
     const fields = [
       { n: 'nama_sekolah', l: 'Nama sekolah', req: true },
       { n: 'alamat', l: 'Alamat', t: 'textarea', rows: 2 },
-      [{ n: 'telepon', l: 'Telepon' }, { n: 'tahun_ajaran', l: 'Tahun ajaran', t: 'select', o: tas.map(x => [x, x]), blank: '—' }],
+      [{ n: 'telepon', l: 'Telepon' }, { t: 'html', html: `<div class="f"><span>Tahun ajaran aktif</span><div class="ro-val"><b>${esc(s.tahun_ajaran || '–')}</b>
+        ${btn('Ubah di Tahun Ajaran', 'nav', { page: 'tahun' }, 'ghost sm')}</div><small class="muted">Satu sumber untuk seluruh aplikasi: aktifkan tahun di menu Tahun Ajaran.</small></div>` }],
       [{ n: 'kepala_sekolah', l: 'Nama kepala sekolah' }, { n: 'nip_kepala', l: 'NIP kepala sekolah' }],
       { n: 'jenjang', l: 'Jenjang sekolah', t: 'select', req: true, o: [['SD', 'SD / MI'], ['SMP', 'SMP / MTs'], ['SMA', 'SMA / MA'], ['SMK', 'SMK / MAK']],
         hint: 'Semua pilihan yang terkait jenjang mengikuti ini: tingkat kelas, saran mapel, kenaikan kelas, filter e-book, dan Asisten AI (kelas, fase, mapel, lama 1 JP).' },

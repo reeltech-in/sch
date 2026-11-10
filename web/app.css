@@ -747,3 +747,4 @@ tr.f-off { display: none !important; }
   #printArea .rapor .rp-id td { border: 0; }
   #printArea .rapor table, #printArea .rp-ttd { break-inside: avoid; }
 }
+.ro-val { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 44px; padding: 4px 4px 4px 13px; background: var(--surface-2); border-radius: 10px; }

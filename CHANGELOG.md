@@ -28,6 +28,9 @@ di header respons `X-SCH-Version`, dan dengan perintah `sch-server -version`.
   formulir tidak memuat isian itu. Kini tahun ajaran kelas selalu mengikuti tahun kelasnya, data yang sudah
   terlanjur kosong diperbaiki otomatis saat pembaruan, dan ganti nama tahun ajaran ikut memperbarui kelas. Kolom
   "Tahun ajaran" di tabel Kelas dihapus karena halaman itu sudah menampilkan satu tahun ajaran terpilih.
+- **Tahun ajaran satu sumber:** isian "Tahun ajaran" di Pengaturan → Identitas sekolah kini hanya menampilkan tahun
+  aktif (tombol "Ubah di Tahun Ajaran"); server mengabaikan tahun ajaran dari Pengaturan dan selalu memakai tahun
+  yang aktif di menu Tahun Ajaran, sehingga beranda, kop cetakan, rekap, dan kelas tidak bisa berbeda tahun.
 
 ## v1.24.3 — 2026-11-10 (Judul halaman di header)
 - Judul halaman (Beranda, Tugas, Rekap Nilai, …) pindah ke header di kiri, sejajar dengan jam dan menu akun; di HP

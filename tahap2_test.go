@@ -313,3 +313,27 @@ func TestUbahKelasTidakMengosongkanTahunAjaran(t *testing.T) {
 		}
 	}
 }
+
+// Tahun ajaran satu sumber: Pengaturan tidak bisa mengubahnya (mengikuti tahun aktif di menu Tahun Ajaran),
+// dan mengaktifkan tahun lain langsung mengubah tahun ajaran yang tampil di seluruh aplikasi.
+func TestTahunAjaranSatuSumber(t *testing.T) {
+	e := newEnv(t)
+	a := e.login("admin", testAdminPW)
+	if code, b := a.do("PUT", "/api/settings", map[string]any{"tahun_ajaran": "2030/2031", "telepon": "0211234"}); code != 200 {
+		t.Fatalf("simpan pengaturan: %d %s", code, b)
+	}
+	var s map[string]any
+	a.json("GET", "/api/settings", nil, &s)
+	if s["tahun_ajaran"] != "2026/2027" || s["telepon"] != "0211234" {
+		t.Fatalf("tahun ajaran harus tetap tahun aktif 2026/2027, dapat %v (telepon %v)", s["tahun_ajaran"], s["telepon"])
+	}
+	a.do("POST", "/api/tahun", map[string]any{"nama": "2027/2028"})
+	baru := e.id(`SELECT id FROM academic_years WHERE nama='2027/2028'`)
+	if code, b := a.do("PUT", fmt.Sprintf("/api/tahun/%d/aktif", baru), nil); code != 200 {
+		t.Fatalf("aktifkan: %d %s", code, b)
+	}
+	a.json("GET", "/api/settings", nil, &s)
+	if s["tahun_ajaran"] != "2027/2028" {
+		t.Fatalf("setelah aktivasi, tahun ajaran harus 2027/2028, dapat %v", s["tahun_ajaran"])
+	}
+}

@@ -284,6 +284,11 @@ func (a *App) settingsData() (map[string]any, error) {
 		return map[string]any{}, err
 	}
 	s := list[0]
+	// tahun ajaran: satu sumber, yaitu tahun yang aktif di menu Tahun Ajaran
+	var aktif string
+	if a.rdb.QueryRow(`SELECT nama FROM academic_years WHERE aktif=1 ORDER BY id LIMIT 1`).Scan(&aktif) == nil && aktif != "" {
+		s["tahun_ajaran"] = aktif
+	}
 	s["modul"] = modulesEnabled(a.db)
 	s["versi"] = "v" + version
 	ab := getConfig(a.db, "absen")
@@ -353,9 +358,15 @@ func apiPutSettings(c *Ctx) error {
 		akses[k] = !ok || v
 	}
 	ab, _ := json.Marshal(akses)
+	// tahun ajaran tidak diubah dari Pengaturan: mengikuti tahun aktif (menu Tahun Ajaran → Aktifkan)
+	tahun := cur.tahun
+	var aktif string
+	if c.A.db.QueryRow(`SELECT nama FROM academic_years WHERE aktif=1 ORDER BY id LIMIT 1`).Scan(&aktif) == nil && aktif != "" {
+		tahun = sql.NullString{String: aktif, Valid: true}
+	}
 	if _, err = c.A.db.Exec(`UPDATE settings SET nama_sekolah=?, logo_url=?, alamat=?, telepon=?, tahun_ajaran=?,
 		kepala_sekolah=?, nip_kepala=?, akses_guru=? WHERE id=1`,
-		nama, logo, str(val("alamat", cur.alamat)), str(val("telepon", cur.telepon)), str(val("tahun_ajaran", cur.tahun)),
+		nama, logo, str(val("alamat", cur.alamat)), str(val("telepon", cur.telepon)), str(&tahun.String),
 		str(val("kepala_sekolah", cur.kepsek)), str(val("nip_kepala", cur.nip)), string(ab)); err != nil {
 		return err
 	}
