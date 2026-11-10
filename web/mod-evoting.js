@@ -74,7 +74,7 @@ async function evoteVoter() {
   for (const [i, e] of els.entries()) {
     let body;
     if (e.status === 'berlangsung' && !e.sudah) body = `<div class="grid">${e.kandidat.map(c => `<div class="card" style="box-shadow:none;background:var(--surface-2);text-align:center;display:flex;flex-direction:column;gap:8px;align-items:center">
-        ${c.foto ? `<img src="${esc(c.foto)}" alt="" style="width:120px;height:150px;object-fit:cover;border-radius:16px">` : avatar(null, c.nama, 96)}
+        ${c.foto ? `<img src="${esc(c.foto)}" alt="" style="width:120px;height:150px;object-fit:cover;border-radius:12px">` : avatar(null, c.nama, 96)}
         <div style="font-size:28px;font-weight:800;color:var(--brand)">${c.no}</div><b>${esc(c.nama)}</b>${c.wakil ? `<small class="muted">& ${esc(c.wakil)}</small>` : ''}
         ${c.visi || c.misi ? `<details style="text-align:left;width:100%"><summary class="muted" style="cursor:pointer">Visi & misi</summary><p style="white-space:pre-wrap;margin-top:6px"><b>Visi:</b> ${esc(c.visi || '-')}<br><b>Misi:</b> ${esc(c.misi || '-')}</p></details>` : ''}
         ${btn('Pilih', 'votePick', { el: e.id, id: c.id }, 'block')}</div>`).join('')}</div>`;
@@ -120,7 +120,7 @@ async function bilikOpen(token) {
   S.bilik.voter = { token, ...r };
   $('#bilik').innerHTML = `<section class="card" style="padding:26px"><div class="card-head"><div><h2>Surat suara</h2><small class="muted">Pemilih: <b>${esc(r.nama)}</b> ${esc(r.kelas || '')}</small></div>${btn('Batal', 'bilikCancel', {}, 'ghost sm')}</div>
     <div class="grid">${S.bilik.e.kandidat.map(c => `<button type="button" class="card" data-act="bilikVote" data-id="${c.id}" style="cursor:pointer;font:inherit;color:inherit;border:2px solid transparent;text-align:center;display:flex;flex-direction:column;gap:8px;align-items:center">
-      ${c.foto ? `<img src="${esc(c.foto)}" alt="" style="width:130px;height:160px;object-fit:cover;border-radius:16px">` : avatar(null, c.nama, 110)}
+      ${c.foto ? `<img src="${esc(c.foto)}" alt="" style="width:130px;height:160px;object-fit:cover;border-radius:12px">` : avatar(null, c.nama, 110)}
       <div style="font-size:34px;font-weight:800;color:var(--brand)">${c.no}</div><b style="font-size:17px">${esc(c.nama)}</b>${c.wakil ? `<small class="muted">& ${esc(c.wakil)}</small>` : ''}</button>`).join('')}</div>
     <p class="muted" style="text-align:center;margin-top:14px">Sentuh foto kandidat pilihan Anda.</p></section>`;
 }

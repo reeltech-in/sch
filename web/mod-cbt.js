@@ -60,7 +60,7 @@ ACT.cbtSoal = el => {
         <div class="acts">${btn('Impor dari teks', 'cbtImport', { id: x.id }, 'ghost sm', 'upload')}${btn('Tambah soal', 'cbtSoalForm', { exam: x.id }, 'sm', 'plus')}</div></div>` +
         (qs.length ? qs.map((q, i) => `<div class="card" style="margin-top:10px;padding:14px"><div style="display:flex;gap:10px;justify-content:space-between">
           <div style="min-width:0"><p style="white-space:pre-wrap;font-weight:600"><span class="muted">${i + 1}.</span> ${esc(q.pertanyaan)}</p>
-          ${q.gambar ? `<img src="${esc(q.gambar)}" alt="" style="max-height:140px;border-radius:10px;margin:6px 0">` : ''}
+          ${q.gambar ? `<img src="${esc(q.gambar)}" alt="" style="max-height:140px;border-radius:8px;margin:6px 0">` : ''}
           <div style="display:grid;gap:3px;margin-top:6px">${L.map(l => `<div style="${q.jawaban_benar === l ? 'color:var(--ok);font-weight:700' : 'color:var(--text-2)'}">${l.toUpperCase()}. ${esc(q['opsi_' + l])} ${q.jawaban_benar === l ? ico('check') : ''}</div>`).join('')}</div></div>
           <div class="acts" style="flex:none">${iconBtn('edit', 'cbtSoalForm', { exam: x.id, id: q.id }, 'Ubah')}${iconBtn('trash', 'cbtSoalDel', { id: q.id, no: i + 1 }, 'Hapus', 'danger')}</div></div></div>`).join('')
           : empty('Belum ada soal. Tambah satu per satu atau impor dari teks.', 'quiz'));

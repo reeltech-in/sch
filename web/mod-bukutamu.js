@@ -48,7 +48,7 @@ PUBLIC_PAGES.bukutamu = () => {
     const vd = $('#tamuV');
     const f = snapshot(vd); if (!f) return;
     foto = f;
-    stopCam(); vd.hidden = true; $('#tamuShot').hidden = true; $('#tamuPrev').innerHTML = `<img src="${foto}" alt="" style="width:120px;border-radius:12px">`;
+    stopCam(); vd.hidden = true; $('#tamuShot').hidden = true; $('#tamuPrev').innerHTML = `<img src="${foto}" alt="" style="width:120px;border-radius:8px">`;
   };
   $('#app').innerHTML = publicShell('Buku Tamu', `<h1 style="font-size:26px;margin-bottom:4px">Selamat datang</h1><p class="muted" style="margin-bottom:16px">Mohon isi buku tamu berikut.</p>
     <div id="tamuBox"><form class="form" data-form="${id}">

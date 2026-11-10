@@ -40,7 +40,7 @@ async function pageAset() {
       <td><div class="acts">${iconBtn('edit', 'asetForm', { id: r.id }, 'Ubah')}${iconBtn('trash', 'asetDel', { id: r.id, nama: r.nama }, 'Hapus', 'danger')}</div></td></tr>`).join('')}
     </tbody></table></div>${moreBtn('aset', total, rows.length)}` : `<div class="card">${empty('Belum ada barang di daftar ini.', 'db')}</div>`);
 }
-const kibDetailHtml = (kib, det = {}) => `<div class="form" id="kibDetail" style="gap:12px;background:var(--surface-2);padding:14px;border-radius:14px">
+const kibDetailHtml = (kib, det = {}) => `<div class="form" id="kibDetail" style="gap:12px;background:var(--surface-2);padding:14px;border-radius:10px">
   <b style="font-size:13px">Rincian KIB ${kib} · ${esc(KIB[kib][0])}</b><div class="row2">${KIB[kib][1].map(([k, l]) =>
     `<label class="f"><span>${esc(l)}</span><input name="det_${k}" value="${esc(det[k] || '')}" style="background:var(--surface)"></label>`).join('')}</div></div>`;
 ACT.asetForm = async el => {

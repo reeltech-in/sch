@@ -74,7 +74,7 @@ ACT.biEdit = async el => {
 };
 
 function profileHtml(p) {
-  return `<div style="display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap">${p.foto ? `<img src="${esc(p.foto)}" alt="" style="width:110px;height:140px;object-fit:cover;border-radius:12px;border:1px solid var(--border)">` : ''}
+  return `<div style="display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap">${p.foto ? `<img src="${esc(p.foto)}" alt="" style="width:110px;height:140px;object-fit:cover;border-radius:8px;border:1px solid var(--border)">` : ''}
     <table style="flex:1;min-width:260px"><tbody>
       <tr><th style="width:38%">Nama lengkap</th><td><b>${esc(p.nama_lengkap)}</b></td></tr>
       <tr><th>NIS</th><td>${esc(p.username)}</td></tr><tr><th>Kelas</th><td>${esc(p.kelas_nama || '–')}</td></tr>

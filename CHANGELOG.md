@@ -8,6 +8,10 @@ Format versi: `MAYOR.MINOR.PERBAIKAN`
 Versi yang sedang berjalan terlihat di menu kiri aplikasi (bawah nama pengguna), di `GET /api/version`,
 di header respons `X-SCH-Version`, dan dengan perintah `sch-server -version`.
 
+## v1.23.3 — 2026-11-10 (Sudut kartu lebih tegas)
+- Sudut kartu, tabel, dan jendela tidak terlalu membulat lagi (kartu 20 → 12 px, jendela 24 → 16 px); tombol, isian,
+  tab, dan elemen kecil ikut disesuaikan (8–10 px) agar seragam. Label status dan bilah progres tetap berbentuk pil.
+
 ## v1.23.2 — 2026-11-10 (Nilai siswa terlindung dari salah hapus; pesan jelas saat ujian CBT tidak bisa dibuka)
 - **Ujian CBT, Kuis, dan Tugas yang sudah ada hasil siswa tidak bisa dihapus guru.** Menghapusnya dulu ikut menghapus
   nilai siswa secara permanen. Sekarang guru mendapat penjelasan ("Kuis ini sudah dikerjakan 12 siswa…"); yang belum
