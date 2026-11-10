@@ -186,7 +186,7 @@ async function siswaNilai() {
     const ab = d.attendance.filter(a => a.course_id === c.id);
     const cnt = { hadir: 0, izin: 0, sakit: 0, alfa: 0 };
     ab.forEach(a => cnt[a.status]++);
-    return { c, cnt, ...calcScore(as, d.sub, at, ab) };
+    return { c, cnt, ...(d.nilai[c.id] || {}) }; // nilai akhir dihitung server (nilai.go)
   });
   const graded = d.assignments.filter(a => d.sub[a.id]?.nilai != null);
   return head('Nilai & Kehadiran', RUMUS) +

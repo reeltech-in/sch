@@ -340,7 +340,8 @@ func apiSubmit(c *Ctx) error {
 	return c.OK()
 }
 
-func apiGrade(c *Ctx) error {
+// apiGradeSubmission: (guru) beri nilai & umpan balik untuk satu kumpulan tugas siswa.
+func apiGradeSubmission(c *Ctx) error {
 	id := c.ID("id")
 	var in struct {
 		Nilai    *float64 `json:"nilai"`

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -107,7 +106,6 @@ CREATE INDEX IF NOT EXISTS idx_events_mulai ON events(mulai);
 // ---------------------------------------------------------------------
 // Absensi harian
 // ---------------------------------------------------------------------
-func localDate() string  { return time.Now().Format("2006-01-02") }
 func localClock() string { return time.Now().Format("15:04") }
 
 func (a *App) statusMasuk() string {
@@ -322,14 +320,6 @@ func apiAbsenHarianSave(c *Ctx) error {
 	return c.OK()
 }
 
-func monthRange(s string) (string, string, error) {
-	t, err := time.Parse("2006-01", strings.TrimSpace(s))
-	if err != nil {
-		return "", "", bad("Bulan tidak valid.")
-	}
-	return t.Format("2006-01-02"), t.AddDate(0, 1, -1).Format("2006-01-02"), nil
-}
-
 func apiAbsenRekap(c *Ctx) error {
 	kid := c.QInt("kelas_id")
 	if err := c.guruKelas("absensi", kid); err != nil {
@@ -453,5 +443,3 @@ func (a *App) apiAbsenSelfie(c *Ctx) error {
 	}
 	return c.JSON(r)
 }
-
-func itoa(n int) string { return strconv.Itoa(n) }

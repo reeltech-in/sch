@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"math"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -310,50 +309,15 @@ func init() {
 }
 
 // soalKuis: id soal milik attempt; kosong (attempt lama) = semua soal kuis.
-func soalKuis(soal sql.NullString) map[int64]bool {
-	var ids []int64
-	if json.Unmarshal([]byte(soal.String), &ids) != nil || len(ids) == 0 {
-		return nil
-	}
-	m := map[int64]bool{}
-	for _, id := range ids {
-		m[id] = true
-	}
-	return m
-}
+func soalKuis(soal sql.NullString) map[int64]bool { return idSoal(soal.String) }
 
 // scoreQuiz menilai jawaban atas soal yang ditampilkan ke siswa (kuis mapel tidak mengacak pilihan).
 func scoreQuiz(tx *sql.Tx, quizID int64, ans map[string]string, soal sql.NullString) (float64, error) {
-	rows, err := tx.Query(`SELECT id, jawaban_benar, bobot FROM quiz_questions WHERE quiz_id=?`, quizID)
-	if err != nil {
-		return 0, err
-	}
-	defer rows.Close()
-	dipakai := soalKuis(soal)
-	var total, benar float64
-	for rows.Next() {
-		var qid int64
-		var kunci string
-		var bobot float64
-		if err := rows.Scan(&qid, &kunci, &bobot); err != nil {
-			return 0, err
-		}
-		if dipakai != nil && !dipakai[qid] {
-			continue
-		}
-		total += bobot
-		if ans[strconv.FormatInt(qid, 10)] == kunci {
-			benar += bobot
-		}
-	}
-	if err := rows.Err(); err != nil {
-		return 0, err
-	}
-	return persen(benar, total), nil
+	return skorPilihanGanda(tx, `SELECT id, jawaban_benar, bobot FROM quiz_questions WHERE quiz_id=?`, quizID, soalKuis(soal), ans)
 }
 
-// apiQuizSave: simpan jawaban sementara selama kuis berjalan (seperti CBT), agar tidak hilang bila HP mati.
-func apiQuizSave(c *Ctx) error {
+// apiQuizAnswersAutosave: (siswa) simpan jawaban sementara selama kuis berjalan (seperti CBT), agar tidak hilang bila HP mati.
+func apiQuizAnswersAutosave(c *Ctx) error {
 	id := c.ID("id")
 	var in struct {
 		Answers map[string]string `json:"answers"`
@@ -430,43 +394,30 @@ func (a *App) finalizeQuiz() {
 	if err != nil {
 		return
 	}
-	type att struct {
-		id, quiz int64
-		start    string
-		dur      int
-	}
-	var due []att
+	var due []int64
 	for rows.Next() {
-		var x att
-		if rows.Scan(&x.id, &x.quiz, &x.start, &x.dur) == nil && time.Now().After(quizDeadline(x.start, x.dur)) {
-			due = append(due, x)
+		var id, quiz int64
+		var start string
+		var dur int
+		if rows.Scan(&id, &quiz, &start, &dur) == nil && time.Now().After(quizDeadline(start, dur)) {
+			due = append(due, id)
 		}
 	}
 	rows.Close()
-	for _, x := range due {
-		func() {
-			tx, err := a.db.Begin()
-			if err != nil {
-				return
-			}
-			defer tx.Rollback()
-			var saved, soal sql.NullString
-			if tx.QueryRow(`SELECT jawaban, soal FROM quiz_attempts WHERE id=? AND selesai=0`, x.id).Scan(&saved, &soal) != nil {
-				return
-			}
-			ans := map[string]string{}
-			json.Unmarshal([]byte(saved.String), &ans)
-			ans = quizClean(ans)
-			skor, err := scoreQuiz(tx, x.quiz, ans, soal)
-			if err != nil {
-				return
-			}
-			jb, _ := json.Marshal(ans)
-			if res, err := tx.Exec(`UPDATE quiz_attempts SET skor=?, jawaban=?, selesai=1, submitted_at=? WHERE id=? AND selesai=0`, skor, string(jb), nowStr(), x.id); err == nil {
-				if n, _ := res.RowsAffected(); n == 1 {
-					tx.Commit()
-				}
-			}
-		}()
-	}
+	a.selesaikanTertunda(due, func(tx *sql.Tx, id int64) error {
+		var quiz int64
+		var saved, soal sql.NullString
+		if err := tx.QueryRow(`SELECT quiz_id, jawaban, soal FROM quiz_attempts WHERE id=? AND selesai=0`, id).Scan(&quiz, &saved, &soal); err != nil {
+			return errLewati
+		}
+		ans := map[string]string{}
+		json.Unmarshal([]byte(saved.String), &ans)
+		ans = quizClean(ans)
+		skor, err := scoreQuiz(tx, quiz, ans, soal)
+		if err != nil {
+			return err
+		}
+		jb, _ := json.Marshal(ans)
+		return tutupAttempt(tx, `UPDATE quiz_attempts SET skor=?, jawaban=?, selesai=1, submitted_at=? WHERE id=? AND selesai=0`, skor, string(jb), nowStr(), id)
+	})
 }

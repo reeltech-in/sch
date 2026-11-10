@@ -58,7 +58,7 @@ func (a *App) routes(m *http.ServeMux) {
 	m.HandleFunc("DELETE /api/assignments/{id}", a.h("admin,guru", apiDeleteChild("assignments", "tugas")))
 	m.HandleFunc("GET /api/assignments/{id}/submissions", a.h("admin,guru", apiSubmissions))
 	m.HandleFunc("POST /api/assignments/{id}/submit", a.h("siswa", apiSubmit))
-	m.HandleFunc("PUT /api/submissions/{id}/grade", a.h("admin,guru", apiGrade))
+	m.HandleFunc("PUT /api/submissions/{id}/grade", a.h("admin,guru", apiGradeSubmission))
 
 	// Kuis
 	m.HandleFunc("GET /api/quizzes", a.h("any", apiQuizzes))
@@ -73,7 +73,7 @@ func (a *App) routes(m *http.ServeMux) {
 	m.HandleFunc("DELETE /api/attempts/{id}", a.h("admin,guru", apiDeleteAttempt))
 	m.HandleFunc("POST /api/quizzes/{id}/start", a.h("siswa", apiQuizStart))
 	m.HandleFunc("POST /api/quizzes/{id}/submit", a.h("siswa", apiQuizSubmit))
-	m.HandleFunc("POST /api/quizzes/{id}/save", a.h("siswa", apiQuizSave))
+	m.HandleFunc("POST /api/quizzes/{id}/save", a.h("siswa", apiQuizAnswersAutosave))
 
 	// Absensi & rekap
 	m.HandleFunc("GET /api/attendance", a.h("admin,guru", apiAttendance))

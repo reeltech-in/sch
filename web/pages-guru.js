@@ -250,8 +250,7 @@ async function guruRekap() {
   const c = cs.find(x => x.id === S.course);
   const r = await GET('/rekap?course_id=' + S.course);
   const rows = r.students.map(s => {
-    const subs = Object.fromEntries(r.submissions.filter(x => x.siswa_id === s.id).map(x => [x.assignment_id, x]));
-    const sc = calcScore(r.assignments, subs, r.attempts.filter(a => a.siswa_id === s.id), r.attendance.filter(a => a.siswa_id === s.id));
+    const sc = r.nilai[s.id] || {}; // nilai akhir dihitung server (nilai.go)
     return { s, ...sc };
   });
   S.rekapCSV = toCSV([['No', 'Nama', 'NIS', 'Rata Tugas', 'Rata Kuis', 'Kehadiran (%)', 'Nilai Akhir', 'Predikat'],

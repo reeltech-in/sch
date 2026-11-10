@@ -27,7 +27,8 @@ func apiGradList(c *Ctx) error {
 	return c.JSON(rows)
 }
 
-func apiGradSave(c *Ctx) error {
+// apiGraduationSave: (admin) simpan status kelulusan siswa (lulus / tidak lulus / ditunda).
+func apiGraduationSave(c *Ctx) error {
 	var in struct {
 		Items []struct {
 			SiswaID int64   `json:"siswa_id"`

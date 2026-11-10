@@ -88,14 +88,6 @@ func waFill(tpl string, vals map[string]string) string {
 	return strings.NewReplacer(pairs...).Replace(tpl)
 }
 
-// fmtTanggal: 2026-11-09 → 9/11/2026
-func fmtTanggal(s string) string {
-	if t, err := time.Parse("2006-01-02", s); err == nil {
-		return t.Format("2/1/2006")
-	}
-	return s
-}
-
 func cfgStr(c map[string]any, k string) string { s, _ := c[k].(string); return strings.TrimSpace(s) }
 func cfgOn(c map[string]any, k string) bool    { b, _ := c[k].(bool); return b }
 

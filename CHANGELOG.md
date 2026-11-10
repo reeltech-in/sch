@@ -8,6 +8,15 @@ Format versi: `MAYOR.MINOR.PERBAIKAN`
 Versi yang sedang berjalan terlihat di menu kiri aplikasi (bawah nama pengguna), di `GET /api/version`,
 di header respons `X-SCH-Version`, dan dengan perintah `sch-server -version`.
 
+## v1.24.2 — 2026-11-10 (Audit tahap 3: perapian kode)
+- **Nilai akhir dihitung di server** (nilai.go) dengan jam server: rekap guru, halaman nilai siswa, dan CSV memakai satu
+  rumus yang sama (40 % tugas + 40 % kuis + 20 % kehadiran), kini dijaga tes. Jam HP/PC yang salah tidak lagi
+  memengaruhi apakah tugas lewat tenggat dihitung 0. Angka tidak berubah.
+- Penilaian pilihan ganda CBT & kuis mapel memakai satu fungsi bersama, begitu pula penilaian otomatis attempt yang
+  waktunya habis (setiap attempt dalam transaksinya sendiri).
+- Fungsi bantu lintas modul (tanggal, persen, daftar kelas, batas halaman publik) dikumpulkan di util.go.
+- Nama yang membingungkan diganti: simpan otomatis jawaban kuis siswa, nilai tugas, dan simpan kelulusan.
+
 ## v1.24.1 — 2026-11-10 (Audit tahap 1: keamanan & integritas data)
 - **Kuis mapel dinilai dari soal yang ditampilkan.** Daftar soal dicatat saat siswa mulai; soal yang ditambahkan guru
   sesudahnya tidak ikut dihitung salah, dan saat melanjutkan siswa melihat soal yang sama.

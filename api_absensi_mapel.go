@@ -1,6 +1,9 @@
 package main
 
-import ()
+import (
+	"strconv"
+	"time"
+)
 
 // LMS: absensi per mapel dan rekap nilai.
 
@@ -121,6 +124,15 @@ func apiRekap(c *Ctx) error {
 	if err != nil {
 		return err
 	}
+	// nilai akhir per siswa dihitung di server (nilai.go), kunci = id siswa
+	rows := func(k string) []map[string]any { r, _ := out[k].([]map[string]any); return r }
+	nilai := map[string]skorMapel{}
+	now := time.Now()
+	for _, s := range st {
+		id, _ := s["id"].(int64)
+		nilai[strconv.FormatInt(id, 10)] = skorDariRekap(rows("assignments"), rows("submissions"), rows("attempts"), rows("attendance"), id, now)
+	}
+	out["nilai"] = nilai
 	return c.JSON(out)
 }
 
@@ -154,7 +166,40 @@ func apiRekapMe(c *Ctx) error {
 	if err != nil {
 		return err
 	}
+	out["nilai"] = nilaiSiswa(out, time.Now())
 	return c.JSON(out)
+}
+
+// nilaiSiswa: nilai akhir per mapel (kunci = id mapel) dari data /rekap/me milik satu siswa.
+func nilaiSiswa(out map[string]any, now time.Time) map[string]skorMapel {
+	rows := func(k string) []map[string]any { r, _ := out[k].([]map[string]any); return r }
+	kuisMapel := map[any]any{}
+	for _, q := range rows("quizzes") {
+		kuisMapel[q["id"]] = q["course_id"]
+	}
+	hasil := map[string]skorMapel{}
+	for _, co := range rows("courses") {
+		cid := co["id"]
+		var asg, att, abs []map[string]any
+		for _, a := range rows("assignments") {
+			if a["course_id"] == cid {
+				asg = append(asg, a)
+			}
+		}
+		for _, t := range rows("attempts") {
+			if toF(t["selesai"]) == 1 && kuisMapel[t["quiz_id"]] == cid {
+				att = append(att, t)
+			}
+		}
+		for _, h := range rows("attendance") {
+			if h["course_id"] == cid {
+				abs = append(abs, h)
+			}
+		}
+		id, _ := cid.(int64)
+		hasil[strconv.FormatInt(id, 10)] = skorDariRekap(asg, rows("submissions"), att, abs, 0, now)
+	}
+	return hasil
 }
 
 // kvTahun: nama tahun ajaran aktif (untuk dashboard).

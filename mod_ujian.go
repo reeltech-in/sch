@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"math/big"
@@ -130,7 +131,7 @@ CREATE TABLE IF NOT EXISTS graduation (
 
 		k := func(roles string, fn func(*Ctx) error) http.HandlerFunc { return a.mod("kelulusan", roles, fn) }
 		m.HandleFunc("GET /api/kelulusan", k("admin", apiGradList))
-		m.HandleFunc("PUT /api/kelulusan", k("admin", apiGradSave))
+		m.HandleFunc("PUT /api/kelulusan", k("admin", apiGraduationSave))
 		m.HandleFunc("GET /api/kelulusan/info", k("", apiGradInfo))
 		m.HandleFunc("POST /api/kelulusan/cek", k("", apiGradCheck))
 	})
@@ -152,17 +153,6 @@ func (c *Ctx) ownsExam(id int64) bool {
 // Dipakai daftar hasil CBT dan input LJK agar keduanya selalu sama.
 const pesertaSQL = `((u.status='aktif' AND u.kelas_id IN (SELECT value FROM json_each(?)))
 	OR EXISTS (SELECT 1 FROM class_members m WHERE m.siswa_id=u.id AND m.kelas_id IN (SELECT value FROM json_each(?))))`
-
-func kelasIn(list string, kelas int64) bool {
-	var ids []int64
-	json.Unmarshal([]byte(list), &ids)
-	for _, k := range ids {
-		if k == kelas {
-			return true
-		}
-	}
-	return false
-}
 
 func apiCBTList(c *Ctx) error {
 	base := `SELECT e.id, e.judul, e.mapel, e.kelas_ids, e.mulai, e.selesai, e.durasi_menit, e.jumlah_opsi, e.acak_soal, e.acak_opsi,
@@ -719,13 +709,26 @@ func apiCBTSubmit(c *Ctx) error {
 // scoreAttempt menilai jawaban (huruf asli) hanya atas soal yang memang diterima siswa (urutan miliknya):
 // soal yang ditambahkan guru setelah siswa mulai tidak menurunkan nilai.
 func scoreAttempt(tx *sql.Tx, examID int64, urutan string, ans map[string]string) (float64, error) {
-	var got []int64
-	json.Unmarshal([]byte(urutan), &got)
-	dapat := map[int64]bool{}
-	for _, q := range got {
-		dapat[q] = true
+	return skorPilihanGanda(tx, `SELECT id, jawaban_benar, bobot FROM exam_questions WHERE exam_id=?`, examID, idSoal(urutan), ans)
+}
+
+// idSoal: daftar id soal (JSON) → himpunan; kosong/tidak valid = nil (semua soal dinilai, untuk attempt lama).
+func idSoal(js string) map[int64]bool {
+	var ids []int64
+	if json.Unmarshal([]byte(js), &ids) != nil || len(ids) == 0 {
+		return nil
 	}
-	rows, err := tx.Query(`SELECT id, jawaban_benar, bobot FROM exam_questions WHERE exam_id=?`, examID)
+	m := make(map[int64]bool, len(ids))
+	for _, id := range ids {
+		m[id] = true
+	}
+	return m
+}
+
+// skorPilihanGanda: nilai 0–100 dari kunci & bobot soal (q harus memilih id, jawaban_benar, bobot untuk satu
+// induk), hanya atas soal yang diterima siswa (nil = semua). Dipakai bersama oleh CBT dan kuis mapel.
+func skorPilihanGanda(tx *sql.Tx, q string, induk int64, diterima map[int64]bool, ans map[string]string) (float64, error) {
+	rows, err := tx.Query(q, induk)
 	if err != nil {
 		return 0, err
 	}
@@ -738,7 +741,7 @@ func scoreAttempt(tx *sql.Tx, examID int64, urutan string, ans map[string]string
 		if err := rows.Scan(&qid, &kunci, &bobot); err != nil {
 			return 0, err
 		}
-		if len(dapat) > 0 && !dapat[qid] {
+		if diterima != nil && !diterima[qid] {
 			continue
 		}
 		total += bobot
@@ -752,12 +755,36 @@ func scoreAttempt(tx *sql.Tx, examID int64, urutan string, ans map[string]string
 	return persen(benar, total), nil
 }
 
-// persen: nilai 0–100 dengan dua desimal (dipakai CBT, kuis, dan LJK)
-func persen(benar, total float64) float64 {
-	if total <= 0 {
-		return 0
+// errLewati: attempt sudah ditutup oleh proses lain (dikirim siswa) — jangan simpan apa pun.
+var errLewati = errors.New("lewati")
+
+// selesaikanTertunda menilai attempt yang lewat waktu satu per satu, masing-masing dalam transaksinya sendiri
+// (satu attempt rusak tidak menggagalkan yang lain). nilai mengembalikan errLewati bila attempt sudah selesai.
+func (a *App) selesaikanTertunda(ids []int64, nilai func(tx *sql.Tx, id int64) error) {
+	for _, id := range ids {
+		func() {
+			tx, err := a.db.Begin()
+			if err != nil {
+				return
+			}
+			defer tx.Rollback()
+			if nilai(tx, id) == nil {
+				tx.Commit()
+			}
+		}()
 	}
-	return math.Round(benar/total*10000) / 100
+}
+
+// tutupAttempt: UPDATE penutup yang hanya berlaku bila attempt masih terbuka; 0 baris = sudah ditutup proses lain.
+func tutupAttempt(tx *sql.Tx, q string, args ...any) error {
+	res, err := tx.Exec(q, args...)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n != 1 {
+		return errLewati
+	}
+	return nil
 }
 
 // finalizeCBT menilai ujian yang waktunya sudah habis tetapi tidak pernah dikumpulkan (HP mati, browser
@@ -771,44 +798,31 @@ func (a *App) finalizeCBT(examID int64) {
 		q += ` AND t.exam_id=?`
 		args = append(args, examID)
 	}
-	type att struct {
-		id, exam          int64
-		start, dur, tutup string
-	}
 	rows, err := a.reader().Query(q, args...)
 	if err != nil {
 		return
 	}
-	var due []att
+	var due []int64
 	for rows.Next() {
-		var x att
-		if rows.Scan(&x.id, &x.exam, &x.start, &x.dur, &x.tutup) == nil && time.Now().After(examDeadline(x.start, x.dur, x.tutup)) {
-			due = append(due, x)
+		var id, exam int64
+		var start, dur, tutup string
+		if rows.Scan(&id, &exam, &start, &dur, &tutup) == nil && time.Now().After(examDeadline(start, dur, tutup)) {
+			due = append(due, id)
 		}
 	}
 	rows.Close()
-	for _, x := range due {
-		func() {
-			tx, err := a.db.Begin()
-			if err != nil {
-				return
-			}
-			defer tx.Rollback()
-			var jawaban, urutan string
-			if tx.QueryRow(`SELECT jawaban, urutan FROM exam_attempts WHERE id=? AND selesai=0`, x.id).Scan(&jawaban, &urutan) != nil {
-				return
-			}
-			ans := map[string]string{}
-			json.Unmarshal([]byte(jawaban), &ans)
-			skor, err := scoreAttempt(tx, x.exam, urutan, ans)
-			if err != nil {
-				return
-			}
-			if res, err := tx.Exec(`UPDATE exam_attempts SET skor=?, selesai=1, submitted_at=? WHERE id=? AND selesai=0`, skor, nowStr(), x.id); err == nil {
-				if n, _ := res.RowsAffected(); n == 1 {
-					tx.Commit()
-				}
-			}
-		}()
-	}
+	a.selesaikanTertunda(due, func(tx *sql.Tx, id int64) error {
+		var exam int64
+		var jawaban, urutan string
+		if err := tx.QueryRow(`SELECT exam_id, jawaban, urutan FROM exam_attempts WHERE id=? AND selesai=0`, id).Scan(&exam, &jawaban, &urutan); err != nil {
+			return errLewati
+		}
+		ans := map[string]string{}
+		json.Unmarshal([]byte(jawaban), &ans)
+		skor, err := scoreAttempt(tx, exam, urutan, ans)
+		if err != nil {
+			return err
+		}
+		return tutupAttempt(tx, `UPDATE exam_attempts SET skor=?, selesai=1, submitted_at=? WHERE id=? AND selesai=0`, skor, nowStr(), id)
+	})
 }

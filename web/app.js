@@ -927,23 +927,7 @@ document.addEventListener('keydown', e => {
 // tugas & kuis dalam skala 0-100; nilai akhir = 40% tugas + 40% kuis + 20% kehadiran (dari komponen yang ada).
 // Tugas yang tidak dikumpulkan sampai lewat tenggat dihitung 0. Nilai akhir hanya muncul jika ada nilai tugas/kuis.
 const RUMUS = 'Nilai akhir = 40% tugas + 40% kuis + 20% kehadiran. Tugas yang tidak dikumpulkan sampai lewat tenggat dihitung 0; komponen yang belum ada tidak dihitung.';
-function calcScore(assignments, subByAssignment, attempts, attendance) {
-  const now = new Date();
-  const t = assignments.map(a => {
-    const s = subByAssignment[a.id];
-    if (s && s.nilai != null) return (s.nilai / (a.nilai_maks || 100)) * 100;
-    if (!s && a.deadline && new Date(a.deadline) < now) return 0;
-    return null;
-  }).filter(v => v != null);
-  const tugas = t.length ? t.reduce((x, y) => x + y, 0) / t.length : null;
-  const k = attempts.map(a => a.skor);
-  const kuis = k.length ? k.reduce((x, y) => x + y, 0) / k.length : null;
-  const hadir = attendance.length ? attendance.filter(a => a.status === 'hadir').length / attendance.length * 100 : null;
-  const parts = [[tugas, 40], [kuis, 40], [hadir, 20]].filter(([v]) => v != null);
-  const w = parts.reduce((x, [, b]) => x + b, 0);
-  const akhir = w && (tugas != null || kuis != null) ? parts.reduce((x, [v, b]) => x + v * b, 0) / w : null;
-  return { tugas, kuis, hadir, akhir };
-}
+// nilai akhir (40 % tugas + 40 % kuis + 20 % hadir) dihitung di server: nilai.go
 const predikat = n => n == null ? ['–', ''] : n >= 90 ? ['A', 'ok'] : n >= 80 ? ['B', 'ok'] : n >= 70 ? ['C', 'info'] : n >= 60 ? ['D', 'warn'] : ['E', 'bad'];
 
 // Lampiran materi: satu per baris "Judul | URL" atau hanya URL
