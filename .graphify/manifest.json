@@ -56,8 +56,8 @@
     "hash": "228a39da23f592456675ed18bab57471"
   },
   "mod_ujian.go": {
-    "mtime": 1794271007200.7695,
-    "hash": "e7c7610e251e5f2c4c3babe2169693ba"
+    "mtime": 1794298543669.0166,
+    "hash": "6c54a0ce077a9e511cb72d56a6656b1c"
   },
   "modules.go": {
     "mtime": 1794214721339.1816,
@@ -120,8 +120,8 @@
     "hash": "e23343d8c9827b32230cc0d7b142ab21"
   },
   "CHANGELOG.md": {
-    "mtime": 1794287544009.2495,
-    "hash": "195201e0c7b5e298897ec545fb4b59a0"
+    "mtime": 1794298606657.9307,
+    "hash": "b1cfdfba793d909ced5731576f9d1f37"
   },
   "README.md": {
     "mtime": 1794284325950.1606,
@@ -248,8 +248,8 @@
     "hash": "e38973eb2d85ffca9e3d2c789da4dd0f"
   },
   "web/mod-cbt.js": {
-    "mtime": 1794270514994.548,
-    "hash": "ff3a102e14afffd2d7f907955747e2f0"
+    "mtime": 1794298543669.2847,
+    "hash": "ec0d1f551c0d4ce8715ce8e04d0d42b1"
   },
   "web/mod-evoting.js": {
     "mtime": 1794270380932.541,
@@ -276,8 +276,8 @@
     "hash": "2a5e81dc8fa588b5594baf1bce824db5"
   },
   "audit_test.go": {
-    "mtime": 1794278807226.9094,
-    "hash": "b759b2ba69e866f2c5caeb22af911d61"
+    "mtime": 1794298559199.1653,
+    "hash": "952997a1140c7f6a30d3ec8b4540969c"
   },
   "ebook_test.go": {
     "mtime": 1794227381833.9192,
@@ -288,8 +288,8 @@
     "hash": "659cf2388215daebdbc71f62c2c866a9"
   },
   ".graphify/GRAPH_REPORT.md": {
-    "mtime": 1794285998897.4902,
-    "hash": "bc15f80a8f711e7a85d50e942ff42754"
+    "mtime": 1794287546193.7734,
+    "hash": "a7c6af886db84914bf0996f39181b3d8"
   },
   "docs/INSTALL-UBUNTU.md": {
     "mtime": 1794267381424.0015,
