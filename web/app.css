@@ -81,7 +81,14 @@ svg.i { width: 18px; height: 18px; flex: none; stroke: currentColor; fill: none;
 :root { --hdr-h: 64px; }
 .topbar { display: flex; align-items: center; gap: 14px; position: sticky; top: 0; z-index: 25; height: var(--hdr-h); padding: 0 32px;
   background: var(--surface); background: color-mix(in srgb, var(--surface) 88%, transparent); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); }
-.topbar > .btn.icon, .topbar .tb-school { display: none; }
+.topbar > .btn.icon { display: none; }
+.tb-title { font-size: 20px; font-weight: 800; letter-spacing: -.01em; margin: 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* judul halaman pindah ke header; di layar h1 di isi halaman disembunyikan (tetap tercetak) */
+@media screen {
+  .page-head h1.in-hdr { display: none; }
+  .page-head > div:has(> h1.in-hdr:only-child) { display: none; }
+  .page-head:has(> div:only-child > h1.in-hdr:only-child) { display: none; }
+}
 .tb-time { display: flex; align-items: center; gap: 8px; margin-left: auto; padding-right: 14px; border-right: 1px solid var(--border); height: 28px; color: var(--text-2); font-size: 14px; white-space: nowrap; min-width: 0; } /* di kanan, sebelum tombol akun */
 .tb-time svg.i { width: 17px; height: 17px; color: var(--muted); flex: none; }
 .tb-time b { font-size: 15px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
@@ -128,7 +135,7 @@ svg.i { width: 18px; height: 18px; flex: none; stroke: currentColor; fill: none;
   :root { --hdr-h: 60px; }
   .topbar { gap: 10px; padding: 0 12px 0 16px; background: var(--surface); }
   .topbar > .btn.icon { display: inline-grid; }
-  .topbar .tb-school { display: block; font-size: 15px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tb-title { font-size: 16px; flex: 1; }
   .topbar .tb-time, .tb-who, .tb-me > svg.i { display: none; }
   .tb-me { padding: 4px; }
   .main { padding: 18px 16px 48px; }

@@ -8,6 +8,11 @@ Format versi: `MAYOR.MINOR.PERBAIKAN`
 Versi yang sedang berjalan terlihat di menu kiri aplikasi (bawah nama pengguna), di `GET /api/version`,
 di header respons `X-SCH-Version`, dan dengan perintah `sch-server -version`.
 
+## v1.24.3 — 2026-11-10 (Judul halaman di header)
+- Judul halaman (Beranda, Tugas, Rekap Nilai, …) pindah ke header di kiri, sejajar dengan jam dan menu akun; di HP
+  menggantikan nama sekolah. Keterangan dan tombol halaman tetap di bawahnya. Judul juga dipakai sebagai judul tab
+  browser ("Tugas · Nama Sekolah"). Saat dicetak, judul asli tetap tercetak.
+
 ## v1.24.2 — 2026-11-10 (Audit tahap 3: perapian kode)
 - **Nilai akhir dihitung di server** (nilai.go) dengan jam server: rekap guru, halaman nilai siswa, dan CSV memakai satu
   rumus yang sama (40 % tugas + 40 % kuis + 20 % kehadiran), kini dijaga tes. Jam HP/PC yang salah tidak lagi

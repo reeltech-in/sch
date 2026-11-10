@@ -702,12 +702,27 @@ async function refresh(quiet) {
       const i = $(`[data-filter="${id}"]`, main);
       if (i) { i.value = v; i.dispatchEvent(new Event('input', { bubbles: true })); }
     }
+    judulKeHeader(page);
     if (after) after();
   } catch (e) {
     if (seq !== S.seq) return;
     main.dataset.seq = seq;
     main.innerHTML = head('Terjadi kendala') + errBox(e);
+    judulKeHeader(page);
   }
+}
+
+// Judul halaman tampil di header: diambil dari h1 halaman (disembunyikan di layar, tetap ada saat dicetak);
+// halaman tanpa judul memakai nama menunya.
+function judulKeHeader(page) {
+  const el = $('#hdrTitle');
+  if (!el) return;
+  const h = $('#main .page-head h1');
+  const nav = (navFor(S.user.role).find(([p]) => p === (PAGE_PARENT[page] || page)) || [])[1];
+  const t = h ? h.textContent : nav || '';
+  if (h) h.classList.add('in-hdr');
+  el.textContent = t;
+  document.title = (t ? t + ' · ' : '') + (S.settings.nama_sekolah || 'Sekolah');
 }
 
 function brandHtml(sub) {
@@ -732,7 +747,7 @@ function renderShell() {
       <main class="main" id="main"></main></div>
   </div>`;
   startClock();
-  document.title = (S.settings.nama_sekolah || 'Sekolah') + ' · LMS';
+  document.title = S.settings.nama_sekolah || 'Sekolah';
   document.body.classList.add('has-shell');
 }
 
@@ -742,7 +757,7 @@ function headerHtml(u) {
   const role = esc(ROLE_LABEL[u.role] || u.role);
   const opt = (k, i, l) => `<button type="button" role="menuitemradio" tabindex="-1" aria-checked="${t === k}" class="${t === k ? 'on' : ''}" data-act="setTheme" data-t="${k}">${ico(i)}${l}</button>`;
   return `<header class="topbar">${iconBtn('menu', 'openMenu', {}, 'Buka menu')}
-    <b class="tb-school">${esc(S.settings.nama_sekolah || 'Sekolah')}</b>
+    <h1 class="tb-title" id="hdrTitle"></h1>
     <div class="tb-time">${ico('clock')}<span id="hdrDate"></span><b id="hdrClock"></b><small id="hdrZone"></small></div>
     <div class="tb-acct">
       <button type="button" class="tb-me" data-act="acctMenu" aria-haspopup="menu" aria-expanded="false" aria-controls="acctPop" title="Menu akun">
