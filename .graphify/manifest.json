@@ -52,8 +52,8 @@
     "hash": "2ed7c98ee9b804012bb2798ffaaf236a"
   },
   "mod_tahun.go": {
-    "mtime": 1794314061520.7375,
-    "hash": "6aff4ed7279069ccc16515b9328f65ff"
+    "mtime": 1794316752817.393,
+    "hash": "2d048a82707ee7ade7fa3ba57208530d"
   },
   "mod_ujian.go": {
     "mtime": 1794301873087.4521,
@@ -100,8 +100,8 @@
     "hash": "a584f62fbc21e94b11f6cb061d524f05"
   },
   "web/mod-tahun.js": {
-    "mtime": 1794285706818.3008,
-    "hash": "218eff3efeea6629b315c88220e74af9"
+    "mtime": 1794316752818.4219,
+    "hash": "df9347990d1d051f3d1def8f1acb7cb5"
   },
   "web/pages-admin.js": {
     "mtime": 1794314289459.846,
@@ -120,8 +120,8 @@
     "hash": "e23343d8c9827b32230cc0d7b142ab21"
   },
   "CHANGELOG.md": {
-    "mtime": 1794315151217.5786,
-    "hash": "aa2edc0caa6a49449e401892513a6291"
+    "mtime": 1794316846790.003,
+    "hash": "de37ec57b80d7e397a3e20a00457dd0c"
   },
   "README.md": {
     "mtime": 1794313945032.836,
@@ -288,8 +288,8 @@
     "hash": "659cf2388215daebdbc71f62c2c866a9"
   },
   ".graphify/GRAPH_REPORT.md": {
-    "mtime": 1794314364073.8623,
-    "hash": "e8a78453c562679bf6c4882db8231035"
+    "mtime": 1794315154444.4688,
+    "hash": "8c79868e868794d6cd1cd51a8294ef38"
   },
   "docs/INSTALL-UBUNTU.md": {
     "mtime": 1794267381424.0015,
@@ -312,8 +312,8 @@
     "hash": "8e59784dfb05896510a3ee846499248a"
   },
   "tahap2_test.go": {
-    "mtime": 1794315019917.7063,
-    "hash": "e94c53fd153266cf5c664904aa85abad"
+    "mtime": 1794316769495.1606,
+    "hash": "aece536f0b1f8b456b0de421d2dc8858"
   },
   "nilai.go": {
     "mtime": 1794301921234.385,
@@ -328,15 +328,15 @@
     "hash": "bf69478b69644c0434f08731c0174596"
   },
   "mod_rapor.go": {
-    "mtime": 1794315060435.808,
-    "hash": "c7c1dd1e55502dca3885074a88da28ce"
+    "mtime": 1794316752817.741,
+    "hash": "fbb7b3d7ee8ac45aa00f067c271bc0b4"
   },
   "rapor_test.go": {
     "mtime": 1794315070515.4866,
     "hash": "8864ac0aef9010d892f7efbf3f7dd925"
   },
   "web/mod-rapor.js": {
-    "mtime": 1794315060436.5857,
-    "hash": "392046395098e4f9e0ce6e138271fae6"
+    "mtime": 1794316752819.1196,
+    "hash": "f11ae3a99b42b8d5a914c0735ecfdac6"
   }
 }
