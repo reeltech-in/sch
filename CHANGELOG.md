@@ -8,6 +8,11 @@ Format versi: `MAYOR.MINOR.PERBAIKAN`
 Versi yang sedang berjalan terlihat di menu kiri aplikasi (bawah nama pengguna), di `GET /api/version`,
 di header respons `X-SCH-Version`, dan dengan perintah `sch-server -version`.
 
+## v1.23.2 — 2026-11-10 (Pesan jelas saat ujian CBT tidak bisa dibuka)
+- Bila siswa membuka halaman ujian yang sudah dihapus guru (mis. tab lama masih terbuka), ditutup, sudah dikerjakan,
+  atau belum dibuka, tampil kartu "Ujian tidak bisa dibuka" dengan alasannya dan tombol **Kembali ke daftar ujian**,
+  bukan "Terjadi kendala · Data tidak ditemukan."
+
 ## v1.23.1 — 2026-11-10 (Kerapian menu guru & siswa di HP)
 - **Absensi mapel (guru, HP)**: tombol Hadir/Izin/Sakit/Alfa selebar kartu dan lebih tinggi (±43 px) agar tidak salah sentuh;
   tombol **Simpan absensi** menempel di bawah layar sehingga kelas panjang tidak perlu digulir ke atas.

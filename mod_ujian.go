@@ -431,12 +431,16 @@ func (c *Ctx) loadExam(id int64) (*examRow, error) {
 	// baca saja: lewat kumpulan pembaca, agar 400 siswa yang mulai bersamaan tidak antre di koneksi tulis
 	err := c.A.reader().QueryRow(`SELECT judul, kelas_ids, mulai, selesai, durasi_menit, jumlah_opsi, acak_soal, acak_opsi, tampil_nilai, token FROM exams WHERE id=?`, id).
 		Scan(&e.judul, &e.kelasIDs, &e.mulai, &e.selesai, &e.durasi, &e.jopsi, &as, &ao, &tn, &e.token)
-	if err != nil {
-		return nil, notFound()
+	// pesan jelas untuk siswa (mis. halaman ujian lama masih terbuka setelah guru menghapus ujiannya)
+	tidakAda := apiErr{404, "Ujian ini tidak tersedia: sudah dihapus guru atau bukan untuk kelas Anda."}
+	if err == sql.ErrNoRows {
+		return nil, tidakAda
+	} else if err != nil {
+		return nil, err
 	}
 	e.acakSoal, e.acakOpsi, e.tampil = as == 1, ao == 1, tn == 1
 	if !c.U.KelasID.Valid || !kelasIn(e.kelasIDs, c.U.KelasID.Int64) {
-		return nil, notFound()
+		return nil, tidakAda
 	}
 	return e, nil
 }

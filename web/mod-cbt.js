@@ -150,7 +150,12 @@ async function pageCBTUjian(p) {
   let r;
   try { r = await POST(`/cbt/${id}/start`, { token: S.cbtTok[id] || '' }); }
   catch (e) {
-    if (e.message !== 'TOKEN') throw e;
+    if (isAbort(e)) throw e;
+    // ujian dihapus/ditutup/sudah dikerjakan/belum dibuka: tampilkan alasannya + jalan kembali, bukan "Terjadi kendala"
+    if (e.message !== 'TOKEN') return `<div class="card" style="max-width:460px;margin:40px auto;text-align:center;padding:28px">
+      <div class="stat" style="justify-content:center;border:0;box-shadow:none"><div class="ic">${ico('quiz')}</div></div>
+      <h2>Ujian tidak bisa dibuka</h2><p class="muted" style="margin:6px 0 18px">${esc(e.message)}</p>
+      <div class="acts" style="justify-content:center">${btn('Kembali ke daftar ujian', 'nav', { page: 'cbt' })}</div></div>`;
     const fid = registerForm([{ n: 'token' }], async v => { S.cbtTok[id] = v.token; await refresh(false); });
     return `<div class="card" style="max-width:420px;margin:40px auto;text-align:center;padding:28px">
       <div class="stat" style="justify-content:center;border:0;box-shadow:none"><div class="ic">${ico('key')}</div></div>

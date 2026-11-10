@@ -396,3 +396,13 @@ func TestLogAktivitasPencarianDibatasi(t *testing.T) {
 		t.Errorf("pencarian dengan tanggal dari: %d %s", code, b)
 	}
 }
+
+// Halaman ujian lama masih terbuka setelah guru menghapus ujiannya: siswa mendapat alasan yang jelas.
+func TestCBTDihapusPesanJelas(t *testing.T) {
+	e := newEnv(t)
+	s := e.login("siswa001", "siswa123")
+	code, b := s.do("POST", "/api/cbt/999999/start", map[string]string{})
+	if code != 404 || !strings.Contains(string(b), "sudah dihapus guru") {
+		t.Fatalf("ujian dihapus: %d %s", code, b)
+	}
+}
