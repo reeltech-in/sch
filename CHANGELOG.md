@@ -8,7 +8,12 @@ Format versi: `MAYOR.MINOR.PERBAIKAN`
 Versi yang sedang berjalan terlihat di menu kiri aplikasi (bawah nama pengguna), di `GET /api/version`,
 di header respons `X-SCH-Version`, dan dengan perintah `sch-server -version`.
 
-## v1.23.3 — 2026-11-10 (Sudut kartu lebih tegas)
+## v1.24.0 — 2026-11-10 (Header baru & sudut kartu lebih tegas)
+- **Header di bagian atas** (desktop): hari, tanggal, dan jam menurut waktu server (WIB/WITA/WIT), serta **menu akun**
+  berisi nama & peran, Akun Saya (profil & kata sandi), Pengaturan (admin), pilihan **tema Sistem / Terang / Gelap**,
+  dan Keluar. Di HP header berisi tombol menu, nama sekolah, dan tombol akun yang sama. Menu akun bisa dipakai dengan
+  keyboard (panah, Home/End, Esc) sesuai pola Menu Button WAI-ARIA. Nama pengguna, tombol tema, dan Keluar tidak lagi
+  di bawah menu samping.
 - Sudut kartu, tabel, dan jendela tidak terlalu membulat lagi (kartu 20 → 12 px, jendela 24 → 16 px); tombol, isian,
   tab, dan elemen kecil ikut disesuaikan (8–10 px) agar seragam. Label status dan bilah progres tetap berbentuk pil.
 

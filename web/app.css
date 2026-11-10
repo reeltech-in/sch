@@ -72,20 +72,66 @@ svg.i { width: 18px; height: 18px; flex: none; stroke: currentColor; fill: none;
 .nav button:hover { background: var(--surface-2); color: var(--text); }
 .nav button:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
 .who { margin-top: auto; border-top: 1px solid var(--border); padding: 14px 8px 2px; display: flex; flex-direction: column; gap: 10px; }
-.who b { display: block; font-size: 14px; }
 .main { padding: 28px 32px 60px; min-width: 0; }
-.topbar { display: none; }
 .page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
 .page-head p { color: var(--text-2); margin-top: 4px; }
 .scrim { display: none; }
+
+/* ---- Header (semua ukuran layar): jam & menu akun. Tinggi disimpan di --hdr-h untuk elemen lengket. ---- */
+:root { --hdr-h: 64px; }
+.topbar { display: flex; align-items: center; gap: 14px; position: sticky; top: 0; z-index: 25; height: var(--hdr-h); padding: 0 32px;
+  background: var(--surface); background: color-mix(in srgb, var(--surface) 88%, transparent); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); }
+.topbar > .btn.icon, .topbar .tb-school { display: none; }
+.tb-time { display: flex; align-items: center; gap: 8px; color: var(--text-2); font-size: 14px; white-space: nowrap; min-width: 0; }
+.tb-time svg.i { width: 17px; height: 17px; color: var(--muted); flex: none; }
+.tb-time b { font-size: 15px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+.tb-time small { font-size: 12px; color: var(--muted); font-weight: 600; }
+.tb-acct { position: relative; margin-left: auto; }
+.tb-me { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 10px; padding: 4px 10px 4px 4px; border-radius: 10px; cursor: pointer; min-height: 44px; }
+.tb-me:hover, .tb-me[aria-expanded=true] { background: var(--surface-2); }
+.tb-me:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
+.tb-me .avatar { border-radius: 8px; font-size: 14px; }
+.tb-who { display: flex; flex-direction: column; line-height: 1.25; max-width: 200px; }
+.tb-who b { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tb-who small { font-size: 12px; color: var(--muted); }
+.tb-me > svg.i { width: 16px; height: 16px; color: var(--muted); }
+.tb-pop { position: absolute; right: 0; top: calc(100% + 8px); width: 280px; max-width: calc(100vw - 24px); background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: var(--shadow); padding: 8px; z-index: 50; display: flex; flex-direction: column; gap: 2px; }
+.tb-pop[hidden] { display: none; }
+.tb-pop-head { display: flex; align-items: center; gap: 10px; padding: 8px 8px 12px; border-bottom: 1px solid var(--border); margin-bottom: 6px; }
+.tb-pop-head > div { min-width: 0; }
+.tb-pop-head b { display: block; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tb-pop-head small { font-size: 12px; color: var(--muted); }
+.tb-pop > button { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; color: var(--text); min-height: 42px; }
+.tb-pop > button span { display: flex; flex-direction: column; }
+.tb-pop > button small { font-size: 12px; font-weight: 500; color: var(--muted); }
+.tb-pop > button svg.i { width: 18px; height: 18px; color: var(--text-2); flex: none; }
+.tb-pop > button:hover, .tb-pop > button:focus-visible { background: var(--surface-2); outline: none; }
+.tb-pop .tb-out, .tb-pop .tb-out svg.i { color: var(--bad); }
+.tb-pop hr { border: 0; border-top: 1px solid var(--border); margin: 6px 0; }
+.tb-pop div[role=separator] { display: none; }
+.tb-pop-sec { font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); padding: 8px 10px 4px; }
+.tb-theme { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; background: var(--surface-2); border-radius: 10px; padding: 4px; margin: 0 4px 4px; }
+.tb-theme button { all: unset; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 8px 4px; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 600; color: var(--text-2); }
+.tb-theme button svg.i { width: 17px; height: 17px; }
+.tb-theme button.on { background: var(--surface); color: var(--brand); box-shadow: var(--shadow); }
+.tb-theme button:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
+/* elemen lengket di halaman berada di bawah header */
+.quiz-head { top: calc(var(--hdr-h) + 8px); }
+.cbt-nav, .subnav { top: calc(var(--hdr-h) + 16px); }
 
 @media (max-width: 860px) {
   .shell { grid-template-columns: minmax(0, 1fr); }
   .side { position: fixed; inset: 0 auto 0 0; width: 270px; z-index: 40; transform: translateX(-100%); transition: transform .2s ease; box-shadow: var(--shadow); }
   .shell.menu-open .side { transform: none; }
   .shell.menu-open .scrim { display: block; position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 30; }
-  .topbar { display: flex; align-items: center; gap: 10px; position: sticky; top: 0; z-index: 20; background: var(--surface); border-bottom: 1px solid var(--border); padding: 10px 16px; }
-  .topbar b { font-size: 15px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  :root { --hdr-h: 60px; }
+  .topbar { gap: 10px; padding: 0 12px 0 16px; background: var(--surface); }
+  .topbar > .btn.icon { display: inline-grid; }
+  .topbar .tb-school { display: block; font-size: 15px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .topbar .tb-time, .tb-who, .tb-me > svg.i { display: none; }
+  .tb-acct { margin-left: 0; }
+  .tb-me { padding: 4px; }
   .main { padding: 18px 16px 48px; }
   h1 { font-size: 21px; }
 }
@@ -459,10 +505,7 @@ label.f { font-size: 13px; }
 .theme-btn:hover { color: var(--brand); }
 .theme-btn:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 .theme-float { position: fixed; top: 14px; right: 14px; z-index: 20; box-shadow: var(--shadow); background: var(--surface); }
-.who-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 body.has-shell #themeFloat { display: none; }
-@media (max-width: 860px) { .who .theme-btn { display: none; } }
-@media (min-width: 861px) { .topbar .theme-btn { display: none; } }
 
 /* ---- Warna tema per jenjang (Pengaturan → Tampilan). Bawaan (tanpa atribut) = biru SMP ---- */
 :root[data-warna="abu"] { --brand: #475569; --brand-600: #334155; --brand-400: #64748b; --brand-50: #eef2f6; --brand-rgb: 71, 85, 105;

@@ -725,17 +725,80 @@ function renderShell() {
       <nav class="nav">${(() => { let g = null; return navFor(u.role).map(([p, l, i, , grp]) => {
         const h = grp !== g && grp ? `<div class="nav-group">${esc(grp)}</div>` : ''; g = grp;
         return h + `<button type="button" data-act="nav" data-page="${p}">${ico(i)}${esc(l)}</button>`; }).join(''); })()}</nav>
-      <div class="who"><div class="who-row"><div><b>${esc(u.nama_lengkap)}</b><small>${esc(u.username)}</small></div>${themeBtn()}</div>
-        <button type="button" class="btn ghost sm" data-act="logout">${ico('out')} Keluar</button>
-        <small class="muted" style="font-size:11px">SCH ${esc(S.settings.versi || '')}</small></div>
+      <div class="who"><small class="muted">SCH ${esc(S.settings.versi || '')}</small></div>
     </aside>
     <div class="scrim" data-act="closeMenu"></div>
-    <div><div class="topbar">${iconBtn('menu', 'openMenu', {}, 'Buka menu')}<b>${esc(S.settings.nama_sekolah || 'Sekolah')}</b>${themeBtn()}</div>
+    <div>${headerHtml(u)}
       <main class="main" id="main"></main></div>
   </div>`;
+  startClock();
   document.title = (S.settings.nama_sekolah || 'Sekolah') + ' · LMS';
   document.body.classList.add('has-shell');
 }
+
+// ---- Header: tanggal & jam (waktu server) dan menu akun (Akun Saya, tema, keluar).
+function headerHtml(u) {
+  const t = themePref();
+  const role = esc(ROLE_LABEL[u.role] || u.role);
+  const opt = (k, i, l) => `<button type="button" role="menuitemradio" tabindex="-1" aria-checked="${t === k}" class="${t === k ? 'on' : ''}" data-act="setTheme" data-t="${k}">${ico(i)}${l}</button>`;
+  return `<header class="topbar">${iconBtn('menu', 'openMenu', {}, 'Buka menu')}
+    <b class="tb-school">${esc(S.settings.nama_sekolah || 'Sekolah')}</b>
+    <div class="tb-time">${ico('clock')}<span id="hdrDate"></span><b id="hdrClock"></b><small id="hdrZone"></small></div>
+    <div class="tb-acct">
+      <button type="button" class="tb-me" data-act="acctMenu" aria-haspopup="menu" aria-expanded="false" aria-controls="acctPop" title="Menu akun">
+        ${avatar(u.foto_url, u.nama_lengkap, 34)}<span class="tb-who"><b>${esc(u.nama_lengkap)}</b><small>${role}</small></span>${ico('down')}</button>
+      <div class="tb-pop" id="acctPop" role="menu" aria-label="Menu akun" hidden>
+        <div class="tb-pop-head">${avatar(u.foto_url, u.nama_lengkap, 40)}<div><b>${esc(u.nama_lengkap)}</b><small>${esc(u.username)} · ${role}</small></div></div>
+        <button type="button" role="menuitem" tabindex="-1" data-act="acctGo" data-page="akun">${ico('key')}<span>Akun Saya<small>Profil &amp; kata sandi</small></span></button>
+        ${u.role === 'admin' ? `<button type="button" role="menuitem" tabindex="-1" data-act="acctGo" data-page="pengaturan">${ico('gear')}<span>Pengaturan</span></button>` : ''}
+        <div role="separator"></div><div class="tb-pop-sec" aria-hidden="true">Tema tampilan</div>
+        <div class="tb-theme" role="group" aria-label="Tema tampilan">${opt('system', 'monitor', 'Sistem')}${opt('light', 'sun', 'Terang')}${opt('dark', 'moon', 'Gelap')}</div>
+        <hr role="separator"><button type="button" role="menuitem" tabindex="-1" class="tb-out" data-act="logout">${ico('out')}<span>Keluar</span></button>
+      </div></div></header>`;
+}
+// zona waktu Indonesia dari jam perangkat (WIB/WITA/WIT); selain itu GMT+n
+function zonaWaktu() {
+  const off = -new Date().getTimezoneOffset() / 60;
+  return { 7: 'WIB', 8: 'WITA', 9: 'WIT' }[off] || 'GMT' + (off >= 0 ? '+' : '') + off;
+}
+let clockT = null;
+function startClock() {
+  clearInterval(clockT);
+  const tick = () => {
+    const c = $('#hdrClock');
+    if (!c) return clearInterval(clockT);
+    const d = new Date(nowMs()); // waktu server: jam perangkat siswa/PC lab bisa salah
+    c.textContent = d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+    $('#hdrDate').textContent = d.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    $('#hdrZone').textContent = zonaWaktu();
+  };
+  tick();
+  clockT = setInterval(tick, 1000);
+}
+const acctItems = () => $$('#acctPop [role^=menuitem]');
+function acctMenu(open, fokus = 'first') {
+  const pop = $('#acctPop'), b = $('.tb-me');
+  if (!pop) return;
+  open = open ?? pop.hidden;
+  if (open === !pop.hidden) return;
+  pop.hidden = !open;
+  b.setAttribute('aria-expanded', String(open));
+  if (open) { const it = acctItems(); (fokus === 'last' ? it[it.length - 1] : it[0])?.focus(); }
+}
+// klik di luar menu akun menutupnya
+document.addEventListener('click', e => { if (!e.target.closest('.tb-acct')) acctMenu(false); });
+document.addEventListener('keydown', e => {
+  const pop = $('#acctPop');
+  if (!pop) return;
+  // tombol akun: panah bawah/atas membuka menu (Enter/Spasi lewat klik biasa)
+  if (e.target.closest('.tb-me') && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) { e.preventDefault(); acctMenu(true, e.key === 'ArrowUp' ? 'last' : 'first'); return; }
+  if (pop.hidden || !pop.contains(e.target)) return;
+  const it = acctItems(), i = it.indexOf(document.activeElement);
+  const ke = { ArrowDown: (i + 1) % it.length, ArrowUp: (i - 1 + it.length) % it.length, Home: 0, End: it.length - 1 }[e.key];
+  if (ke != null) { e.preventDefault(); it[ke].focus(); }
+  else if (e.key === 'Escape') { e.stopPropagation(); acctMenu(false); $('.tb-me').focus(); }
+  else if (e.key === 'Tab') acctMenu(false);
+});
 
 // ---- Tema: ikut sistem -> terang -> gelap. Disimpan di perangkat (bukan kunci sch_, jadi tidak hilang saat logout).
 const THEMES = { system: ['monitor', 'Tema: ikut sistem'], light: ['sun', 'Tema: terang'], dark: ['moon', 'Tema: gelap'] };
@@ -756,6 +819,7 @@ function applyTheme(t) {
   else document.documentElement.removeAttribute('data-theme');
   try { if (t === 'system') localStorage.removeItem('theme_pref'); else localStorage.setItem('theme_pref', t); } catch { /* abaikan */ }
   $$('.theme-btn').forEach(b => { b.innerHTML = ico(THEMES[t][0]); b.title = THEMES[t][1]; b.setAttribute('aria-label', THEMES[t][1] + '. Klik untuk mengganti.'); });
+  $$('.tb-theme button').forEach(b => { const on = b.dataset.t === t; b.classList.toggle('on', on); b.setAttribute('aria-checked', String(on)); });
 }
 const themeBtn = (extra = '') => { const [i, l] = THEMES[themePref()] || THEMES.system; return `<button type="button" class="theme-btn ${extra}" data-act="theme" title="${l}" aria-label="${l}. Klik untuk mengganti.">${ico(i)}</button>`; };
 function cycleTheme() {
@@ -821,6 +885,9 @@ const ACT = {
   },
   print: () => window.print(),
   theme: () => cycleTheme(),
+  acctMenu: () => acctMenu(),
+  acctGo: el => { acctMenu(false); go(el.dataset.page); },
+  setTheme: el => applyTheme(el.dataset.t),
 };
 const CHG = {};
 
