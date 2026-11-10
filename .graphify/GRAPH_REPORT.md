@@ -1,25 +1,25 @@
 # Graph Report - .  (2026-11-10)
 
 ## Corpus Check
-- 76 files · ~125,983 words
+- 77 files · ~128,265 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 1095 nodes · 2077 edges · 61 communities detected
+- 1106 nodes · 2093 edges · 62 communities detected
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS
 - Token cost: 0 input · 0 output
-- Edge kinds: contains: 852 · calls: 796 · MODIFIES: 212 · method: 142 · ON_BRANCH: 38 · PARENT_OF: 37
+- Edge kinds: contains: 860 · calls: 799 · MODIFIES: 213 · method: 142 · ON_BRANCH: 40 · PARENT_OF: 39
 
 
 ## Input Scope
 - Requested: auto
 - Resolved: committed (source: default-auto)
-- Included files: 76 · Candidates: 90
-- Excluded: 0 untracked · 357 ignored · 0 sensitive · 0 missing committed
+- Included files: 77 · Candidates: 91
+- Excluded: 0 untracked · 372 ignored · 0 sensitive · 0 missing committed
 - Recommendation: Use --scope all or graphify.yaml inputs.corpus for a knowledge-base folder.
 
 ## Graph Freshness
-- Built from Git commit: `3550bcd`
+- Built from Git commit: `9247f21`
 - Compare this hash to `git rev-parse HEAD` before trusting freshness-sensitive graph output.
 ## God Nodes (most connected - your core abstractions)
 1. `App` - 67 edges
@@ -80,8 +80,8 @@ Cohesion: 0.11
 Nodes (31): applyTheme(), avatar(), brandHtml(), btn(), cycleTheme(), empty(), ensureThemeFloat(), esc() (+23 more)
 
 ### Community 8 - "Community 8"
-Cohesion: 0.13
-Nodes (24): main, 01cf6c7 Perbarui peta kode graphify, 044f2aa v1.23.1: kerapian menu guru & siswa di HP: tombol absensi lebih besar + simpan menempel, kolom nama tetap terlihat di tabel rekap, kehadiran ditulis lengkap, 'Belum ada materi', 1119b6b Tahap 3: mesin ujian kuis & CBT memakai hitung mundur, kirim otomatis, dan kartu hasil bersama, 137792c Tahap 4: hapus 57 deklarasi CSS yang selalu ditimpa (tampilan terverifikasi identik di desktop & HP); peringatan keluar hanya saat ujian belum terkirim, 3cd8909 Perbarui peta kode graphify, 6cf5813 Perbarui peta kode graphify, 6fd6bb0 Tahap 5: pecah fungsi server panjang (kenaikan kelas, mulai CBT, Asisten AI) + tes baru; rilis v1.21.0 (+16 more)
+Cohesion: 0.12
+Nodes (26): main, 01cf6c7 Perbarui peta kode graphify, 044f2aa v1.23.1: kerapian menu guru & siswa di HP: tombol absensi lebih besar + simpan menempel, kolom nama tetap terlihat di tabel rekap, kehadiran ditulis lengkap, 'Belum ada materi', 1119b6b Tahap 3: mesin ujian kuis & CBT memakai hitung mundur, kirim otomatis, dan kartu hasil bersama, 137792c Tahap 4: hapus 57 deklarasi CSS yang selalu ditimpa (tampilan terverifikasi identik di desktop & HP); peringatan keluar hanya saat ujian belum terkirim, 3cd8909 Perbarui peta kode graphify, 3e27651 Perbarui peta kode graphify, 6cf5813 Perbarui peta kode graphify (+18 more)
 
 ### Community 9 - "Community 9"
 Cohesion: 0.13
@@ -228,66 +228,70 @@ Cohesion: 0.31
 Nodes (4): apiKalender(), jamLokal(), localDay(), tglJamLokal()
 
 ### Community 45 - "Community 45"
+Cohesion: 0.31
+Nodes (4): siswaID(), TestAbsensiMapelAlurLengkap(), TestPinjamKembaliBuku(), TestTugasBuatKumpulNilai()
+
+### Community 46 - "Community 46"
 Cohesion: 0.28
 Nodes (4): cbtTimeText(), pageCBT(), renderCbt(), siswaCBT()
 
-### Community 46 - "Community 46"
+### Community 47 - "Community 47"
 Cohesion: 0.36
 Nodes (8): cartTotal(), kasirBarang(), kasirLaporan(), pageKasir(), posAdd(), renderCart(), showStruk(), strukHtml()
 
-### Community 47 - "Community 47"
+### Community 48 - "Community 48"
 Cohesion: 0.36
 Nodes (4): ensureAdmin(), hashPassword(), nowStr(), randomPassword()
 
-### Community 48 - "Community 48"
+### Community 49 - "Community 49"
 Cohesion: 0.29
 Nodes (2): apiSale(), apiSell()
 
-### Community 49 - "Community 49"
+### Community 50 - "Community 50"
 Cohesion: 0.29
 Nodes (4): nextYearName(), NK_AKSI, pageNaik(), ROMAN
 
-### Community 51 - "Community 51"
+### Community 52 - "Community 52"
 Cohesion: 0.43
 Nodes (5): apiCBTSoalBatch(), apiQuizQuestionBatch(), parseBatch(), parseMCQ(), mcq
 
-### Community 52 - "Community 52"
+### Community 53 - "Community 53"
 Cohesion: 0.33
 Nodes (7): afterSave(), errBox(), head(), isAdm(), pageFn(), refresh(), refreshModal()
 
-### Community 53 - "Community 53"
+### Community 54 - "Community 54"
 Cohesion: 0.38
 Nodes (4): AUDIT_LABELS, GETpage(), moreBtn(), pageAudit()
 
-### Community 55 - "Community 55"
+### Community 56 - "Community 56"
 Cohesion: 0.40
 Nodes (2): apiDelete(), apiDeleteChild()
 
-### Community 56 - "Community 56"
+### Community 57 - "Community 57"
 Cohesion: 0.40
 Nodes (1): tingkatDariNama()
 
-### Community 57 - "Community 57"
+### Community 58 - "Community 58"
 Cohesion: 0.50
 Nodes (3): defaultTahunAjaran(), migTahunAjaran(), migration
 
-### Community 59 - "Community 59"
+### Community 60 - "Community 60"
 Cohesion: 0.40
 Nodes (5): lampHtml(), logoSrc(), safeUrl(), schoolHead(), ytId()
 
-### Community 60 - "Community 60"
+### Community 61 - "Community 61"
 Cohesion: 0.50
 Nodes (2): manUjianDetail(), pageManUjian()
 
-### Community 61 - "Community 61"
+### Community 62 - "Community 62"
 Cohesion: 0.50
 Nodes (1): User
 
-### Community 64 - "Community 64"
+### Community 65 - "Community 65"
 Cohesion: 0.50
 Nodes (1): staticFile
 
-### Community 65 - "Community 65"
+### Community 66 - "Community 66"
 Cohesion: 0.50
 Nodes (2): KODE_SURAT, SURAT_ST
 
@@ -302,30 +306,30 @@ Nodes (2): KODE_SURAT, SURAT_ST
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 38`** (2 nodes): `apiReturn()`, `perpusCfg()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 48`** (2 nodes): `apiSale()`, `apiSell()`
+- **Thin community `Community 49`** (2 nodes): `apiSale()`, `apiSell()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 55`** (2 nodes): `apiDelete()`, `apiDeleteChild()`
+- **Thin community `Community 56`** (2 nodes): `apiDelete()`, `apiDeleteChild()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 56`** (1 nodes): `tingkatDariNama()`
+- **Thin community `Community 57`** (1 nodes): `tingkatDariNama()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 60`** (2 nodes): `manUjianDetail()`, `pageManUjian()`
+- **Thin community `Community 61`** (2 nodes): `manUjianDetail()`, `pageManUjian()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 61`** (1 nodes): `User`
+- **Thin community `Community 62`** (1 nodes): `User`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 64`** (1 nodes): `staticFile`
+- **Thin community `Community 65`** (1 nodes): `staticFile`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 65`** (2 nodes): `KODE_SURAT`, `SURAT_ST`
+- **Thin community `Community 66`** (2 nodes): `KODE_SURAT`, `SURAT_ST`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `App` connect `Community 9` to `Community 61`, `Community 14`, `Community 66`, `Community 16`, `Community 38`, `Community 13`, `Community 24`, `Community 5`, `Community 20`, `Community 18`, `Community 4`, `Community 2`, `Community 41`, `Community 33`, `Community 21`, `Community 55`, `Community 31`, `Community 37`?**
-  _High betweenness centrality (0.097) - this node is a cross-community bridge._
-- **Why does `Ctx` connect `Community 25` to `Community 41`, `Community 10`, `Community 44`, `Community 24`, `Community 13`, `Community 21`, `Community 5`, `Community 19`, `Community 56`, `Community 40`, `Community 55`, `Community 18`, `Community 14`, `Community 4`, `Community 2`, `Community 15`, `Community 37`?**
+- **Why does `App` connect `Community 9` to `Community 62`, `Community 14`, `Community 67`, `Community 16`, `Community 38`, `Community 13`, `Community 24`, `Community 5`, `Community 20`, `Community 18`, `Community 4`, `Community 2`, `Community 41`, `Community 33`, `Community 21`, `Community 56`, `Community 31`, `Community 37`?**
+  _High betweenness centrality (0.096) - this node is a cross-community bridge._
+- **Why does `Ctx` connect `Community 25` to `Community 41`, `Community 10`, `Community 44`, `Community 24`, `Community 13`, `Community 21`, `Community 5`, `Community 19`, `Community 57`, `Community 40`, `Community 56`, `Community 18`, `Community 14`, `Community 4`, `Community 2`, `Community 15`, `Community 37`?**
   _High betweenness centrality (0.062) - this node is a cross-community bridge._
 - **Why does `loginLimiter` connect `Community 18` to `Community 24`, `Community 37`?**
-  _High betweenness centrality (0.015) - this node is a cross-community bridge._
+  _High betweenness centrality (0.014) - this node is a cross-community bridge._
 - **What connects `lampiran`, `userIn`, `docxOpts` to the rest of the system?**
   _92 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Community 0` be split into smaller, more focused modules?**
