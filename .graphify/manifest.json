@@ -92,12 +92,12 @@
     "hash": "bf18082d0edbb48537922a9295c9113c"
   },
   "web/mod-kesiswaan.js": {
-    "mtime": 1794287292081.9866,
-    "hash": "09dd25550c8338951363ef3a68c51054"
+    "mtime": 1794299762438.6775,
+    "hash": "c982c0c46cbe963c6862492a4903deaf"
   },
   "web/mod-sarpras.js": {
-    "mtime": 1794285706818.5984,
-    "hash": "6d96781955f56a6c0d2d46b2d1118f1a"
+    "mtime": 1794299762433.6506,
+    "hash": "94556d6505bb7b5672c9abaca3613c39"
   },
   "web/mod-tahun.js": {
     "mtime": 1794285706818.3008,
@@ -120,8 +120,8 @@
     "hash": "e23343d8c9827b32230cc0d7b142ab21"
   },
   "CHANGELOG.md": {
-    "mtime": 1794299257162.45,
-    "hash": "0ce4a6a88b4b382ae80ae45725286fa7"
+    "mtime": 1794299800176.5422,
+    "hash": "18333e04a6ea1eb184c7eeaca0823c56"
   },
   "README.md": {
     "mtime": 1794284325950.1606,
@@ -244,16 +244,16 @@
     "hash": "ffd2e6ea7a66cf662027db7a37ecf201"
   },
   "web/mod-bukutamu.js": {
-    "mtime": 1794270363230.966,
-    "hash": "e38973eb2d85ffca9e3d2c789da4dd0f"
+    "mtime": 1794299762436.5823,
+    "hash": "58c4b2e45ce1423d9c16bf022db97473"
   },
   "web/mod-cbt.js": {
-    "mtime": 1794299104958.6516,
-    "hash": "a301f34f37229a866d79f78eff2d8d4e"
+    "mtime": 1794299762442.4265,
+    "hash": "3264181939a999fd9eb180a5d297ec40"
   },
   "web/mod-evoting.js": {
-    "mtime": 1794270380932.541,
-    "hash": "f1a6c423a43cab8309b3dc0d989c4f87"
+    "mtime": 1794299762429.011,
+    "hash": "c1d9851d36118997b673d41db3cdafc2"
   },
   "web/mod-kasir.js": {
     "mtime": 1794270380932.685,
@@ -288,8 +288,8 @@
     "hash": "659cf2388215daebdbc71f62c2c866a9"
   },
   ".graphify/GRAPH_REPORT.md": {
-    "mtime": 1794298608862.2627,
-    "hash": "c1819b1acedc7278f4777aff40ccf4cc"
+    "mtime": 1794299259470.4941,
+    "hash": "eb5a041af1fc16833a9f46a95a17f676"
   },
   "docs/INSTALL-UBUNTU.md": {
     "mtime": 1794267381424.0015,
