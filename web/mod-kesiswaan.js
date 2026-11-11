@@ -117,28 +117,52 @@ function absenScanHtml() {
       <video class="scan-video" id="scanVideo" playsinline muted hidden></video>
       <p class="muted" style="font-size:13px">Scanner USB bekerja seperti keyboard: klik kotak di atas, lalu scan. Batas jam masuk diatur di Pengaturan.</p>
     </section>
-    <section class="card"><div class="card-head"><h3>Hasil scan</h3><small class="muted" id="scanCount">${S.scanLog.filter(x => !x.error).length} tercatat sesi ini</small></div>
+    <section class="card"><div class="card-head"><h3>Hasil scan</h3><small class="muted" id="scanCount">${scanJumlah()}</small></div>
       <div id="scanLast">${S.scanLog[0] ? scanCard(S.scanLog[0]) : empty('Belum ada scan.', 'eye')}</div>
       <div id="scanLog" style="margin-top:12px">${S.scanLog.slice(1, 12).map(scanRow).join('')}</div></section></div>`;
 }
 const AKSI = { masuk: 'Masuk', pulang: 'Pulang', sudah: 'Sudah tercatat' };
+const STNAMA = { hadir: 'Hadir', terlambat: 'Terlambat', izin: 'Izin', sakit: 'Sakit', alfa: 'Tanpa keterangan' };
+// jumlah siswa (bukan jumlah scan) yang berhasil tercatat di sesi ini
+const scanJumlah = () => new Set(S.scanLog.filter(x => !x.error).map(x => x.siswa_id)).size + ' siswa tercatat sesi ini';
+const tambahMenit = (hm, n) => { const [h, m] = String(hm).split(':').map(Number); const t = h * 60 + m + n; return pad(Math.floor(t / 60) % 24) + ':' + pad(t % 60); };
+// keterangan scan ulang: jelas bagi siswa bahwa absennya sudah masuk dan tidak perlu scan lagi
+function scanSudah(r) {
+  if (r.jam_pulang) return `Sudah absen pulang pukul ${r.jam_pulang}`;
+  if (r.jam_masuk) return `Sudah absen masuk pukul ${r.jam_masuk}`;
+  return `Sudah tercatat hari ini (${STNAMA[r.status] || r.status})`;
+}
 function scanCard(r) {
   if (r.error) return `<div class="scan-result bad">${avatar(null, '!', 64)}<div><b>Gagal</b>${esc(r.error)}</div></div>`;
-  const kind = r.aksi === 'sudah' ? 'warn' : r.status === 'terlambat' && r.aksi === 'masuk' ? 'warn' : 'ok';
+  if (r.aksi === 'sudah') {
+    const pulang = r.mode === 'auto' && r.jam_masuk && !r.jam_pulang && (r.status === 'hadir' || r.status === 'terlambat')
+      ? `<br><small class="muted">Absen pulang bisa mulai pukul ${tambahMenit(r.jam_masuk, 60)}.</small>` : '';
+    return `<div class="scan-result info">${avatar(r.foto, r.nama, 64)}<div><b>${esc(r.nama)}</b>${esc(r.kelas)} · ${scanSudah(r)}, tidak perlu scan lagi.
+      ${r.status === 'terlambat' ? tag('Terlambat', 'warn') : ''}${r.ulang ? tag(`scan ulang ${r.ulang}×`, 'info') : ''}${pulang}</div></div>`;
+  }
+  const kind = r.status === 'terlambat' && r.aksi === 'masuk' ? 'warn' : 'ok';
   return `<div class="scan-result ${kind}">${avatar(r.foto, r.nama, 64)}<div><b>${esc(r.nama)}</b>${esc(r.kelas)} · ${AKSI[r.aksi]} ${r.aksi === 'pulang' ? r.jam_pulang : r.jam_masuk || ''}
     ${r.status === 'terlambat' ? tag('Terlambat', 'warn') : ''}</div></div>`;
 }
 const scanRow = r => r.error ? `<div class="li"><div><b style="color:var(--bad)">Gagal</b><small class="muted">${esc(r.error)}</small></div><small>${r.at}</small></div>`
-  : `<div class="li"><div><b>${esc(r.nama)}</b><small class="muted">${esc(r.kelas)} · ${AKSI[r.aksi]}${r.status === 'terlambat' ? ' · terlambat' : ''}</small></div><small>${r.at}</small></div>`;
+  : `<div class="li"><div><b>${esc(r.nama)}</b><small class="muted">${esc(r.kelas)} · ${r.aksi === 'sudah' ? scanSudah(r) : AKSI[r.aksi]}${r.status === 'terlambat' ? ' · terlambat' : ''}${r.ulang ? ` · scan ulang ${r.ulang}×` : ''}</small></div><small>${r.at}</small></div>`;
+let scanAkhir = { token: '', at: 0 };
 async function doScan(token) {
+  // scanner USB/kamera kadang membaca kartu yang sama dua kali beruntun: abaikan kode yang sama dalam 3 detik
+  if (token === scanAkhir.token && Date.now() - scanAkhir.at < 3000) { $('#scanIn')?.focus(); return; }
   const mode = $('#scanMode')?.value || 'auto';
   let r;
-  try { r = await POST('/absen/scan', { token, mode }); beep(r.aksi !== 'sudah'); }
+  try { r = await POST('/absen/scan', { token, mode }); beep(r.aksi !== 'sudah'); scanAkhir = { token, at: Date.now() }; }
   catch (e) { r = { error: e.message }; beep(false); }
   r.at = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  r.mode = mode;
+  if (r.aksi === 'sudah') { // scan ulang: satu baris per siswa (naik ke atas), bukan baris baru setiap scan
+    const i = S.scanLog.findIndex(x => !x.error && x.siswa_id === r.siswa_id);
+    if (i >= 0) { r.ulang = (S.scanLog[i].ulang || 0) + 1; S.scanLog.splice(i, 1); }
+  }
   S.scanLog.unshift(r);
   S.scanLog = S.scanLog.slice(0, 200);
-  if ($('#scanLast')) { $('#scanLast').innerHTML = scanCard(r); $('#scanLog').innerHTML = S.scanLog.slice(1, 12).map(scanRow).join(''); $('#scanCount').textContent = S.scanLog.filter(x => !x.error).length + ' tercatat sesi ini'; }
+  if ($('#scanLast')) { $('#scanLast').innerHTML = scanCard(r); $('#scanLog').innerHTML = S.scanLog.slice(1, 12).map(scanRow).join(''); $('#scanCount').textContent = scanJumlah(); }
   $('#scanIn')?.focus();
 }
 ACT.camStart = async () => {

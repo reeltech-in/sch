@@ -8,6 +8,16 @@ Format versi: `MAYOR.MINOR.PERBAIKAN`
 Versi yang sedang berjalan terlihat di menu kiri aplikasi (bawah nama pengguna), di `GET /api/version`,
 di header respons `X-SCH-Version`, dan dengan perintah `sch-server -version`.
 
+## v1.27.1 — 2026-11-11 (Scan absen ganda lebih rapi)
+- **Scan QR absensi**: kartu yang di-scan ulang tetap diterima tanpa mencatat ulang (seperti sebelumnya, satu catatan per
+  siswa per hari), tapi tampilannya kini jelas:
+  - kartu hasil biru "Sudah absen masuk pukul 12:29, tidak perlu scan lagi" (bukan oranye seperti peringatan); di mode
+    Otomatis ditambah "Absen pulang bisa mulai pukul 13:29";
+  - riwayat tidak lagi berisi baris berulang: scan ulang siswa yang sama menaikkan barisnya ke atas dengan tanda
+    "scan ulang 2×";
+  - penghitung menghitung **siswa** yang tercatat, bukan jumlah scan;
+  - kode yang sama dalam 3 detik (scanner USB membaca dua kali) diabaikan tanpa mengirim ke server.
+
 ## v1.27.0 — 2026-11-11 (Ekspor Excel e-Rapor)
 - **Ekspor Excel** di e-Rapor untuk memindahkan nilai ke e-Rapor resmi Kemendikdasmen tanpa mengetik ulang:
   - tab **Nilai mapel**: satu lembar untuk mapel itu (guru pengampu atau staf rapor);

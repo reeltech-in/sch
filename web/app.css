@@ -429,7 +429,7 @@ label.f { font-size: 13px; }
 .scan-input { font-size: 18px; min-height: 54px; text-align: center; letter-spacing: .05em; }
 .scan-video { width: 100%; max-height: 320px; border-radius: 12px; background: #000; object-fit: cover; }
 .scan-result { border-radius: 12px; padding: 18px; display: flex; gap: 14px; align-items: center; }
-.scan-result.ok { background: var(--ok-bg); } .scan-result.warn { background: var(--warn-bg); } .scan-result.bad { background: var(--bad-bg); }
+.scan-result.ok { background: var(--ok-bg); } .scan-result.warn { background: var(--warn-bg); } .scan-result.bad { background: var(--bad-bg); } .scan-result.info { background: var(--info-bg); }
 .scan-result .avatar { width: 64px; height: 64px; font-size: 24px; }
 .scan-result b { font-size: 20px; display: block; }
 .big-qr { background: #fff; padding: 16px; border-radius: 12px; display: inline-block; box-shadow: var(--shadow); }
