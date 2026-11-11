@@ -41,7 +41,9 @@ async function pageRapor() {
   }
   const tab = items.some(([k]) => k === S.params.tab) ? S.params.tab : items[0][0];
   const body = await ({ mapel: rpMapel, wali: rpWali, ekskul: rpEkskul, atur: rpAtur })[tab]();
-  return head('e-Rapor', `Rapor Kurikulum Merdeka · ${esc(t.periode)}`) + `<div class="bar">${per}</div>` + (items.length > 1 ? tabs(items, tab) : '') + body;
+  const resmi = ['SMA', 'SMK'].includes(jenjangDiatur()) && (tab === 'mapel' || tab === 'wali')
+    ? `<div class="hint" style="margin-bottom:12px">${esc(JENJANG_LABEL[jenjangDiatur()])}: nilai rapor untuk seleksi masuk PTN (SNBP) tetap dikirim lewat <b>e-Rapor Kemendikdasmen</b>. Tekan <b>Ekspor Excel</b>, lalu salin kolom nilai dan deskripsi ke template e-Rapor resmi (urutan siswa menurut nama, sama dengan Dapodik).</div>` : '';
+  return head('e-Rapor', `Rapor Kurikulum Merdeka · ${esc(t.periode)}`) + `<div class="bar">${per}</div>` + (items.length > 1 ? tabs(items, tab) : '') + resmi + body;
 }
 
 // ---- Nilai & capaian kompetensi per mapel
@@ -59,7 +61,7 @@ async function rpMapel() {
       <td><textarea name="tinggi" rows="2" aria-label="Capaian tertinggi" ${kunci ? 'disabled' : ''} placeholder="${esc(s.saran_tinggi || 'Menunjukkan penguasaan yang baik dalam …')}">${esc(s.tinggi || '')}</textarea></td>
       <td><textarea name="perlu" rows="2" aria-label="Perlu ditingkatkan" ${kunci ? 'disabled' : ''} placeholder="${esc(s.saran_perlu || 'Perlu bimbingan dalam …')}">${esc(s.perlu || '')}</textarea></td></tr>`).join('');
   return `<div class="bar"><select data-change="rpCourse" aria-label="Mata pelajaran" style="min-width:0;flex:1 1 220px">${opts(ms.map(m => [m.id, `${m.nama} · ${m.kelas_nama}`]), cid)}</select>
-      <div class="acts" style="margin-left:auto">${kunci ? '' : btn('Isi dari nilai otomatis', 'rpAuto', {}, 'ghost sm', 'check') + (modOn('ai') ? btn('Saran deskripsi AI', 'rpAI', {}, 'ghost sm', 'spark') : '') + btn('Simpan semua', 'rpMapelSave', {}, 'sm', 'check')}</div></div>
+      <div class="acts" style="margin-left:auto">${btn('Ekspor Excel', 'rpXlsx', { course: cid }, 'ghost sm', 'download')}${kunci ? '' : btn('Isi dari nilai otomatis', 'rpAuto', {}, 'ghost sm', 'check') + (modOn('ai') ? btn('Saran deskripsi AI', 'rpAI', {}, 'ghost sm', 'spark') : '') + btn('Simpan semua', 'rpMapelSave', {}, 'sm', 'check')}</div></div>
     ${kunci ? `<div class="hint warn" style="margin-bottom:12px">Rapor kelas ${esc(d.kelas)} sudah diterbitkan wali kelas, jadi isinya dikunci. Minta wali kelas membatalkan terbit untuk mengubah.</div>` : ''}
     <p class="muted" style="margin-bottom:10px;font-size:13px">Nilai otomatis = 40% tugas + 40% kuis + 20% kehadiran dari ${d.jumlah_tugas} tugas dan ${d.jumlah_kuis} kuis semester ini (${fmtDate(d.mulai)} – ${fmtDate(d.akhir)}). Nilai rapor boleh disesuaikan; deskripsi kosong memakai saran di kotak (abu-abu) setelah menekan "Isi dari nilai otomatis".</p>
     ${d.siswa.length ? `<div class="tw rp-tabel" id="rpMapelBox"><table><thead><tr><th class="n">No</th><th>Siswa</th><th class="n">Otomatis</th><th>Nilai rapor</th><th>Capaian tertinggi</th><th>Perlu ditingkatkan</th></tr></thead><tbody>${rows}</tbody></table></div>`
@@ -117,7 +119,7 @@ async function rpWali() {
   const kokuRingkas = r => { const k = r?.kokurikuler || {}; const n = Object.keys(k).length; return n ? `${n}/8 dimensi` : '<span class="muted">belum</span>'; };
   const absen = s => { const a = s.rapor || {}, o = s.absen_otomatis; return `S ${a.sakit ?? o.sakit} · I ${a.izin ?? o.izin} · A ${a.alfa ?? o.alfa}`; };
   return `<div class="bar"><select data-change="rpKelas" aria-label="Kelas" style="min-width:0;flex:0 1 200px">${opts(ks.map(k => [k.id, 'Kelas ' + k.nama]), kid)}</select>
-      <div class="acts" style="margin-left:auto">${btn('Cetak semua', 'rpPrintKelas', {}, 'ghost sm', 'print')}
+      <div class="acts" style="margin-left:auto">${btn('Ekspor Excel', 'rpXlsx', { kelas: kid }, 'ghost sm', 'download')}${btn('Cetak semua', 'rpPrintKelas', {}, 'ghost sm', 'print')}
       ${d.terbit ? btn('Batalkan terbit', 'rpTerbit', { on: 0 }, 'danger sm') : btn('Terbitkan rapor', 'rpTerbit', { on: 1 }, 'sm', 'check')}</div></div>
     <section class="card" style="margin-bottom:14px"><div class="card-head"><h3>Kelengkapan nilai mapel</h3>${d.terbit ? tag('Terbit ' + fmtDate(d.terbit), 'ok') : tag(kurang.length ? 'Belum lengkap' : 'Siap diterbitkan', kurang.length ? 'warn' : 'ok')}</div>
       <div style="display:flex;flex-wrap:wrap;gap:6px">${d.mapel.map(m => tag(`${m.nama}: ${m.terisi || 0}/${total}`, (m.terisi || 0) >= total ? 'ok' : 'warn')).join('') || '<span class="muted">Belum ada mapel di kelas ini.</span>'}</div>
@@ -196,6 +198,20 @@ ACT.rpLihat = async el => {
 };
 ACT.rpPrint = async el => printDoc(raporHtml(await rpGetRapor(el.dataset.id)));
 ACT.rpWord = el => { const a = Object.assign(document.createElement('a'), { href: `/api/rapor/siswa/${el.dataset.id}/docx?` + rpQ(), download: '' }); document.body.append(a); a.click(); a.remove(); };
+ACT.rpXlsx = async el => {
+  const q = qs({ course_id: el.dataset.course, kelas_id: el.dataset.kelas, tahun: S.rp.tahun, smt: S.rp.smt });
+  el.disabled = true;
+  try {
+    const res = await fetch('/api/rapor/xlsx?' + q, { headers: { 'X-SCH': '1' }, credentials: 'same-origin' });
+    if (!res.ok) { let m = 'Ekspor gagal.'; try { m = (await res.json()).error || m; } catch {} return toast(m, 'bad'); }
+    const cd = res.headers.get('Content-Disposition') || '';
+    const nama = decodeURIComponent((cd.match(/filename\*=UTF-8''([^;]+)/) || [])[1] || 'nilai-rapor.xlsx');
+    const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(await res.blob()), download: nama });
+    document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    toast('Excel diunduh: ' + nama);
+  } catch { toast('Ekspor gagal. Periksa koneksi lalu coba lagi.', 'bad'); }
+  finally { el.disabled = false; }
+};
 ACT.rpPrintKelas = async el => {
   const ids = S.rpW.d.siswa.map(s => s.id);
   if (!ids.length) return;

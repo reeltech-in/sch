@@ -7,7 +7,7 @@ Satu login dan satu data siswa/guru/kelas dipakai bersama oleh semua modul.
 | Modul | Isi |
 |---|---|
 | **Pembelajaran (LMS)** | materi (teks, video, tautan, gambar), tugas & penilaian, kuis, absensi per mapel, rekap nilai |
-| **e-Rapor** | rapor Kurikulum Merdeka per semester: nilai akhir otomatis (bisa disesuaikan) & capaian kompetensi per mapel dengan saran dari nilai atau Asisten AI, kokurikuler 8 dimensi profil lulusan, ekstrakurikuler (pembina), ketidakhadiran dari absensi harian, catatan wali, keputusan naik kelas; terbitkan per kelas, cetak A4 & unduh Word |
+| **e-Rapor** | rapor Kurikulum Merdeka per semester: nilai akhir otomatis (bisa disesuaikan) & capaian kompetensi per mapel dengan saran dari nilai atau Asisten AI, kokurikuler 8 dimensi profil lulusan, ekstrakurikuler (pembina), ketidakhadiran dari absensi harian, catatan wali, keputusan naik kelas; terbitkan per kelas, cetak A4 & unduh Word, ekspor Excel (leger + nilai per mapel) untuk dipindahkan ke e-Rapor resmi |
 | **Portofolio Siswa** | siswa mengunggah karya (gambar/PDF/tautan) per mapel; guru mapel & wali kelas memberi catatan dan nilai; tampil di rapor mapel |
 | **Buku Induk** | biodata lengkap siswa & orang tua, foto, cetak per siswa |
 | **Absensi Harian** | scan kartu QR di gerbang (scanner USB / kamera HP), ceklist per kelas, absen selfie + lokasi, rekap bulanan cetak/CSV |
@@ -134,8 +134,8 @@ lulus, atau keluar → jalankan. Tahun baru langsung aktif; data tahun lalu teta
 halaman Kelas, Mapel, dan Mapel Saya (guru).
 
 ### e-Rapor (per semester)
-Menu **e-Rapor**. Atur dulu di tab **Pengaturan**: tanggal akhir semester ganjil (bawaan 31 Desember) dan daftar
-ekstrakurikuler beserta pembinanya (minimal Pramuka). Lalu:
+Menu **e-Rapor**. Atur dulu tanggal akhir semester ganjil di menu **Tahun Ajaran** (bawaan 31 Desember), dan daftar
+ekstrakurikuler beserta pembinanya (minimal Pramuka) di tab **Pengaturan** e-Rapor. Lalu:
 1. **Guru mapel** (tab Nilai mapel): nilai awal terisi otomatis dari rumus 40% tugas + 40% kuis + 20% kehadiran
    semester itu; sesuaikan bila perlu, isi capaian tertinggi & yang perlu ditingkatkan (tombol "Isi dari nilai
    otomatis" atau "Saran deskripsi AI"), lalu **Simpan semua**.
@@ -144,6 +144,14 @@ ekstrakurikuler beserta pembinanya (minimal Pramuka). Lalu:
    perlu, dan keputusan naik/tinggal/lulus di semester genap. Setelah semua mapel lengkap → **Terbitkan rapor**:
    siswa bisa melihat & mengunduh rapornya, dan isinya terkunci (batalkan terbit untuk mengubah).
 4. Cetak satu siswa, **Cetak semua** satu kelas (A4, satu rapor per halaman), atau **Unduh Word**.
+5. **Ekspor Excel**: di tab Nilai mapel (satu mapel) atau Wali kelas (lembar *Leger* semua mapel + ketidakhadiran, lalu
+   satu lembar per mapel berisi NISN, NIS, nama, nilai akhir, dan deskripsi capaian). Urutan siswa menurut nama, sama
+   dengan Dapodik, dan NISN tetap teks (nol di depan tidak hilang). Nilai yang belum disimpan guru dibiarkan kosong
+   dengan keterangan "Belum diisi".
+
+**SMA/SMK:** nilai rapor untuk seleksi masuk PTN (SNBP) tetap dikirim lewat aplikasi **e-Rapor Kemendikdasmen**
+(tersambung Dapodik). Pakai SCH untuk mengolah nilai, lalu salin kolom dari berkas Ekspor Excel ke template impor
+e-Rapor resmi. SD/SMP dapat memakai rapor SCH langsung, kecuali Dinas setempat mewajibkan aplikasi resmi.
 
 ### Pemeliharaan otomatis
 Setiap hari (setelah pukul 01.00) server membuat backup database, menghapus foto selfie/buku tamu yang melewati

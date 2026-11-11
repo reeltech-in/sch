@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"database/sql"
+	"encoding/xml"
 	"fmt"
 	"io"
 	"net/http"
@@ -302,5 +303,137 @@ func TestSaranCapaianMateriSama(t *testing.T) {
 	tinggi, perlu := saranCapaian("", asg, subs, att, 7)
 	if tinggi != "Menunjukkan penguasaan yang baik dalam materi Bilangan Bulat." || perlu != "Perlu meningkatkan ketelitian dalam mengerjakan soal materi Bilangan Bulat." {
 		t.Fatalf("saran: %q / %q", tinggi, perlu)
+	}
+}
+
+// Ekspor Excel untuk e-Rapor resmi: hak akses, isi lembar, NISN tetap teks, XML sah.
+func TestRaporEksporExcel(t *testing.T) {
+	e := newEnv(t)
+	g1 := e.login("guru001", "guru123") // Matematika 7A
+	g2 := e.login("guru002", "guru123") // IPA 7A
+	s1 := e.login("siswa001", "siswa123")
+	e.app.db.Exec(`UPDATE classes SET wali_id=? WHERE id=1`, e.id(`SELECT id FROM users WHERE username='guru001'`))
+	q := "tahun=1&smt=1"
+	var mp struct{ Siswa []struct{ ID int64 } }
+	g1.json("GET", "/api/rapor/mapel?course_id=1&"+q, nil, &mp)
+	var items []map[string]any
+	for i, s := range mp.Siswa {
+		items = append(items, map[string]any{"siswa_id": s.ID, "nilai": 80 + i, "tinggi": "Menunjukkan penguasaan <baik> & teliti dalam pecahan.", "perlu": "Perlu bimbingan dalam aljabar."})
+	}
+	if code, b := g1.do("PUT", "/api/rapor/mapel", map[string]any{"course_id": 1, "tahun": 1, "smt": 1, "items": items}); code != 200 {
+		t.Fatalf("isi nilai: %d %s", code, b)
+	}
+	baca := func(b []byte) map[string]string {
+		t.Helper()
+		zr, err := zip.NewReader(bytes.NewReader(b), int64(len(b)))
+		if err != nil {
+			t.Fatalf("xlsx bukan zip: %v", err)
+		}
+		out := map[string]string{}
+		for _, f := range zr.File {
+			rc, _ := f.Open()
+			var buf bytes.Buffer
+			buf.ReadFrom(rc)
+			rc.Close()
+			out[f.Name] = buf.String()
+			d := xml.NewDecoder(bytes.NewReader(buf.Bytes()))
+			for {
+				if _, err := d.Token(); err == io.EOF {
+					break
+				} else if err != nil {
+					t.Fatalf("%s bukan XML sah: %v", f.Name, err)
+				}
+			}
+		}
+		if zr.File[0].Name != "[Content_Types].xml" {
+			t.Fatalf("[Content_Types].xml harus di urutan pertama, dapat %s", zr.File[0].Name)
+		}
+		return out
+	}
+
+	// guru mapel: satu lembar mapelnya
+	code, b := g1.do("GET", "/api/rapor/xlsx?course_id=1&"+q, nil)
+	if code != 200 {
+		t.Fatalf("ekspor mapel: %d %s", code, b)
+	}
+	f := baca(b)
+	if !strings.Contains(f["xl/workbook.xml"], `name="Matematika"`) || strings.Contains(f["xl/workbook.xml"], "Leger") || f["xl/worksheets/sheet2.xml"] != "" {
+		t.Fatalf("ekspor mapel harus satu lembar Matematika: %s", f["xl/workbook.xml"])
+	}
+	var nisn string
+	e.app.db.QueryRow(`SELECT nisn FROM student_profiles sp JOIN users u ON u.id=sp.siswa_id WHERE u.username='siswa001'`).Scan(&nisn)
+	sh := f["xl/worksheets/sheet1.xml"]
+	if nisn == "" || !strings.HasPrefix(nisn, "0") || !strings.Contains(sh, `t="inlineStr" s="2"><is><t xml:space="preserve">`+nisn+`</t>`) {
+		t.Fatalf("NISN %q harus tersimpan sebagai teks (nol di depan tidak hilang)", nisn)
+	}
+	for _, want := range []string{"<v>80</v>", "Nilai Akhir", "penguasaan &lt;baik&gt; &amp; teliti dalam pecahan. Perlu bimbingan dalam aljabar.", `state="frozen"`} {
+		if !strings.Contains(sh, want) {
+			t.Fatalf("lembar mapel tidak memuat %q", want)
+		}
+	}
+	if code, _ := g2.do("GET", "/api/rapor/xlsx?course_id=1&"+q, nil); code != 403 {
+		t.Fatalf("guru lain tidak boleh mengekspor mapel orang lain, dapat %d", code)
+	}
+
+	// wali kelas: Leger + satu lembar per mapel; mapel yang belum diisi ditandai
+	code, b = g1.do("GET", "/api/rapor/xlsx?kelas_id=1&"+q, nil)
+	if code != 200 {
+		t.Fatalf("ekspor kelas: %d %s", code, b)
+	}
+	f = baca(b)
+	wb := f["xl/workbook.xml"]
+	if !strings.Contains(wb, `<sheet name="Leger" sheetId="1"`) || !strings.Contains(wb, `name="Matematika"`) || !strings.Contains(wb, `name="Ilmu Pengetahuan Alam"`) {
+		t.Fatalf("ekspor kelas harus berisi Leger + lembar per mapel: %s", wb)
+	}
+	leger := f["xl/worksheets/sheet1.xml"]
+	for _, want := range []string{"Rata-rata", "Tanpa Keterangan", "Ilmu Pengetahuan Alam", "<v>80</v>"} {
+		if !strings.Contains(leger, want) {
+			t.Fatalf("Leger tidak memuat %q", want)
+		}
+	}
+	if !strings.Contains(f["xl/worksheets/sheet2.xml"], "Belum diisi") { // IPA (urut nama) belum diisi guru002
+		t.Fatalf("mapel yang belum diisi harus ditandai Belum diisi")
+	}
+	cd := ""
+	req, _ := http.NewRequest("GET", e.srv.URL+"/api/rapor/xlsx?kelas_id=1&"+q, nil)
+	req.Header.Set("X-SCH", "1")
+	if res, err := g1.hc.Do(req); err == nil {
+		cd = res.Header.Get("Content-Disposition")
+		res.Body.Close()
+	}
+	if !strings.Contains(cd, "filename*=UTF-8''Nilai%20Rapor%207A") || !strings.Contains(cd, ".xlsx") {
+		t.Fatalf("nama berkas: %q", cd)
+	}
+
+	if code, _ := g2.do("GET", "/api/rapor/xlsx?kelas_id=1&"+q, nil); code != 403 {
+		t.Fatalf("bukan wali kelas tidak boleh mengekspor kelas, dapat %d", code)
+	}
+	if code, _ := s1.do("GET", "/api/rapor/xlsx?kelas_id=1&"+q, nil); code != 403 {
+		t.Fatalf("siswa tidak boleh mengekspor, dapat %d", code)
+	}
+	if code, _ := g1.do("GET", "/api/rapor/xlsx?"+q, nil); code != 400 {
+		t.Fatalf("tanpa kelas/mapel harus 400, dapat %d", code)
+	}
+}
+
+func TestXlsxNamaLembarDanKolom(t *testing.T) {
+	for i, want := range map[int]string{0: "A", 25: "Z", 26: "AA", 701: "ZZ", 702: "AAA"} {
+		if got := kolomXlsx(i); got != want {
+			t.Fatalf("kolom %d: %s, mau %s", i, got, want)
+		}
+	}
+	dipakai := map[string]bool{}
+	panjang := "Pendidikan Agama Islam dan Budi Pekerti Kelas Tujuh"
+	a := namaSheetXlsx(panjang, dipakai)
+	b := namaSheetXlsx(panjang, dipakai)
+	c := namaSheetXlsx("IPA/IPS: [Terpadu]?", dipakai)
+	if len([]rune(a)) > 31 || len([]rune(b)) > 31 || a == b || !strings.HasSuffix(b, " (2)") {
+		t.Fatalf("nama lembar harus <= 31 karakter dan unik: %q %q", a, b)
+	}
+	if strings.ContainsAny(c, `[]:*?/\`) {
+		t.Fatalf("nama lembar memuat karakter terlarang: %q", c)
+	}
+	if namaSheetXlsx("  ", dipakai) != "Lembar" {
+		t.Fatalf("nama kosong harus diganti")
 	}
 }

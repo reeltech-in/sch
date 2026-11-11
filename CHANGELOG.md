@@ -8,6 +8,19 @@ Format versi: `MAYOR.MINOR.PERBAIKAN`
 Versi yang sedang berjalan terlihat di menu kiri aplikasi (bawah nama pengguna), di `GET /api/version`,
 di header respons `X-SCH-Version`, dan dengan perintah `sch-server -version`.
 
+## v1.27.0 — 2026-11-11 (Ekspor Excel e-Rapor)
+- **Ekspor Excel** di e-Rapor untuk memindahkan nilai ke e-Rapor resmi Kemendikdasmen tanpa mengetik ulang:
+  - tab **Nilai mapel**: satu lembar untuk mapel itu (guru pengampu atau staf rapor);
+  - tab **Wali kelas**: lembar **Leger** (nilai akhir semua mapel, rata-rata, sakit/izin/tanpa keterangan) lalu satu
+    lembar per mapel (wali kelas atau staf rapor).
+  - Kolom: No, NISN, NIS, Nama, Nilai Akhir, Deskripsi Capaian (gabungan seperti di rapor), Capaian Tertinggi, Perlu
+    Ditingkatkan, Keterangan. Siswa urut nama (seperti Dapodik), NISN disimpan sebagai teks, judul kolom dibekukan.
+  - Nilai yang belum disimpan guru dikosongkan dengan keterangan "Belum diisi" (tidak diisi nilai otomatis).
+  - Dibuat tanpa pustaka luar; diuji terbuka di LibreOffice dan pembaca Excel (openpyxl). Satu kelas 36 siswa × 10 mapel:
+    6,6 ms; satu mapel 1,7 ms (data uji 1.080 siswa, 300 mapel).
+- Sekolah berjenjang **SMA/SMK** melihat keterangan di e-Rapor bahwa nilai untuk SNBP tetap dikirim lewat e-Rapor resmi.
+- README: tanggal semester diatur di menu Tahun Ajaran (bukan di Pengaturan e-Rapor).
+
 ## v1.26.1 — 2026-11-10 (Pindah tab tanpa kedip)
 - **Pindah tab, submenu, saringan, dan halaman** di dalam halaman yang sama (mis. Pengaturan, e-Rapor, Perpustakaan,
   Inventaris KIB, Surat, Kasir, Absensi harian, pilihan mapel/kelas) tidak lagi mengganti layar dengan kerangka abu-abu

@@ -136,6 +136,7 @@ CREATE INDEX IF NOT EXISTS idx_portfolio_course ON portfolios(course_id);
 		m.HandleFunc("PUT /api/rapor/siswa/{id}", r("admin,guru", apiRaporSiswaSave))
 		m.HandleFunc("GET /api/rapor/siswa/{id}", r("any", apiRaporSiswa))
 		m.HandleFunc("GET /api/rapor/siswa/{id}/docx", r("any", apiRaporDocx))
+		m.HandleFunc("GET /api/rapor/xlsx", r("admin,guru", apiRaporXlsx))
 		m.HandleFunc("GET /api/rapor/me", r("siswa", apiRaporMe))
 		m.HandleFunc("GET /api/ekskul", r("admin,guru", apiEkskulList))
 		m.HandleFunc("POST /api/ekskul", r("admin", apiEkskulSave))
@@ -1175,13 +1176,7 @@ func apiRaporDocx(c *Ctx) error {
 	if err != nil {
 		return err
 	}
-	name := "Rapor " + sv(r.Siswa, "nama_lengkap") + " " + r.Kelas + " " + strings.ReplaceAll(r.TahunNama, "/", "-") + " " + r.Semester
-	name = strings.Map(func(x rune) rune {
-		if strings.ContainsRune(`/\:*?"<>|`, x) || x < 32 {
-			return '-'
-		}
-		return x
-	}, name)
+	name := namaBerkas("Rapor " + sv(r.Siswa, "nama_lengkap") + " " + r.Kelas + " " + strings.ReplaceAll(r.TahunNama, "/", "-") + " " + r.Semester)
 	h := c.W.Header()
 	h.Set("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
 	h.Set("Content-Disposition", `attachment; filename="rapor.docx"; filename*=UTF-8''`+url.PathEscape(name+".docx"))
