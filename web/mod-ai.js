@@ -9,13 +9,22 @@ function mdInline(s) {
   return s.replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>').replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<i>$2</i>');
 }
 function mdToHtml(src) {
+  const raw = String(src ?? '').split('\n'); // esc() tidak menambah/mengurangi baris: indeks sama dengan `lines`
   const lines = esc(src).split('\n');
   const out = [];
   let i = 0;
   while (i < lines.length) {
     const l = lines[i];
-    if (/^```/.test(l)) { const buf = []; i++; while (i < lines.length && !/^```/.test(lines[i])) buf.push(lines[i++]); i++; out.push(`<pre>${buf.join('\n')}</pre>`); continue; }
     let m;
+    // gambar soal dari AI: SVG ditampilkan lewat <img> (skrip di dalamnya tidak jalan), PNG tersimpan lewat /files/
+    if (/^\s*```\s*svg/i.test(l)) {
+      const buf = []; i++; while (i < lines.length && !/^\s*```/.test(lines[i])) buf.push(raw[i++]);
+      out.push(i < lines.length ? `<p><img class="ai-img" alt="Gambar soal" src="data:image/svg+xml;charset=utf-8,${encodeURIComponent(buf.join('\n'))}"></p>`
+        : '<p class="muted">Menggambar…</p>');
+      i++; continue;
+    }
+    if ((m = l.trim().match(/^!\[([^\]]*)\]\((\/files\/[a-f0-9]{24}\.(?:png|jpg))\)$/))) { out.push(`<p><img class="ai-img" alt="${m[1] || 'Gambar'}" src="${m[2]}"></p>`); i++; continue; }
+    if (/^```/.test(l)) { const buf = []; i++; while (i < lines.length && !/^```/.test(lines[i])) buf.push(lines[i++]); i++; out.push(`<pre>${buf.join('\n')}</pre>`); continue; }
     if ((m = l.match(/^(#{1,4})\s+(.*)$/))) { const n = Math.min(4, m[1].length + 1); out.push(`<h${n}>${mdInline(m[2])}</h${n}>`); i++; continue; }
     if (/^\s*\|.*\|\s*$/.test(l) && i + 1 < lines.length && /^\s*\|?\s*:?-{2,}/.test(lines[i + 1])) {
       const row = r => r.trim().replace(/^\||\|$/g, '').split('|').map(c => mdInline(c.trim()));
@@ -26,14 +35,15 @@ function mdToHtml(src) {
     }
     if (/^\s*([-*•]|\d+[.)])\s+/.test(l)) {
       const ordered = /^\s*\d+[.)]/.test(l); const items = [];
+      const start = ordered ? parseInt(l, 10) : 1; // daftar bernomor yang terpotong (mis. soal + pilihan) tetap lanjut nomornya
       while (i < lines.length && /^\s*([-*•]|\d+[.)])\s+/.test(lines[i])) items.push(mdInline(lines[i++].replace(/^\s*([-*•]|\d+[.)])\s+/, '')));
-      out.push(`<${ordered ? 'ol' : 'ul'}>${items.map(x => `<li>${x}</li>`).join('')}</${ordered ? 'ol' : 'ul'}>`);
+      out.push(`<${ordered ? 'ol' : 'ul'}${start > 1 ? ` start="${start}"` : ''}>${items.map(x => `<li>${x}</li>`).join('')}</${ordered ? 'ol' : 'ul'}>`);
       continue;
     }
     if (/^\s*(-{3,}|_{3,})\s*$/.test(l)) { out.push('<hr>'); i++; continue; }
     if (!l.trim()) { i++; continue; }
     const buf = [];
-    while (i < lines.length && lines[i].trim() && !/^(#{1,4}\s|```|\s*([-*•]|\d+[.)])\s+|\s*\|.*\|\s*$)/.test(lines[i])) buf.push(mdInline(lines[i++]));
+    while (i < lines.length && lines[i].trim() && !/^(#{1,4}\s|\s*```|\s*!\[|\s*([-*•]|\d+[.)])\s+|\s*\|.*\|\s*$)/.test(lines[i])) buf.push(mdInline(lines[i++]));
     if (buf.length) out.push(`<p>${buf.join('<br>')}</p>`); else { out.push(`<p>${mdInline(l)}</p>`); i++; }
   }
   return out.join('');
@@ -100,7 +110,9 @@ const AI_TPL = {
   soal: { judul: 'Generator Soal', desc: 'Soal pilihan ganda + kunci + pembahasan. Bisa langsung dimasukkan ke CBT/Kuis.', icon: 'quiz',
     fields: [[AI_KELAS, AI_MAPEL], { n: 'materi', l: 'Materi / indikator', req: true, t: 'textarea', rows: 2 },
       [{ n: 'jumlah', l: 'Jumlah soal', t: 'number', min: 1, max: 50, v: 10 }, { n: 'opsi', l: 'Pilihan jawaban', t: 'select', o: [['4', '4 (A–D)'], ['5', '5 (A–E)'], ['3', '3 (A–C)']] }],
-      { n: 'tingkat', l: 'Tingkat kesulitan', t: 'select', o: [['mudah', 'Mudah'], ['sedang', 'Sedang'], ['sulit (HOTS)', 'Sulit (HOTS)'], ['campuran', 'Campuran']] }, { n: 'catatan', l: 'Catatan', t: 'textarea', rows: 2 }] },
+      [{ n: 'tingkat', l: 'Tingkat kesulitan', t: 'select', o: [['mudah', 'Mudah'], ['sedang', 'Sedang'], ['sulit (HOTS)', 'Sulit (HOTS)'], ['campuran', 'Campuran']] },
+        { n: 'gambar', l: 'Gambar / grafik soal', t: 'select', o: [['perlu', 'Bila diperlukan materi'], ['banyak', 'Sebanyak mungkin'], ['tidak', 'Tanpa gambar']] }],
+      { n: 'catatan', l: 'Catatan', t: 'textarea', rows: 2 }] },
   surat: { judul: 'Surat Sekolah', desc: 'Undangan, pemberitahuan, surat tugas, keterangan, dll. sesuai tata naskah.', icon: 'inbox',
     fields: [{ n: 'jenis', l: 'Jenis surat', req: true, t: 'combo', o: JENIS_SURAT }, { n: 'tujuan', l: 'Ditujukan kepada', ph: 'Bapak/Ibu Orang Tua/Wali Murid Kelas 7' },
       { n: 'isi', l: 'Isi pokok / keperluan', t: 'textarea', rows: 3, req: true }, { n: 'waktu', l: 'Waktu & tempat (jika ada)', ph: 'Sabtu, 15 Nov 2026, 09.00, Aula' }, { n: 'ttd', l: 'Penanda tangan', ph: 'Kosongkan = kepala sekolah' }] },
@@ -197,8 +209,33 @@ async function aiRun(tpl, raw) {
   const [body, docId] = text.split('\n\u0000DOC:');
   S.aiDoc = { id: Number(docId) || null, template: tpl, output: body, judul: AI_TPL[tpl].judul, input: inputs };
   out.innerHTML = (tpl === 'rpm' ? rppCekHtml(body, inputs) : '') + mdToHtml(body);
-  acts.innerHTML = aiActions(tpl);
   if (S.aiStatus) S.aiStatus.terpakai++;
+  if (aiAdaSvg(body)) { acts.innerHTML = '<span class="muted">Menyimpan gambar soal…</span>'; await aiGambarkan(); }
+  acts.innerHTML = aiActions(tpl);
+}
+const AI_SVG_RE = /^\s*```\s*svg/i;
+const aiAdaSvg = t => /^\s*```\s*svg/im.test(t || '');
+// Gambar SVG dari AI → PNG di server, lalu dokumen disimpan ulang dengan baris ![Gambar soal](/files/…).
+// Sesudahnya cetak, Word, dan impor ke CBT/Kuis memakai gambar yang sama (tidak diunggah berulang).
+async function aiGambarkan() {
+  const d = S.aiDoc;
+  if (!d || !aiAdaSvg(d.output)) return;
+  const lines = d.output.split('\n'), out = [];
+  let ok = 0, gagal = 0;
+  for (let i = 0; i < lines.length; i++) {
+    if (!AI_SVG_RE.test(lines[i])) { out.push(lines[i]); continue; }
+    let j = i + 1;
+    while (j < lines.length && !/^\s*```/.test(lines[j])) j++;
+    if (j >= lines.length) { out.push(...lines.slice(i)); break; } // blok tidak tertutup (jawaban AI terpotong): biarkan
+    try { out.push(`![Gambar soal](${await uploadFile(await svgToPng(lines.slice(i + 1, j).join('\n')))})`); ok++; }
+    catch { out.push(...lines.slice(i, j + 1)); gagal++; }
+    i = j;
+  }
+  if (gagal) toast(`${gagal} gambar dari AI tidak bisa diproses. Periksa lewat Sunting atau tambahkan gambar manual setelah impor.`, 'bad');
+  if (!ok || S.aiDoc !== d) return;
+  d.output = out.join('\n');
+  if (d.id) await PUT('/ai/docs/' + d.id, { judul: d.judul, output: d.output }).catch(e => toast('Gambar belum tersimpan di dokumen: ' + e.message, 'bad'));
+  aiRefreshView();
 }
 // tombol hasil: sunting & unduh Word hanya untuk dokumen yang sudah tersimpan
 const aiActions = tpl => btn('Salin', 'aiCopy', {}, 'ghost sm') +
@@ -303,6 +340,7 @@ ACT.aiOpen = async el => {
   S.aiDoc = { id: d.id, template: d.template, output: d.output, judul: d.judul, input };
   openModal({ title: d.judul, wide: true, body: `<div class="acts" style="justify-content:flex-start;margin-bottom:12px">${aiActions(d.template)}</div>
     <div id="aiDocView">${aiDocHtml()}</div>` });
+  aiGambarkan(); // dokumen lama yang gambarnya belum sempat disimpan
 };
 // isi dokumen + hasil pemeriksaan alokasi waktu (khusus RPP)
 const aiDocHtml = () => (S.aiDoc.template === 'rpm' && S.aiDoc.input?.jp != null ? rppCekHtml(S.aiDoc.output, S.aiDoc.input) : '') + `<div class="md">${mdToHtml(S.aiDoc.output)}</div>`;
@@ -327,7 +365,7 @@ ACT.aiImport = async () => {
       const L = 'abcde'.slice(0, Number(nopsi)).split('');
       const bad = qs.findIndex(q => !q.kunci || !L.includes(q.kunci) || L.some(l => !q.opsi[l]));
       if (bad >= 0) throw new Error(`Soal nomor ${bad + 1} tidak cocok dengan ${L.length} pilihan jawaban tujuan.`);
-      const soal = qs.map(q => ({ pertanyaan: q.pertanyaan, jawaban_benar: q.kunci, bobot: 1, ...Object.fromEntries(L.map(l => ['opsi_' + l, q.opsi[l]])) }));
+      const soal = await soalPayload(qs, L);
       await POST(kind === 'cbt' ? `/cbt/${tid}/soal/batch` : `/quizzes/${tid}/questions/batch`, { soal });
       closeModal();
       toast(`${qs.length} soal dimasukkan.`); // hasil AI tetap tampil (halaman tidak dimuat ulang)

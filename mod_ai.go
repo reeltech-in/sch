@@ -295,6 +295,35 @@ func v(in map[string]string, k, def string) string {
 	return def
 }
 
+// aiSoalGambar: aturan gambar soal. Gambar ditulis AI sebagai kode SVG; browser guru mengubahnya
+// menjadi PNG (lihat aiGambarkan di web/mod-ai.js), jadi SVG tidak pernah disajikan apa adanya.
+func aiSoalGambar(mode string) string {
+	if mode == "tidak" {
+		return "GAMBAR: jangan membuat gambar; semua soal berupa teks."
+	}
+	kapan := "Buat gambar HANYA bila soal memang membutuhkannya (bangun datar/ruang, segitiga trigonometri, grafik fungsi, diagram batang/lingkaran, tabel data, garis bilangan, rangkaian listrik, peta konsep, dsb.)."
+	if mode == "banyak" {
+		kapan = "Usahakan sebanyak mungkin soal memakai gambar, grafik, diagram, atau tabel data yang relevan dengan materi."
+	}
+	return `GAMBAR: ` + kapan + `
+- Tulis gambar sebagai kode SVG di dalam blok ` + "```svg ... ```" + `, diletakkan SETELAH teks pertanyaan dan SEBELUM pilihan A.
+- Teks pertanyaan tetap lengkap, misalnya diawali "Perhatikan gambar berikut!".
+- SVG harus mandiri: atribut xmlns, viewBox, width dan height (lebar maksimal 480), latar putih, garis hitam/abu tebal 2, teks font-family="Arial" ukuran 14–16. Tanpa <script>, tanpa gambar/tautan dari luar, tanpa <foreignObject>.
+- Gambar harus BENAR secara matematis/ilmiah: ukuran, sudut, label titik (A, B, C), panjang sisi, dan skala sumbu sesuai soal. Tabel data digambar dengan <rect> dan <text>.
+- Gambar tidak boleh membocorkan jawaban.
+Contoh:
+1. Perhatikan gambar berikut! Nilai sin A adalah ....
+` + "```svg" + `
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 200" width="300" height="200"><rect width="300" height="200" fill="#fff"/><polygon points="40,170 260,170 260,40" fill="none" stroke="#000" stroke-width="2"/><polyline points="245,170 245,155 260,155" fill="none" stroke="#000" stroke-width="2"/><text x="25" y="185" font-family="Arial" font-size="16">A</text><text x="265" y="185" font-family="Arial" font-size="16">B</text><text x="265" y="38" font-family="Arial" font-size="16">C</text><text x="140" y="190" font-family="Arial" font-size="14">8 cm</text><text x="268" y="110" font-family="Arial" font-size="14">6 cm</text></svg>
+` + "```" + `
+A. 3/5
+B. 4/5
+C. 3/4
+D. 4/3
+Kunci: A
+Pembahasan: AC = √(8² + 6²) = 10, sin A = BC/AC = 6/10 = 3/5.`
+}
+
 var aiTemplates = map[string]aiTemplate{
 	// RPP/RPM/Modul Ajar: lihat rpp.go (format, fase, alokasi waktu, CP)
 	"rpm": {Judul: rppJudul, Prompt: rppPrompt},
@@ -331,7 +360,7 @@ Struktur: judul, identitas (nama, kelas, kelompok – berupa garis isian), tujua
 - Pilihan jawaban: %s
 - Catatan guru: %s
 
-FORMAT WAJIB (agar bisa diimpor otomatis). Jangan menambah teks pembuka/penutup, jangan memakai tabel atau huruf tebal:
+FORMAT WAJIB (agar bisa diimpor otomatis). Jangan menambah teks pembuka/penutup, jangan memakai tabel Markdown atau huruf tebal:
 1. Teks pertanyaan
 A. pilihan
 B. pilihan
@@ -340,8 +369,16 @@ D. pilihan
 Kunci: B
 Pembahasan: penjelasan singkat
 
-Ulangi untuk setiap nomor. Kunci jawaban harus tersebar merata.`,
-				v(in, "jumlah", "10"), v(in, "mapel", "-"), v(in, "kelas", "-"), v(in, "materi", "-"), v(in, "tingkat", "sedang"), letters, v(in, "catatan", "-"))
+Ulangi untuk setiap nomor. Kunci jawaban harus tersebar merata.
+
+%s
+
+STIMULUS (seperti soal di LKS/buku paket):
+- Soal boleh diawali wacana, data, atau kasus singkat. Tulis kalimat pengantar yang wajar, misalnya "Bacalah teks berikut!", "Perhatikan gambar berikut!", "Perhatikan tabel berikut!". JANGAN menulis label "Stimulus:".
+- Setiap soal berdiri sendiri (urutan soal diacak saat ujian): jangan merujuk nomor soal lain, ulangi stimulusnya bila dipakai lagi.
+- Tulis rumus dengan simbol biasa (x², √2, π, θ, 30°, ½, ≤), bukan LaTeX.`,
+				v(in, "jumlah", "10"), v(in, "mapel", "-"), v(in, "kelas", "-"), v(in, "materi", "-"), v(in, "tingkat", "sedang"), letters, v(in, "catatan", "-"),
+				aiSoalGambar(v(in, "gambar", "perlu")))
 		},
 	},
 	"surat": {

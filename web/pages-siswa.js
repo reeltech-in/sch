@@ -143,6 +143,7 @@ async function siswaUjian(p) {
       <div style="display:flex;align-items:center;gap:12px"><span class="timer" id="timer" aria-live="off">--:--</span>${btn('Kirim jawaban', 'ujianSubmit', {}, 'sm', 'check')}</div></div>
     <div id="ujian" style="max-width:820px">${r.questions.map((q, i) => `<fieldset class="card q" style="border:1px solid var(--border)"><legend class="sr" style="position:absolute;left:-9999px">Soal ${i + 1}</legend>
       <p class="tanya"><span class="muted">${i + 1}.</span> ${esc(q.pertanyaan)}</p>
+      ${q.gambar ? `<img class="soal-img" src="${esc(q.gambar)}" alt="Gambar soal ${i + 1}" loading="lazy">` : ''}
       ${letters.map(l => q['opsi_' + l] != null ? `<label class="opt"><input type="radio" name="q_${q.id}" value="${l}" data-change="ujianPick" ${saved[q.id] === l ? 'checked' : ''}><b>${l.toUpperCase()}.</b><span>${esc(q['opsi_' + l])}</span></label>` : '').join('')}
     </fieldset>`).join('')}
     <div style="text-align:center;margin-top:18px">${btn('Kirim jawaban', 'ujianSubmit', {}, '', 'check')}</div></div>`;

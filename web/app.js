@@ -1032,18 +1032,59 @@ const avatar = (foto, nama, size = 40) => foto
   ? `<img class="avatar" src="${esc(foto)}" alt="" style="width:${size}px;height:${size}px">`
   : `<span class="avatar" style="width:${size}px;height:${size}px">${esc((nama || '?').trim().charAt(0).toUpperCase())}</span>`;
 const rupiah = n => 'Rp ' + Math.round(n || 0).toLocaleString('id-ID');
+// gambar soal: baris Markdown ![..](/files/x.png) hasil Asisten AI (gambar SVG yang sudah diubah ke PNG)
+const SOAL_IMG_RE = /^!\[[^\]]*\]\((\/files\/[a-f0-9]{24}\.(?:png|jpg))\)$/;
 function parseSoalText(text) {
-  const out = []; let cur = null;
+  const out = []; let cur = null, svg = null;
   for (const raw of text.split(/\r?\n/)) {
     const l = raw.trim();
+    // blok kode (```svg … ```): isinya bukan teks soal; SVG disimpan untuk diubah jadi gambar saat impor
+    if (svg) { if (l.startsWith('```')) { if (cur && svg.svg && !cur.gambar) cur.svg = svg.buf.join('\n'); svg = null; } else svg.buf.push(raw); continue; }
+    if (l.startsWith('```')) { svg = { svg: /^```\s*svg/i.test(l), buf: [] }; continue; }
     if (!l) continue;
     let m;
-    if ((m = l.match(/^(\d+)[.)]\s*(.+)$/))) { cur = { pertanyaan: m[2], opsi: {}, kunci: '' }; out.push(cur); }
+    if (cur && (m = l.match(SOAL_IMG_RE))) { if (!cur.gambar) { cur.gambar = m[1]; delete cur.svg; } }
+    else if ((m = l.match(/^(\d+)[.)]\s*(.+)$/))) { cur = { pertanyaan: m[2], opsi: {}, kunci: '' }; out.push(cur); }
     else if (cur && (m = l.match(/^([A-Ea-e])[.)]\s*(.+)$/))) cur.opsi[m[1].toLowerCase()] = m[2];
     else if (cur && (m = l.match(/^kunci\s*(?:jawaban)?\s*[:=]\s*([A-Ea-e])/i))) cur.kunci = m[1].toLowerCase();
     else if (cur && !Object.keys(cur.opsi).length) cur.pertanyaan += '\n' + l;
   }
   return out;
+}
+// SVG (teks dari AI) → file PNG berlatar putih. Digambar lewat <img> sehingga skrip/tautan di dalam SVG tidak pernah jalan;
+// yang disimpan di server hanya piksel PNG.
+async function svgToPng(svgText) {
+  const doc = new DOMParser().parseFromString(svgText, 'image/svg+xml');
+  const el = doc.documentElement;
+  if (!el || el.localName !== 'svg' || doc.getElementsByTagName('parsererror').length) throw new Error('Kode gambar dari AI tidak valid.');
+  // foreignObject/gambar luar bisa membuat kanvas "tercemar" (tidak bisa disimpan); tidak dibutuhkan untuk gambar soal
+  for (const t of ['script', 'foreignObject', 'image']) [...el.getElementsByTagName(t)].forEach(n => n.remove());
+  el.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  const num = a => { const v = el.getAttribute(a) || ''; return /%$/.test(v) ? 0 : parseFloat(v); };
+  const vb = (el.getAttribute('viewBox') || '').trim().split(/[\s,]+/).map(Number);
+  let w = num('width'), h = num('height');
+  if (!(w > 0 && h > 0)) [w, h] = vb.length === 4 && vb[2] > 0 && vb[3] > 0 ? [vb[2], vb[3]] : [480, 320];
+  const k = Math.min(1, 960 / w, 960 / h); // ukuran tampil wajar
+  w = Math.round(w * k); h = Math.round(h * k);
+  el.setAttribute('width', w); el.setAttribute('height', h);
+  const url = URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(el)], { type: 'image/svg+xml' }));
+  try {
+    const img = new Image();
+    await new Promise((ok, no) => { img.onload = ok; img.onerror = () => no(new Error('Gambar dari AI tidak bisa ditampilkan.')); img.src = url; });
+    const s = 2; // dua kali lipat agar tetap tajam di layar HP/proyektor
+    const cv = Object.assign(document.createElement('canvas'), { width: w * s, height: h * s });
+    const ctx = cv.getContext('2d');
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, cv.width, cv.height);
+    ctx.drawImage(img, 0, 0, cv.width, cv.height);
+    const blob = await new Promise(r => cv.toBlob(r, 'image/png'));
+    if (!blob) throw new Error('Gambar gagal dibuat.');
+    return new File([blob], 'gambar-soal.png', { type: 'image/png' });
+  } finally { URL.revokeObjectURL(url); }
+}
+// isi kiriman impor soal: SVG yang belum jadi gambar diubah & diunggah dulu (berurutan agar tidak membebani server)
+async function soalPayload(qs, L) {
+  for (const q of qs) if (q.svg && !q.gambar) { q.gambar = await uploadFile(await svgToPng(q.svg)); delete q.svg; }
+  return qs.map(q => ({ pertanyaan: q.pertanyaan, gambar: q.gambar || '', jawaban_benar: q.kunci, bobot: 1, ...Object.fromEntries(L.map(l => ['opsi_' + l, q.opsi[l]])) }));
 }
 
 // Cetak potongan HTML (kartu, label, denah, laporan) tanpa elemen aplikasi lain

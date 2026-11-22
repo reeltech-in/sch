@@ -26,7 +26,7 @@ type mcq struct {
 }
 
 // parseMCQ memvalidasi satu soal pilihan ganda sesuai jumlah pilihan (2–5).
-func parseMCQ(raw map[string]json.RawMessage, jopsi int, allowImage bool) (mcq, error) {
+func parseMCQ(raw map[string]json.RawMessage, jopsi int) (mcq, error) {
 	get := func(k string) string {
 		var s *string
 		if json.Unmarshal(raw[k], &s) != nil || s == nil {
@@ -51,7 +51,7 @@ func parseMCQ(raw map[string]json.RawMessage, jopsi int, allowImage bool) (mcq, 
 	if idx := strings.Index("abcde", q.kunci); len(q.kunci) != 1 || idx < 0 || idx >= jopsi {
 		return q, bad("Pilih kunci jawaban yang valid.")
 	}
-	if g := get("gambar"); g != "" && allowImage {
+	if g := get("gambar"); g != "" {
 		if !fileNameRe.MatchString(strings.TrimPrefix(g, "/files/")) {
 			return q, bad("Gambar tidak valid.")
 		}
@@ -64,7 +64,7 @@ func parseMCQ(raw map[string]json.RawMessage, jopsi int, allowImage bool) (mcq, 
 	return q, nil
 }
 
-func parseBatch(c *Ctx, jopsi int, allowImage bool) ([]mcq, error) {
+func parseBatch(c *Ctx, jopsi int) ([]mcq, error) {
 	var in struct {
 		Soal []map[string]json.RawMessage `json:"soal"`
 	}
@@ -76,7 +76,7 @@ func parseBatch(c *Ctx, jopsi int, allowImage bool) ([]mcq, error) {
 	}
 	out := make([]mcq, 0, len(in.Soal))
 	for i, raw := range in.Soal {
-		q, err := parseMCQ(raw, jopsi, allowImage)
+		q, err := parseMCQ(raw, jopsi)
 		if err != nil {
 			return nil, bad("Soal nomor " + strconv.Itoa(i+1) + ": " + err.Error())
 		}
@@ -92,7 +92,7 @@ func apiCBTSoalBatch(c *Ctx) error {
 	}
 	var jopsi int
 	c.A.db.QueryRow(`SELECT jumlah_opsi FROM exams WHERE id=?`, examID).Scan(&jopsi)
-	qs, err := parseBatch(c, jopsi, true)
+	qs, err := parseBatch(c, jopsi)
 	if err != nil {
 		return err
 	}
@@ -121,7 +121,7 @@ func apiQuizQuestionBatch(c *Ctx) error {
 	}
 	var jopsi int
 	c.A.db.QueryRow(`SELECT jumlah_opsi FROM quizzes WHERE id=?`, quizID).Scan(&jopsi)
-	qs, err := parseBatch(c, jopsi, false)
+	qs, err := parseBatch(c, jopsi)
 	if err != nil {
 		return err
 	}
@@ -131,8 +131,8 @@ func apiQuizQuestionBatch(c *Ctx) error {
 	}
 	defer tx.Rollback()
 	for _, q := range qs {
-		if _, err := tx.Exec(`INSERT INTO quiz_questions (quiz_id, pertanyaan, opsi_a, opsi_b, opsi_c, opsi_d, opsi_e, jawaban_benar, bobot, created_at)
-			VALUES (?,?,?,?,?,?,?,?,?,?)`, quizID, q.pertanyaan, q.opsi[0], q.opsi[1], q.opsi[2], q.opsi[3], q.opsi[4], q.kunci, q.bobot, nowStr()); err != nil {
+		if _, err := tx.Exec(`INSERT INTO quiz_questions (quiz_id, pertanyaan, gambar, opsi_a, opsi_b, opsi_c, opsi_d, opsi_e, jawaban_benar, bobot, created_at)
+			VALUES (?,?,?,?,?,?,?,?,?,?,?)`, quizID, q.pertanyaan, q.gambar, q.opsi[0], q.opsi[1], q.opsi[2], q.opsi[3], q.opsi[4], q.kunci, q.bobot, nowStr()); err != nil {
 			return err
 		}
 	}

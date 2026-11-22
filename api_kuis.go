@@ -76,7 +76,7 @@ func apiQuestions(c *Ctx) error {
 	if !c.canManage(c.courseOf("quizzes", id)) {
 		return forbidden()
 	}
-	rows, err := c.list(`SELECT id, quiz_id, pertanyaan, opsi_a, opsi_b, opsi_c, opsi_d, opsi_e, jawaban_benar, bobot
+	rows, err := c.list(`SELECT id, quiz_id, pertanyaan, gambar, opsi_a, opsi_b, opsi_c, opsi_d, opsi_e, jawaban_benar, bobot
 		FROM quiz_questions WHERE quiz_id=? ORDER BY id`, id)
 	if err != nil {
 		return err
@@ -160,12 +160,19 @@ func apiSaveQuestion(c *Ctx) error {
 	if in.Bobot <= 0 {
 		in.Bobot = 1
 	}
+	var gambar any
+	if g := gs("gambar"); g != nil && strings.TrimSpace(*g) != "" {
+		if !fileNameRe.MatchString(strings.TrimPrefix(strings.TrimSpace(*g), "/files/")) {
+			return bad("Gambar tidak valid.")
+		}
+		gambar = strings.TrimSpace(*g)
+	}
 	if isUpdate {
-		_, err = c.A.db.Exec(`UPDATE quiz_questions SET pertanyaan=?, opsi_a=?, opsi_b=?, opsi_c=?, opsi_d=?, opsi_e=?, jawaban_benar=?, bobot=? WHERE id=?`,
-			p, opts[0], opts[1], opts[2], opts[3], opts[4], in.JawabanBenar, in.Bobot, qid)
+		_, err = c.A.db.Exec(`UPDATE quiz_questions SET pertanyaan=?, gambar=?, opsi_a=?, opsi_b=?, opsi_c=?, opsi_d=?, opsi_e=?, jawaban_benar=?, bobot=? WHERE id=?`,
+			p, gambar, opts[0], opts[1], opts[2], opts[3], opts[4], in.JawabanBenar, in.Bobot, qid)
 	} else {
-		_, err = c.A.db.Exec(`INSERT INTO quiz_questions (quiz_id, pertanyaan, opsi_a, opsi_b, opsi_c, opsi_d, opsi_e, jawaban_benar, bobot, created_at)
-			VALUES (?,?,?,?,?,?,?,?,?,?)`, quizID, p, opts[0], opts[1], opts[2], opts[3], opts[4], in.JawabanBenar, in.Bobot, nowStr())
+		_, err = c.A.db.Exec(`INSERT INTO quiz_questions (quiz_id, pertanyaan, gambar, opsi_a, opsi_b, opsi_c, opsi_d, opsi_e, jawaban_benar, bobot, created_at)
+			VALUES (?,?,?,?,?,?,?,?,?,?,?)`, quizID, p, gambar, opts[0], opts[1], opts[2], opts[3], opts[4], in.JawabanBenar, in.Bobot, nowStr())
 	}
 	if err != nil {
 		return err
@@ -253,7 +260,7 @@ func apiQuizStart(c *Ctx) error {
 		return err
 	}
 	// Soal dikirim TANPA kunci jawaban, hanya soal milik attempt ini
-	qs, err := c.list(`SELECT id, pertanyaan, opsi_a, opsi_b, opsi_c, opsi_d, opsi_e FROM quiz_questions WHERE quiz_id=? ORDER BY id`, id)
+	qs, err := c.list(`SELECT id, pertanyaan, gambar, opsi_a, opsi_b, opsi_c, opsi_d, opsi_e FROM quiz_questions WHERE quiz_id=? ORDER BY id`, id)
 	if err != nil {
 		return err
 	}
@@ -306,6 +313,7 @@ func quizClean(in map[string]string) map[string]string {
 func init() {
 	// soal yang ditampilkan ke siswa saat mulai (JSON id). Soal yang ditambahkan guru sesudahnya tidak ikut dinilai.
 	moduleMigrations = append(moduleMigrations, func(db *sql.DB) error { return addColumn(db, "quiz_attempts", "soal", "TEXT") })
+	moduleMigrations = append(moduleMigrations, func(db *sql.DB) error { return addColumn(db, "quiz_questions", "gambar", "TEXT") })
 }
 
 // soalKuis: id soal milik attempt; kosong (attempt lama) = semua soal kuis.

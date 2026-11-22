@@ -95,7 +95,7 @@ ACT.cbtImport = el => {
       const bad = qs.findIndex(q => !q.kunci || L.some(l => !q.opsi[l]));
       if (bad >= 0) throw new Error(`Soal nomor ${bad + 1}: pilihan ${L.map(l => l.toUpperCase()).join('/')} atau kunci belum lengkap.`);
       // satu permintaan, satu transaksi: semua masuk atau tidak sama sekali
-      await POST(`/cbt/${x.id}/soal/batch`, { soal: qs.map(q => ({ pertanyaan: q.pertanyaan, jawaban_benar: q.kunci, bobot: 1, ...Object.fromEntries(L.map(l => ['opsi_' + l, q.opsi[l]])) })) });
+      await POST(`/cbt/${x.id}/soal/batch`, { soal: await soalPayload(qs, L) });
     },
   });
 };

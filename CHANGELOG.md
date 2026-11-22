@@ -8,6 +8,21 @@ Format versi: `MAYOR.MINOR.PERBAIKAN`
 Versi yang sedang berjalan terlihat di menu kiri aplikasi (bawah nama pengguna), di `GET /api/version`,
 di header respons `X-SCH-Version`, dan dengan perintah `sch-server -version`.
 
+## v1.28.0 — 2026-11-22 (Soal AI bergambar & berstimulus)
+- **Generator Soal (Asisten AI)** kini bisa membuat soal bergambar seperti di LKS/buku paket: segitiga trigonometri,
+  bangun datar/ruang, grafik fungsi, diagram batang, tabel data, garis bilangan, dsb. Pilihan baru **Gambar / grafik
+  soal**: *Bila diperlukan materi* (bawaan), *Sebanyak mungkin*, atau *Tanpa gambar*.
+  - AI menggambar dalam format SVG; browser guru mengubahnya menjadi PNG lalu menyimpannya di server. Kode SVG tidak
+    pernah disajikan apa adanya (skrip di dalamnya tidak bisa jalan).
+  - Soal boleh diawali wacana/data dengan pengantar wajar ("Bacalah teks berikut!", "Perhatikan gambar berikut!"),
+    tanpa label "Stimulus". Setiap soal berdiri sendiri karena urutan soal diacak saat ujian.
+  - Rumus ditulis dengan simbol biasa (x², √2, π, 30°), bukan LaTeX.
+  - Gambar ikut tampil di pratinjau, cetak, unduhan **Word**, dan saat **Masukkan ke CBT/Kuis**.
+- **Kuis mapel** kini mendukung gambar soal (sebelumnya hanya CBT): unggah di formulir soal, tampil di layar siswa.
+- **Impor soal dari teks** (CBT) membaca baris gambar `![..](/files/..)` dan blok ```` ```svg ````.
+- Perbaikan: nomor soal di pratinjau dokumen AI tidak lagi selalu "1." untuk setiap soal.
+- Pembersihan file yatim harian tidak memindahkan gambar soal kuis maupun gambar di dokumen soal AI yang belum diimpor.
+
 ## v1.27.1 — 2026-11-11 (Scan absen ganda lebih rapi)
 - **Scan QR absensi**: kartu yang di-scan ulang tetap diterima tanpa mencatat ulang (seperti sebelumnya, satu catatan per
   siswa per hari), tapi tampilannya kini jelas:

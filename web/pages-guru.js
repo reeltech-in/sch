@@ -164,7 +164,8 @@ ACT.soalOpen = el => {
       return `<div class="card-head"><p class="muted">${xs.length} soal · total bobot ${fmtN(xs.reduce((s, x) => s + x.bobot, 0))}</p>${btn('Tambah soal', 'soalForm', { quiz: q.id }, 'sm', 'plus')}</div>` +
         (xs.length ? xs.map((x, i) => `<div class="card" style="margin-top:10px;padding:14px">
           <div style="display:flex;gap:10px;justify-content:space-between;align-items:flex-start">
-            <p style="white-space:pre-wrap;font-weight:600"><span class="muted">${i + 1}.</span> ${esc(x.pertanyaan)}</p>
+            <div style="min-width:0"><p style="white-space:pre-wrap;font-weight:600"><span class="muted">${i + 1}.</span> ${esc(x.pertanyaan)}</p>
+            ${x.gambar ? `<img src="${esc(x.gambar)}" alt="" style="max-height:140px;max-width:100%;border-radius:8px;margin:6px 0;background:#fff">` : ''}</div>
             <div class="acts" style="flex:none">${iconBtn('edit', 'soalForm', { quiz: q.id, id: x.id }, 'Ubah soal')}${iconBtn('trash', 'soalDel', { id: x.id, no: i + 1 }, 'Hapus soal', 'danger')}</div></div>
           <div style="display:grid;gap:4px;margin-top:8px">${letters.map(l => `<div style="${x.jawaban_benar === l ? 'color:var(--ok);font-weight:700' : 'color:var(--text-2)'}">${l.toUpperCase()}. ${esc(x['opsi_' + l])} ${x.jawaban_benar === l ? ico('check') : ''}</div>`).join('')}</div>
           ${x.bobot !== 1 ? `<small class="muted">Bobot ${fmtN(x.bobot)}</small>` : ''}</div>`).join('') : empty('Belum ada soal. Siswa belum bisa mengerjakan kuis ini.', 'quiz'));
@@ -177,7 +178,7 @@ ACT.soalForm = el => {
   const letters = 'abcde'.slice(0, q.jumlah_opsi).split('');
   openForm({
     title: x.id ? 'Ubah soal' : 'Tambah soal', values: x, wide: true,
-    fields: [{ n: 'pertanyaan', l: 'Pertanyaan', t: 'textarea', req: true, rows: 3 },
+    fields: [{ n: 'pertanyaan', l: 'Pertanyaan', t: 'textarea', req: true, rows: 3 }, { n: 'gambar', l: 'Gambar soal', t: 'file', accept: 'image/*' },
       ...letters.map(l => ({ n: 'opsi_' + l, l: 'Pilihan ' + l.toUpperCase(), req: true })),
       [{ n: 'jawaban_benar', l: 'Kunci jawaban', t: 'select', o: letters.map(l => [l, l.toUpperCase()]) }, { n: 'bobot', l: 'Bobot', t: 'number', min: 0.1, step: 'any', req: true }]],
     onSubmit: v => x.id ? PUT('/questions/' + x.id, v) : POST(`/quizzes/${q.id}/questions`, v),

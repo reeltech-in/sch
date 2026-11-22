@@ -26,6 +26,7 @@ type docxOpts struct {
 	AlamatSek  string
 	TeleponSek string
 	LogoPath   string // file logo lokal (png/jpg) atau kosong
+	ImgDir     string // folder unggahan: baris ![..](/files/x.png) disisipkan sebagai gambar (kosong = diabaikan)
 	TTD        bool
 	Tempat     string
 	Tanggal    string // sudah diformat, mis. "10 November 2026"
@@ -148,8 +149,11 @@ func docxTable(rows [][]string, header bool) string {
 	return b.String()
 }
 
-// docxBody: Markdown → isi <w:body> (tanpa sectPr).
-func docxBody(md string) string {
+// gambar Markdown satu baris yang menunjuk unggahan sekolah, mis. gambar soal hasil Asisten AI
+var mdImgRe = regexp.MustCompile(`^!\[([^\]]*)\]\(/files/([a-f0-9]{24}\.(?:png|jpg))\)$`)
+
+// docxBody: Markdown → isi <w:body> (tanpa sectPr). img(nama) mengembalikan paragraf gambar ("" bila tak bisa).
+func docxBody(md string, img func(name string) string) string {
 	lines := strings.Split(strings.ReplaceAll(md, "\r\n", "\n"), "\n")
 	var b strings.Builder
 	cell := func(r string) []string {
@@ -164,6 +168,16 @@ func docxBody(md string) string {
 	for i := 0; i < len(lines); {
 		l := lines[i]
 		switch {
+		case strings.HasPrefix(strings.TrimSpace(l), "```svg"): // gambar yang belum diubah jadi PNG
+			for i++; i < len(lines) && !strings.HasPrefix(strings.TrimSpace(lines[i]), "```"); i++ {
+			}
+			i++
+			b.WriteString(docxPara("", `<w:r><w:rPr><w:i/></w:rPr><w:t>[gambar]</w:t></w:r>`, ""))
+		case mdImgRe.MatchString(strings.TrimSpace(l)):
+			if p := img(mdImgRe.FindStringSubmatch(strings.TrimSpace(l))[2]); p != "" {
+				b.WriteString(p)
+			}
+			i++
 		case strings.HasPrefix(strings.TrimSpace(l), "```"):
 			i++
 			for i < len(lines) && !strings.HasPrefix(strings.TrimSpace(lines[i]), "```") {
@@ -203,7 +217,8 @@ func docxBody(md string) string {
 		default:
 			var runs []string
 			for i < len(lines) && strings.TrimSpace(lines[i]) != "" && !mdHeadRe.MatchString(lines[i]) && !mdListRe.MatchString(lines[i]) &&
-				!mdTableRe.MatchString(lines[i]) && !strings.HasPrefix(strings.TrimSpace(lines[i]), "```") && !mdHrRe.MatchString(lines[i]) {
+				!mdTableRe.MatchString(lines[i]) && !strings.HasPrefix(strings.TrimSpace(lines[i]), "```") && !mdHrRe.MatchString(lines[i]) &&
+				!mdImgRe.MatchString(strings.TrimSpace(lines[i])) {
 				runs = append(runs, docxRuns(strings.TrimSpace(lines[i]), false))
 				i++
 			}
@@ -329,7 +344,35 @@ func buildDocx(md string, o docxOpts) ([]byte, error) {
 	if o.Kop {
 		body += docxKop(o, rel, lw, lh)
 	}
-	body += docxBody(md)
+	type media struct {
+		rel, ext string
+		data     []byte
+	}
+	var imgs []media
+	body += docxBody(md, func(name string) string {
+		if o.ImgDir == "" || len(imgs) >= 200 {
+			return ""
+		}
+		b, err := os.ReadFile(filepath.Join(o.ImgDir, name))
+		if err != nil {
+			return ""
+		}
+		cfg, format, err := image.DecodeConfig(bytes.NewReader(b))
+		if err != nil || (format != "png" && format != "jpeg") || cfg.Width <= 0 || cfg.Height <= 0 {
+			return ""
+		}
+		n := len(imgs) + 1
+		rel := fmt.Sprintf("rIdImg%d", n)
+		imgs = append(imgs, media{rel, map[string]string{"png": "png", "jpeg": "jpeg"}[format], b})
+		w := min(cfg.Width, 400) // lebar tampil maksimal 400 px (±10,6 cm)
+		h := cfg.Height * w / cfg.Width
+		cx, cy := w*emuPerPx, h*emuPerPx
+		return docxPara("", `<w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0">`+
+			fmt.Sprintf(`<wp:extent cx="%d" cy="%d"/><wp:docPr id="%d" name="Gambar %d"/>`, cx, cy, n+1, n)+
+			`<a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic>`+
+			fmt.Sprintf(`<pic:nvPicPr><pic:cNvPr id="0" name="gambar%d"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="%s"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill>`, n, rel)+
+			fmt.Sprintf(`<pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="%d" cy="%d"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r>`, cx, cy), "")
+	})
 	if o.TTD {
 		body += docxTTD(o)
 	}
@@ -346,6 +389,9 @@ func buildDocx(md string, o docxOpts) ([]byte, error) {
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rIdStyles" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>`
 	if logo != nil {
 		docRels += `<Relationship Id="rIdLogo" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/logo.` + logoExt + `"/>`
+	}
+	for _, m := range imgs {
+		docRels += `<Relationship Id="` + m.rel + `" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/` + strings.ToLower(m.rel) + `.` + m.ext + `"/>`
 	}
 	docRels += `</Relationships>`
 	core := `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -364,6 +410,12 @@ func buildDocx(md string, o docxOpts) ([]byte, error) {
 			name string
 			data []byte
 		}{"word/media/logo." + logoExt, logo})
+	}
+	for _, m := range imgs {
+		files = append(files, struct {
+			name string
+			data []byte
+		}{"word/media/" + strings.ToLower(m.rel) + "." + m.ext, m.data})
 	}
 	for _, f := range files {
 		w, err := zw.Create(f.name)
@@ -419,7 +471,7 @@ func apiAIDocDocx(c *Ctx) error {
 		return strings.TrimSpace(v)
 	}
 	o := docxOpts{Judul: judul, Kop: q.Get("kop") != "0", NamaSek: str("nama_sekolah"), AlamatSek: str("alamat"), TeleponSek: str("telepon"),
-		LogoPath: c.A.localLogo(str("logo_url")), TTD: q.Get("ttd") == "1", Tempat: cut(q.Get("tempat"), 60), Tanggal: tanggalPanjang(q.Get("tanggal")),
+		LogoPath: c.A.localLogo(str("logo_url")), ImgDir: c.A.uploadDir(), TTD: q.Get("ttd") == "1", Tempat: cut(q.Get("tempat"), 60), Tanggal: tanggalPanjang(q.Get("tanggal")),
 		Guru: cut(q.Get("guru"), 100), NIPGuru: cut(q.Get("nip_guru"), 30), Kepsek: cut(q.Get("kepsek"), 100), NIPKepsek: cut(q.Get("nip_kepsek"), 30)}
 	b, err := buildDocx(output, o)
 	if err != nil {

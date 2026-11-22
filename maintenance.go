@@ -194,7 +194,9 @@ func (a *App) removeOrphans(minAge time.Duration) (int, error) {
 		`SELECT foto FROM assets`, `SELECT cover FROM books`, `SELECT ebook FROM books`, `SELECT file FROM letters`,
 		`SELECT foto FROM guestbook`, `SELECT foto FROM candidates`, `SELECT logo_url FROM settings`,
 		`SELECT berkas FROM ppdb_applicants`, `SELECT lampiran FROM materials`, `SELECT konten FROM materials`,
-		`SELECT link_file FROM submissions`, `SELECT v FROM kv`,
+		`SELECT link_file FROM submissions`, `SELECT v FROM kv`, `SELECT gambar FROM quiz_questions`,
+		// gambar soal hasil Asisten AI yang belum dimasukkan ke CBT/kuis (baris ![..](/files/x.png) di isi dokumen)
+		`SELECT output FROM ai_documents WHERE template='soal' AND instr(output, '/files/') > 0`,
 	}
 	for _, q := range queries {
 		rows, err := a.reader().Query(q)
