@@ -1,350 +1,342 @@
 {
   "api.go": {
-    "mtime": 1794318636977.6848,
+    "mtime": 1795319293530.0652,
     "hash": "b91d0269c6fb0da5393a429372896308"
   },
   "api_lms.go": {
-    "mtime": 1794301879047.357,
+    "mtime": 1795319293530.569,
     "hash": "50d2e63950d72578f1b158fb69c1def4"
   },
   "api_users.go": {
-    "mtime": 1794318247657.688,
+    "mtime": 1795319293530.6926,
     "hash": "834e73d23aa8051ae95a7cd507b8d7b5"
   },
   "db.go": {
-    "mtime": 1794314974304.3022,
+    "mtime": 1795319293531.2942,
     "hash": "be85dad23bd49a0f0e7e477ab24681b2"
   },
   "demo.go": {
-    "mtime": 1794214721331.3706,
+    "mtime": 1795319293531.4248,
     "hash": "c1c26eae7035adcef1d04c35948060dd"
   },
   "main.go": {
-    "mtime": 1794266720296.7788,
+    "mtime": 1795319293533.0435,
     "hash": "ebb9451fd5e16a5568142d86a0327734"
   },
   "maintenance.go": {
-    "mtime": 1794314974305.1965,
-    "hash": "51509c9f945fb0767a7f1c0a82419cef"
+    "mtime": 1795319855957.4663,
+    "hash": "b39c2ab8f22323aad7e8717b22472236"
   },
   "migrate.go": {
-    "mtime": 1794214721333.3853,
+    "mtime": 1795319293533.3665,
     "hash": "d24765980f18e69c833635705a08b590"
   },
   "mod_absensi.go": {
-    "mtime": 1794301859588.3403,
+    "mtime": 1795319293533.4905,
     "hash": "158e827a73225168b3eb58a3c6f9aad9"
   },
   "mod_ai.go": {
-    "mtime": 1794285592742.09,
-    "hash": "a1643e2b257ba1660c1fff41a79a0599"
+    "mtime": 1795319606803.405,
+    "hash": "4972c0ee05c473858e8baf1c0bcfdf53"
   },
   "mod_layanan.go": {
-    "mtime": 1794301848690.0608,
+    "mtime": 1795319293534.6816,
     "hash": "5423277e606fe3e5b298d9c91dce6b6c"
   },
   "mod_osis_kasir.go": {
-    "mtime": 1794214723814.4785,
+    "mtime": 1795319293534.891,
     "hash": "b1ef0b35fc4d3e8b43391e133266daf0"
   },
   "mod_sarpras.go": {
-    "mtime": 1794318247658.4556,
+    "mtime": 1795319293535.7488,
     "hash": "39b0abdb6ed163b02d5161d8a914d055"
   },
   "mod_tahun.go": {
-    "mtime": 1794316752817.393,
+    "mtime": 1795319293535.9841,
     "hash": "2d048a82707ee7ade7fa3ba57208530d"
   },
   "mod_ujian.go": {
-    "mtime": 1794301873087.4521,
+    "mtime": 1795319293536.1206,
     "hash": "43a60e4fc6816689e90f4fee46a52f9d"
   },
   "modules.go": {
-    "mtime": 1794301036963.5466,
+    "mtime": 1795319293536.507,
     "hash": "85866425a944834da9f74440aff8ffaf"
   },
   "ops.go": {
-    "mtime": 1794278613738.8406,
+    "mtime": 1795319293536.8193,
     "hash": "f8c2020be85d7d1da005d79a0c49de3e"
   },
   "questions.go": {
-    "mtime": 1794214721339.6973,
-    "hash": "fe8dd3265492c7a8a62f7991a1d92b3d"
-  },
-  "template-lms/schema.sql": {
-    "mtime": 1794188805382.5942,
-    "hash": "fee7a910d001897467a378978eab8829"
+    "mtime": 1795319628960.0605,
+    "hash": "6df52436fa379100794633603363ef26"
   },
   "tls.go": {
-    "mtime": 1794214721341.0308,
+    "mtime": 1795319293538.3945,
     "hash": "cb1e14e2eb27ebabfd99397a8fe5120d"
   },
   "web/app.js": {
-    "mtime": 1794321991464.5,
-    "hash": "fc38117e07f77ecd586404ede5d48761"
+    "mtime": 1795319711351.363,
+    "hash": "d050a765f75628ee097ba8bac062a305"
   },
   "web/mod-ai.js": {
-    "mtime": 1794285706818.7947,
-    "hash": "33e00919873c5e70fbb39b8b669003fd"
+    "mtime": 1795319927251.7014,
+    "hash": "97f9a9f95b63d7dfb9baf2120f4a7783"
   },
   "web/mod-audit.js": {
-    "mtime": 1794318378416.1873,
+    "mtime": 1795319293539.839,
     "hash": "091166714ba20132c7f66db8853f94ca"
   },
   "web/mod-kesiswaan.js": {
-    "mtime": 1794371585337.935,
+    "mtime": 1795319293540.7883,
     "hash": "4125cc647da2baf61b4cfdff4d2bbb20"
   },
   "web/mod-sarpras.js": {
-    "mtime": 1794318378418.4187,
+    "mtime": 1795319293541.8452,
     "hash": "36a4378a7ea18e37ce6916821e19c9c5"
   },
   "web/mod-tahun.js": {
-    "mtime": 1794316752818.4219,
+    "mtime": 1795319293542.0847,
     "hash": "df9347990d1d051f3d1def8f1acb7cb5"
   },
   "web/pages-admin.js": {
-    "mtime": 1794318378419.8452,
+    "mtime": 1795319293542.2478,
     "hash": "07838e8ae20780b4bb7c631b2dfb56f1"
   },
   "web/pages-guru.js": {
-    "mtime": 1794315019917.5388,
-    "hash": "07b647e538bd79f86ac963b095ba00f8"
+    "mtime": 1795319764030.083,
+    "hash": "f1b0dee986b40412bc29e2daa50ce73d"
   },
   "web/pages-siswa.js": {
-    "mtime": 1794301941163.238,
-    "hash": "8d8a0cbe11867946fa7e5b96689106c6"
+    "mtime": 1795319764030.2812,
+    "hash": "8a959c163b7a043ef5d7e871e7de133e"
   },
   "web/theme.js": {
-    "mtime": 1794211758886.5298,
+    "mtime": 1795319293542.7607,
     "hash": "e23343d8c9827b32230cc0d7b142ab21"
   },
   "CHANGELOG.md": {
-    "mtime": 1794371688829.8125,
-    "hash": "fd3ef1cf500024ae42912544966d1da2"
+    "mtime": 1795320073605.5496,
+    "hash": "9a069b3f8a78623252fd43a1044e1b75"
   },
   "README.md": {
-    "mtime": 1794360007264.3862,
+    "mtime": 1795319293529.761,
     "hash": "ecc5b25d15f945446d0423dcbb20ede5"
   },
   "docs/design-system.md": {
-    "mtime": 1794201149296.8513,
+    "mtime": 1795319293531.8774,
     "hash": "895c05c3a26f73f081b5002438fb9c05"
   },
-  "template-lms/lms-frontend.html": {
-    "mtime": 1794188807568.9631,
-    "hash": "9afb5e35205dce16691fc674be299f9b"
-  },
   "web/index.html": {
-    "mtime": 1794204010221.8254,
+    "mtime": 1795319293539.4429,
     "hash": "3a2937607913006de01114fdb332dc7e"
   },
   "sch_test.go": {
-    "mtime": 1794269244472.8186,
+    "mtime": 1795319293537.9329,
     "hash": "1dab6fb0e35658c4ae98c8eb2068e1cb"
   },
   "saran.go": {
-    "mtime": 1794214721339.8977,
+    "mtime": 1795319293537.6072,
     "hash": "ebaa6396519a8ff8b1223e81e17e5208"
   },
   "mod_admguru.go": {
-    "mtime": 1794318257539.0732,
+    "mtime": 1795319293533.6138,
     "hash": "3406deef083c24e6f7b8799c88902160"
   },
   "web/mod-admguru.js": {
-    "mtime": 1794318397581.6633,
+    "mtime": 1795319293539.5654,
     "hash": "866cb4855a6b32d609154c13d63adaa5"
   },
   "mod_wa.go": {
-    "mtime": 1794301844298.4905,
+    "mtime": 1795319293536.3743,
     "hash": "b38f6b8bea98ea7d6d649e3de7e149ad"
   },
   "mod_ljk.go": {
-    "mtime": 1794270132375.2444,
+    "mtime": 1795319293534.788,
     "hash": "d0e3138c99f6a2cd60dde74d8898984e"
   },
   "web/mod-ljk.js": {
-    "mtime": 1794270363231.2932,
+    "mtime": 1795319293540.94,
     "hash": "71d2f0cbeb1bf10aac1efe391e1d0a8f"
   },
   "mapel.go": {
-    "mtime": 1794285676538.134,
+    "mtime": 1795319293533.2576,
     "hash": "6bf8dcf386c94027b6c261f06fbd6967"
   },
   "guards.go": {
-    "mtime": 1794285669821.4512,
+    "mtime": 1795319293532.4763,
     "hash": "277c3b890eeeb3a03a534633f9535a9f"
   },
   "indexes.go": {
-    "mtime": 1794318257538.4475,
+    "mtime": 1795319293532.687,
     "hash": "20d207eb80b47fd7f16bf54e965fabcd"
   },
   "api_absensi_mapel.go": {
-    "mtime": 1794315019917.1821,
+    "mtime": 1795319293530.2095,
     "hash": "d138063e009ea16c3f185debf7ccfdbb"
   },
   "api_kuis.go": {
-    "mtime": 1794301873090.1187,
-    "hash": "816b6c1fb62ced5cb9dff48100b4dc23"
+    "mtime": 1795319624423.1343,
+    "hash": "a470a2b188e34c5191906a02cf65a057"
   },
   "app.go": {
-    "mtime": 1794314974304.6318,
+    "mtime": 1795319293530.798,
     "hash": "a9d389d7d7565edaf000ad21f7e9b36c"
   },
   "auth.go": {
-    "mtime": 1794301108312.9287,
+    "mtime": 1795319293531.0571,
     "hash": "604c6454de6d1c7686015f987417f46b"
   },
   "handler.go": {
-    "mtime": 1794301083087.691,
+    "mtime": 1795319293532.5886,
     "hash": "e3b04786608b1a330e21badd23257eb6"
   },
   "limiter.go": {
-    "mtime": 1794269495166.8755,
+    "mtime": 1795319293532.9285,
     "hash": "8f9c2d77a1c553108d091207a89024c4"
   },
   "mod_bukuinduk.go": {
-    "mtime": 1794214723812.796,
+    "mtime": 1795319293533.8767,
     "hash": "50e1f619555bf9b89f40f591ae1fce3d"
   },
   "mod_bukutamu.go": {
-    "mtime": 1794301036964.024,
+    "mtime": 1795319293533.9797,
     "hash": "48d60e3b287dde69f3c30162e1d16f3b"
   },
   "mod_evoting.go": {
-    "mtime": 1794301366840.9773,
+    "mtime": 1795319293534.2358,
     "hash": "6170a67289e16970866449c9d3978a19"
   },
   "mod_kalender.go": {
-    "mtime": 1794266945999.741,
+    "mtime": 1795319293534.3535,
     "hash": "fc44388b0293c00323d0743ea1015eb8"
   },
   "mod_kasir.go": {
-    "mtime": 1794269341657.6978,
+    "mtime": 1795319293534.4739,
     "hash": "50e3f4ad08700b52514f51d0071bfd7f"
   },
   "mod_kelulusan.go": {
-    "mtime": 1794318257538.5435,
+    "mtime": 1795319293534.5857,
     "hash": "c7bf42251e5e0e7039928f166c540bb2"
   },
   "mod_ppdb.go": {
-    "mtime": 1794301036964.612,
+    "mtime": 1795319293535.0005,
     "hash": "ba3781c863c376062997a19bf8aa2e56"
   },
   "mod_surat.go": {
-    "mtime": 1794267009431.8086,
+    "mtime": 1795319293535.8586,
     "hash": "61a8f63dc83de149354a3996b41f2259"
   },
   "mod_ujian_event.go": {
-    "mtime": 1794214723818.1255,
+    "mtime": 1795319293536.237,
     "hash": "e4fd4296d26613d037cf7ad26cffafd1"
   },
   "static.go": {
-    "mtime": 1794214723811.7761,
+    "mtime": 1795319293538.0583,
     "hash": "ffd2e6ea7a66cf662027db7a37ecf201"
   },
   "web/mod-bukutamu.js": {
-    "mtime": 1794299762436.5823,
+    "mtime": 1795319293539.9526,
     "hash": "58c4b2e45ce1423d9c16bf022db97473"
   },
   "web/mod-cbt.js": {
-    "mtime": 1794299762442.4265,
-    "hash": "3264181939a999fd9eb180a5d297ec40"
+    "mtime": 1795319722395.9443,
+    "hash": "b1c82275c43b1b4e93d2ebb1b3782ce9"
   },
   "web/mod-evoting.js": {
-    "mtime": 1794301165411.4578,
+    "mtime": 1795319293540.3489,
     "hash": "dcabdfe98f10062da745a1f1836ae5e0"
   },
   "web/mod-kasir.js": {
-    "mtime": 1794270380932.685,
+    "mtime": 1795319293540.4976,
     "hash": "f2a83b5fae5fbcb45dde60a260057607"
   },
   "web/mod-kelulusan.js": {
-    "mtime": 1794318378420.2458,
+    "mtime": 1795319293540.6194,
     "hash": "19303120b60b6705a2cb4058024508ba"
   },
   "web/mod-manujian.js": {
-    "mtime": 1794214819744.2866,
+    "mtime": 1795319293541.0732,
     "hash": "b2420a3574b37b1c66284d8ceeb78012"
   },
   "web/mod-ppdb.js": {
-    "mtime": 1794318378416.72,
+    "mtime": 1795319293541.54,
     "hash": "00bd3e7d3c584c76ac318003962f5db1"
   },
   "web/mod-surat.js": {
-    "mtime": 1794214819743.3896,
+    "mtime": 1795319293541.9668,
     "hash": "2a5e81dc8fa588b5594baf1bce824db5"
   },
   "audit_test.go": {
-    "mtime": 1794299153942.869,
+    "mtime": 1795319293530.9307,
     "hash": "a22a634c1e45f5470760f4d1146bd40d"
   },
   "ebook_test.go": {
-    "mtime": 1794227381833.9192,
+    "mtime": 1795319293532.1426,
     "hash": "a9af803eed887f2368b3b05e1a0f555a"
   },
   "mod_ebook.go": {
-    "mtime": 1794269464732.7754,
+    "mtime": 1795319293534.1113,
     "hash": "659cf2388215daebdbc71f62c2c866a9"
   },
   ".graphify/GRAPH_REPORT.md": {
-    "mtime": 1794360045149.2422,
-    "hash": "56d252409b7901a15a813afaaa5b007d"
+    "mtime": 1795319293525.8147,
+    "hash": "659b5fc7fcd99e6c54b967c8aa77fb2e"
   },
   "docs/INSTALL-UBUNTU.md": {
-    "mtime": 1794267381424.0015,
+    "mtime": 1795319293531.7493,
     "hash": "0a5f47d410558fd2f07268ccd23250c8"
   },
   "docx.go": {
-    "mtime": 1794283977318.9458,
-    "hash": "4445ad13ef93253d062620d361a68430"
+    "mtime": 1795319663789.0942,
+    "hash": "867371b8bcd2caf1c5ff72d710802ae1"
   },
   "rpp.go": {
-    "mtime": 1794285669820.9597,
+    "mtime": 1795319293537.3945,
     "hash": "483df1f47ebf0b6baf94154ec5b64dfe"
   },
   "rpp_test.go": {
-    "mtime": 1794285739521.3596,
+    "mtime": 1795319293537.5144,
     "hash": "2b2b28e0b5e98dea0e4911a2870345a5"
   },
   "tahap1_test.go": {
-    "mtime": 1794301376377.3484,
+    "mtime": 1795319293538.1746,
     "hash": "8e59784dfb05896510a3ee846499248a"
   },
   "tahap2_test.go": {
-    "mtime": 1794318656480.6787,
+    "mtime": 1795319293538.2935,
     "hash": "bebd5610589d68a3097a6c019abb5d84"
   },
   "nilai.go": {
-    "mtime": 1794301921234.385,
+    "mtime": 1795319293536.6062,
     "hash": "5aaa8f17557a1d235373ea24fb3995d2"
   },
   "nilai_test.go": {
-    "mtime": 1794301974153.8618,
+    "mtime": 1795319293536.702,
     "hash": "a8346b6a4be19a7ec8e225ca89b858f1"
   },
   "util.go": {
-    "mtime": 1794301859587.6982,
+    "mtime": 1795319293538.4941,
     "hash": "bf69478b69644c0434f08731c0174596"
   },
   "mod_rapor.go": {
-    "mtime": 1794359771463.0647,
+    "mtime": 1795319293535.483,
     "hash": "c77cc2a97f270ec409145fae29622e06"
   },
   "rapor_test.go": {
-    "mtime": 1794359833622.51,
+    "mtime": 1795319293537.0725,
     "hash": "47aa2b577d713926ecac77847ee84f63"
   },
   "web/mod-rapor.js": {
-    "mtime": 1794359797979.3767,
+    "mtime": 1795319293541.693,
     "hash": "1c932461ecb20f18fe615834fad6fa09"
   },
   "rapor_xlsx.go": {
-    "mtime": 1794359788141.0234,
+    "mtime": 1795319293537.1892,
     "hash": "525d569a569e55350b7122d50777fd5c"
   },
   "xlsx.go": {
-    "mtime": 1794359741125.734,
+    "mtime": 1795319293542.8643,
     "hash": "889b76385edabdc8ac07cd15fccec5fb"
   }
 }
