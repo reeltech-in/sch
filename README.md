@@ -197,6 +197,7 @@ juga menampilkan pemakaian disk dan daftar backup untuk diunduh.
 | `-https :3221` | port HTTPS untuk kamera HP; isi kosong `-https ""` untuk mematikan | `:3221` |
 | `-proxy` | wajib bila online lewat Cloudflare Tunnel / reverse proxy **di komputer yang sama** (hanya 127.0.0.1 dipercaya) | mati |
 | `-upload-max-gb 5` | batas total ukuran file upload (foto, berkas PPDB, e-book) | `5` |
+| `-proxy-header xff` | **wajib** bila di belakang nginx/proxy lain (bukan Cloudflare): IP asli dibaca dari elemen terakhir `X-Forwarded-For`, header `CF-Connecting-IP` diabaikan (bisa dipalsukan pengunjung lewat nginx). Bawaan `cf` untuk Cloudflare Tunnel | `cf` |
 | `-proxy-ip 10.0.0.5` | proxy/cloudflared di **mesin lain** (VM, Docker 172.17.0.0/16): percayai header proxy dari IP/CIDR ini (otomatis menyalakan `-proxy`) | – |
 | `-db data/sch.db` | lokasi file database (folder ini juga menyimpan upload & sertifikat) | `data/sch.db` |
 | `-reset-admin` | buat password admin baru lalu keluar (jika lupa password) | – |
@@ -216,12 +217,15 @@ Semua data ada di folder `data/`: `sch.db` (database) dan `uploads/` (foto, gamb
   dan hapus `sch.db-wal` serta `sch.db-shm`), lalu jalankan lagi.
 
 ## 8. Keamanan
-- Password disimpan sebagai hash bcrypt; login dibatasi 10 percobaan gagal per 10 menit per perangkat.
+- Password disimpan sebagai hash bcrypt. Login dibatasi 5 percobaan gagal per akun per perangkat dalam 10 menit,
+  termasuk bila dikirim serentak. Password admin minimal 10 karakter, guru 8, siswa 6; password admin & guru
+  tidak boleh memuat username atau berupa password umum.
 - Semua aturan akses diperiksa di server: siswa hanya melihat kelasnya, guru hanya mapel/ujian miliknya.
   Modul yang dimatikan juga ditolak di server.
 - Kunci jawaban kuis/CBT tidak pernah dikirim ke siswa; nilai dihitung di server; waktu ujian dihitung server.
 - Kartu QR siswa ditandatangani (HMAC) sehingga tidak bisa dibuat sendiri dari NIS teman.
-- File upload diperiksa jenis aslinya (JPG/PNG/WEBP/GIF/PDF) dan hanya bisa dibuka pengguna yang login.
+- File upload diperiksa jenis aslinya (JPG/PNG/WEBP/GIF/PDF) dan hanya bisa dibuka pengguna yang login. Berkas
+  pendaftar PPDB (KK, akta) hanya bisa dibuka admin dan guru yang diberi tugas PPDB.
 - Formulir publik (PPDB, buku tamu, cek kelulusan) dibatasi per IP, memakai honeypot anti-bot, dan berkas
   dibatasi jenis & ukurannya.
 - E-Voting: siapa yang sudah memilih dicatat terpisah dari pilihannya, sehingga pilihan tidak bisa dilacak.

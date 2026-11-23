@@ -8,6 +8,39 @@ Format versi: `MAYOR.MINOR.PERBAIKAN`
 Versi yang sedang berjalan terlihat di menu kiri aplikasi (bawah nama pengguna), di `GET /api/version`,
 di header respons `X-SCH-Version`, dan dengan perintah `sch-server -version`.
 
+## v1.28.1 — 2026-11-23 (Perbaikan keamanan)
+Disarankan untuk semua sekolah. Perbarui dengan perintah pemasangan yang sama; data tidak berubah.
+
+**Login & tebakan**
+- Batas percobaan login kini tidak bisa ditembus dengan mengirim banyak percobaan sekaligus. Sebelumnya puluhan
+  tebakan password serentak semuanya diperiksa (batasnya 5). Hal yang sama diperbaiki untuk cek kelulusan dan
+  cek status PPDB. Login yang berhasil tidak memakan jatah, jadi siswa satu sekolah di balik satu IP tetap lancar.
+- **Aturan password baru**: admin minimal 10 karakter, guru minimal 8, siswa tetap 6. Password admin & guru tidak
+  boleh memuat username atau berupa password umum (12345678, password, admin123, dsb.). Berlaku saat membuat akun,
+  mengganti, atau mengimpor; password yang sudah ada tetap bisa dipakai.
+- Pilihan baru `-proxy-header xff` (install.sh: `SCH_PROXY_HEADER=xff`) untuk SCH di belakang **nginx/proxy lain**:
+  tanpa ini pengunjung bisa memalsukan header IP untuk mengakali pembatas login. Cloudflare Tunnel tidak perlu diubah.
+
+**Data pribadi**
+- **Berkas pendaftar PPDB** (KK, akta, foto) kini hanya bisa dibuka admin dan guru yang diberi tugas PPDB.
+  Sebelumnya siapa pun yang sudah login bisa membukanya bila mengetahui nama filenya. Berkas pendaftar lama ikut
+  terlindungi otomatis saat server diperbarui.
+- Formulir PPDB tidak lagi menyebut nomor pendaftaran bila NISN/NIK sudah terdaftar (orang lain yang tahu NISN
+  seorang anak tidak bisa mengetahui anak itu mendaftar).
+
+**Penyalahgunaan formulir publik**
+- WhatsApp dari formulir PPDB tidak bisa lagi dipakai mengirim teks bebas lewat nomor sekolah: nama disingkat,
+  maksimal 2 pesan per nomor tujuan dan 300 per hari. Pesan absensi didahulukan dari pesan PPDB.
+- Unggahan publik (PPDB, buku tamu) dibatasi 60 MB per perangkat per hari, dan kiriman besar yang sedang diproses
+  dibatasi per perangkat, agar satu orang tidak bisa menghabiskan jatah atau memori server.
+
+**Lain-lain**
+- E-Voting: setelah ada suara masuk, pemilih, kelas, waktu mulai, serta nomor/nama kandidat terkunci, dan
+  pemilihan yang sudah selesai tidak bisa dibuka lagi (mencegah mengintip perolehan suara di tengah jalan).
+- Mematikan modul **Pembelajaran** kini benar-benar menolak aksesnya di server, bukan hanya menyembunyikan menu.
+- Perbaikan: berkas **portofolio siswa** tidak lagi ikut terhapus oleh pembersihan file harian. Berkas lama yang
+  diganti, dan foto selfie yang tidak dipakai, langsung dibuang sehingga tidak memenuhi penyimpanan.
+
 ## v1.28.0 — 2026-11-22 (Soal AI bergambar & berstimulus)
 - **Generator Soal (Asisten AI)** kini bisa membuat soal bergambar seperti di LKS/buku paket: segitiga trigonometri,
   bangun datar/ruang, grafik fungsi, diagram batang, tabel data, garis bilangan, dsb. Pilihan baru **Gambar / grafik

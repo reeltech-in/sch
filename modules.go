@@ -389,33 +389,45 @@ func (a *App) saveUpload(data []byte, onlyImage bool) (string, error) {
 // (selfie absensi, gambar soal, logo tetap bisa diunggah).
 const publikHarianMaks = 300 << 20 // 300 MB per hari untuk semua unggahan publik
 
+// publikPerPerangkat: jatah harian satu perangkat (IP, IPv6 per /64) dari kolam publik di atas, agar satu
+// pengirim tidak bisa menghabiskan jatah semua pendaftar lain. Cukup untuk beberapa pendaftaran lengkap.
+const publikPerPerangkat = 60 << 20
+
 var publikUpl struct {
 	sync.Mutex
 	hari  string
 	bytes int64
+	per   map[string]int64
 }
 
-func (a *App) savePublicUpload(data []byte, onlyImage bool) (string, error) {
+// savePublicUpload: who = kunci perangkat pengirim (limitKey(clientIP)).
+func (a *App) savePublicUpload(data []byte, onlyImage bool, who string) (string, error) {
 	cadangan := uploadMaxBytes / 5 // 20% terakhir hanya untuk pengguna yang login
 	if a.uploadUsed()+int64(len(data)) > uploadMaxBytes-cadangan {
 		return "", apiErr{507, "Penyimpanan unggahan sedang penuh. Silakan hubungi sekolah."}
 	}
 	hari := time.Now().Format("2006-01-02")
 	publikUpl.Lock()
-	if publikUpl.hari != hari {
-		publikUpl.hari, publikUpl.bytes = hari, 0
+	if publikUpl.hari != hari || publikUpl.per == nil {
+		publikUpl.hari, publikUpl.bytes, publikUpl.per = hari, 0, map[string]int64{}
+	}
+	if publikUpl.per[who]+int64(len(data)) > publikPerPerangkat {
+		publikUpl.Unlock()
+		return "", apiErr{429, "Batas unggahan dari perangkat ini hari ini sudah tercapai. Silakan coba lagi besok atau hubungi sekolah."}
 	}
 	if publikUpl.bytes+int64(len(data)) > publikHarianMaks {
 		publikUpl.Unlock()
 		return "", apiErr{429, "Batas unggahan hari ini sudah tercapai. Silakan coba lagi besok atau hubungi sekolah."}
 	}
 	publikUpl.bytes += int64(len(data))
+	publikUpl.per[who] += int64(len(data))
 	publikUpl.Unlock()
 	url, err := a.saveUpload(data, onlyImage)
 	if err != nil {
 		publikUpl.Lock()
 		if publikUpl.hari == hari {
 			publikUpl.bytes -= int64(len(data))
+			publikUpl.per[who] -= int64(len(data))
 		}
 		publikUpl.Unlock()
 	}
@@ -466,6 +478,13 @@ func (a *App) apiFile(c *Ctx) error {
 	name := c.R.PathValue("name")
 	if !fileNameRe.MatchString(name) {
 		return notFound()
+	}
+	// berkas khusus modul (mis. dokumen pendaftar PPDB): hanya admin & guru yang diberi tugas modul itu
+	var modul string
+	if c.A.reader().QueryRow(`SELECT modul FROM upload_akses WHERE nama=?`, name).Scan(&modul) == nil {
+		if !(c.U.Role == "admin" || (c.U.Role == "guru" && c.U.Has(modul))) {
+			return notFound()
+		}
 	}
 	p := filepath.Join(a.uploadDir(), name)
 	if _, err := os.Stat(p); err != nil {

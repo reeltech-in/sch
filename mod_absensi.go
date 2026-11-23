@@ -434,6 +434,11 @@ func (a *App) apiAbsenSelfie(c *Ctx) error {
 		return err
 	}
 	r, err := a.recordPresence(c.U.ID, "auto", "selfie", nil, *in.Lat, *in.Lng, url)
+	// foto hanya disimpan pada catatan MASUK; selain itu (pulang / "sudah tercatat" / gagal) file langsung dibuang,
+	// agar selfie berulang tidak menumpuk dan memenuhi kuota penyimpanan sekolah
+	if err != nil || r.Aksi != "masuk" {
+		a.removeUploads([]string{url})
+	}
 	if err != nil {
 		return err
 	}

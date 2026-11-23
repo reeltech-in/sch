@@ -97,7 +97,8 @@ ACT.userForm = async el => {
   const fields = [
     { n: 'nama_lengkap', l: 'Nama lengkap', req: true },
     [{ n: 'username', l: role === 'siswa' ? 'Username / NIS' : 'Username', req: true, hint: 'Dipakai untuk login. Tanpa spasi.' },
-      { n: 'password', l: u.id ? 'Password baru' : 'Password', t: 'password', req: !u.id, minlength: 6, ac: 'new-password', hint: u.id ? 'Kosongkan jika tidak diganti.' : 'Minimal 6 karakter.' }],
+      { n: 'password', l: u.id ? 'Password baru' : 'Password', t: 'password', req: !u.id, minlength: PW_MIN[u.role || role] || 6, ac: 'new-password',
+        hint: (u.id ? 'Kosongkan jika tidak diganti. ' : '') + `Minimal ${PW_MIN[u.role || role] || 6} karakter, tidak memuat username.` }],
     role === 'siswa' ? { n: 'kelas_id', l: 'Kelas', t: 'select', o: ks.map(k => [k.id, k.nama]), blank: '— Pilih kelas —' } : { n: 'nip', l: 'NIP' },
     [{ n: 'email', l: 'Email', t: 'email' }, { n: 'status', l: 'Status', t: 'select', o: [['aktif', 'Aktif'], ['nonaktif', 'Nonaktif (tidak bisa login)']] }],
   ];

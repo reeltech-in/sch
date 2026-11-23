@@ -1494,7 +1494,15 @@ func (a *App) apiPortoSave(c *Ctx) error {
 			c.U.ID, course, judul, cutRunes(in.Deskripsi, 2000), fv, link, nowStr())
 	}
 	if err != nil {
+		if file != lama.String && file != "" {
+			a.removeUploads([]string{file}) // berkas baru tidak jadi dipakai
+		}
 		return err
+	}
+	// berkas lama yang diganti/dihapus langsung dibuang: mengubah karya berkali-kali tidak menumpuk file
+	// (sebelumnya menumpuk sampai pembersihan harian dan ikut memenuhi kuota penyimpanan sekolah)
+	if lama.Valid && lama.String != "" && lama.String != file {
+		a.removeUploads([]string{lama.String})
 	}
 	return c.OK()
 }

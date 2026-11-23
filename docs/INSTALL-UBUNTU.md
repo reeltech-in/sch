@@ -74,6 +74,7 @@ Tambahkan variabel sebelum `bash` (pemasangan lewat `curl`) atau sebelum `./inst
 | `SCH_HTTPS_PORT` | `3221` | port HTTPS lokal untuk kamera HP; kosongkan (`SCH_HTTPS_PORT=`) untuk mematikan |
 | `SCH_PROXY_IP` | – | IP mesin Cloudflare Tunnel / reverse proxy yang dipercaya (otomatis menyalakan mode proxy) |
 | `SCH_PROXY` | `0` | `1` = mode proxy untuk cloudflared/nginx di server yang **sama** (hanya 127.0.0.1 dipercaya) |
+| `SCH_PROXY_HEADER` | `cf` | `cf` = Cloudflare Tunnel; `xff` = **wajib** bila di belakang nginx/proxy lain (bukan Cloudflare), agar header `CF-Connecting-IP` kiriman pengunjung diabaikan. nginx harus mengisi `proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;` |
 | `SCH_DEMO` | `0` | `1` = isi data contoh untuk mencoba (hanya bila database kosong) |
 | `SCH_UFW` | `0` | `1` = buka port di firewall `ufw` |
 | `SCH_TEST` | `0` | `1` = jalankan tes otomatis sebelum memasang |

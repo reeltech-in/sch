@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -59,19 +60,53 @@ func fmtTanggal(s string) string {
 // publicGuard membatasi formulir publik: per-IP dan honeypot anti-bot.
 // publicBlocked: hanya memeriksa (tidak menghitung). Dipanggil SEBELUM membaca isi kiriman yang besar, agar
 // perangkat yang sudah diblokir tidak menghabiskan memori; kiriman dihitung lewat publicGuard setelah terbaca.
-func (c *Ctx) publicBlocked(key string, max int) error {
-	if c.A.limit.blockedN(key+limitKey(clientIP(c.R)), max) {
-		return apiErr{429, "Terlalu banyak pengiriman dari perangkat ini. Coba lagi 10 menit lagi."}
+//
+// publicBlocked juga memesan "slot baca": kiriman besar yang SEDANG dibaca (belum terhitung) dibatasi per perangkat
+// dan untuk seluruh server, agar satu pengirim tidak bisa membuka puluhan koneksi lambat berisi 10 MB yang semuanya
+// ditampung di memori. Panggil fungsi yang dikembalikan (defer) setelah selesai.
+const (
+	publicInflightPerIP = 2
+	publicInflightTotal = 16
+)
+
+var publicInflight = struct {
+	sync.Mutex
+	per   map[string]int
+	total int
+}{per: map[string]int{}}
+
+func (c *Ctx) publicBlocked(key string, max int) (func(), error) {
+	ip := limitKey(clientIP(c.R))
+	if c.A.limit.blockedN(key+ip, max) {
+		return nil, apiErr{429, "Terlalu banyak pengiriman dari perangkat ini. Coba lagi 10 menit lagi."}
 	}
-	return nil
+	publicInflight.Lock()
+	defer publicInflight.Unlock()
+	if publicInflight.per[ip] >= publicInflightPerIP {
+		return nil, apiErr{429, "Kiriman sebelumnya dari perangkat ini masih diproses. Tunggu sebentar lalu coba lagi."}
+	}
+	if publicInflight.total >= publicInflightTotal {
+		return nil, apiErr{503, "Server sedang menerima banyak kiriman. Coba lagi beberapa saat lagi."}
+	}
+	publicInflight.per[ip]++
+	publicInflight.total++
+	return func() {
+		publicInflight.Lock()
+		if publicInflight.per[ip] <= 1 {
+			delete(publicInflight.per, ip)
+		} else {
+			publicInflight.per[ip]--
+		}
+		publicInflight.total--
+		publicInflight.Unlock()
+	}, nil
 }
 
 func (c *Ctx) publicGuard(key string, max int, honeypot string) error {
 	ip := limitKey(clientIP(c.R))
-	if c.A.limit.blockedN(key+ip, max) {
+	if !c.A.limit.tryAdd(key+ip, max) { // periksa + hitung dalam satu kunci (kiriman serentak tidak lolos bersama)
 		return apiErr{429, "Terlalu banyak pengiriman dari perangkat ini. Coba lagi 10 menit lagi."}
 	}
-	c.A.limit.fail(key + ip)
 	if strings.TrimSpace(honeypot) != "" {
 		return bad("Pengiriman ditolak.")
 	}

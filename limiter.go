@@ -62,31 +62,68 @@ const (
 	guessTarget   = 20
 )
 
+// guessAllowed memeriksa batas DAN langsung mencatat percobaan ini sebagai "salah" dalam satu kunci (atomik).
+// Tanpa itu, banyak permintaan serentak lolos pemeriksaan sebelum kegagalan pertama tercatat (antre di database /
+// bcrypt), sehingga batas 10 per 10 menit bisa ditembus. Percobaan yang ternyata benar dikembalikan lewat guessOK.
 func (c *Ctx) guessAllowed(scope, target string) error {
 	ip := limitKey(clientIP(c.R))
 	l := c.A.limit
-	if l.blockedN(scope+"ip:"+ip, guessIPWindow) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if l.blockedLocked(scope+"ip:"+ip, guessIPWindow) {
 		return apiErr{429, "Terlalu banyak percobaan dari perangkat ini. Coba lagi 10 menit lagi."}
 	}
-	if l.dayCount(scope+"ipd:"+ip) >= guessIPDay {
+	d := l.dailyLocked()
+	if d[scope+"ipd:"+ip] >= guessIPDay {
 		return apiErr{429, "Terlalu banyak percobaan salah dari perangkat ini hari ini. Coba lagi besok atau hubungi sekolah."}
 	}
-	if l.dayCount(scope+"t:"+target) >= guessTarget && l.dayCount(scope+"ipd:"+ip) > 0 {
+	if d[scope+"t:"+target] >= guessTarget && d[scope+"ipd:"+ip] > 0 {
 		return apiErr{429, "Data ini terlalu sering dicoba dengan isian salah hari ini. Periksa kembali isian Anda, coba dari HP lain, atau hubungi sekolah."}
 	}
+	l.failLocked(scope + "ip:" + ip)
+	d[scope+"ipd:"+ip]++
+	d[scope+"t:"+target]++
 	return nil
 }
 
-func (c *Ctx) guessFailed(scope, target string) {
+// guessOK mengembalikan jatah percobaan yang dicatat guessAllowed bila isian ternyata benar.
+func (c *Ctx) guessOK(scope, target string) {
 	ip := limitKey(clientIP(c.R))
-	c.A.limit.fail(scope + "ip:" + ip)
-	c.A.limit.dayAdd(scope+"ipd:"+ip, scope+"t:"+target)
+	l := c.A.limit
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if ts := l.fails[scope+"ip:"+ip]; len(ts) > 0 {
+		l.fails[scope+"ip:"+ip] = ts[:len(ts)-1]
+	}
+	d := l.dailyLocked()
+	for _, k := range []string{scope + "ipd:" + ip, scope + "t:" + target} {
+		if d[k] > 1 {
+			d[k]--
+		} else {
+			delete(d, k)
+		}
+	}
 }
 
 // blockedN: true bila key gagal >= n kali dalam 10 menit terakhir (dipakai per-username & formulir publik).
 func (l *loginLimiter) blockedN(key string, n int) bool {
 	l.mu.Lock()
 	defer l.mu.Unlock()
+	return l.blockedLocked(key, n)
+}
+
+// tryAdd: periksa batas lalu catat satu percobaan dalam satu kunci (permintaan serentak tidak bisa lolos bersama).
+func (l *loginLimiter) tryAdd(key string, n int) bool {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if l.blockedLocked(key, n) {
+		return false
+	}
+	l.failLocked(key)
+	return true
+}
+
+func (l *loginLimiter) blockedLocked(key string, n int) bool {
 	cut := time.Now().Add(-10 * time.Minute)
 	keep := l.fails[key][:0]
 	for _, t := range l.fails[key] {
@@ -105,6 +142,10 @@ func isHTTPS(r *http.Request) bool {
 func (l *loginLimiter) fail(ip string) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
+	l.failLocked(ip)
+}
+
+func (l *loginLimiter) failLocked(ip string) {
 	if len(l.fails) > 50000 {
 		l.pruneLocked()
 	}
@@ -143,6 +184,34 @@ func (l *loginLimiter) pruneLocked() {
 	}
 }
 
+// loginReserve memeriksa batas login lalu langsung mencatat percobaan ini pada ketiga kunci dalam satu kunci mutex.
+// ok=false: diblokir. slow=true: username ini sedang sering dicoba (diperlambat, tidak dikunci).
+func (l *loginLimiter) loginReserve(pair, ip, user string) (ok, slow bool) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if l.blockedLocked(pair, 5) || l.blockedLocked(ip, 60) {
+		return false, false
+	}
+	slow = l.blockedLocked(user, 15)
+	l.failLocked(pair)
+	l.failLocked(ip)
+	l.failLocked(user)
+	return true, slow
+}
+
+// unfail menghapus satu catatan percobaan terakhir pada tiap kunci (percobaan yang ternyata berhasil).
+func (l *loginLimiter) unfail(keys ...string) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	for _, k := range keys {
+		if ts := l.fails[k]; len(ts) > 1 {
+			l.fails[k] = ts[:len(ts)-1]
+		} else {
+			delete(l.fails, k)
+		}
+	}
+}
+
 func (l *loginLimiter) reset(ip string) {
 	l.mu.Lock()
 	delete(l.fails, ip)
@@ -154,6 +223,9 @@ func (l *loginLimiter) reset(ip string) {
 var trustProxy bool
 
 var trustedProxies []*net.IPNet
+
+// proxyHeader: "cf" (Cloudflare Tunnel, bawaan) atau "xff" (nginx/proxy lain; CF-Connecting-IP diabaikan).
+var proxyHeader = "cf"
 
 // viaProxy: header proxy hanya dipercaya bila permintaan datang dari proxy yang diizinkan.
 // Mencegah pengguna LAN memalsukan header CF-Connecting-IP untuk menghindari pembatas login.
@@ -194,14 +266,20 @@ func clientIP(r *http.Request) string {
 		proxyWarnAt.Unlock()
 	}
 	if viaProxy(r) {
-		if ip := strings.TrimSpace(r.Header.Get("CF-Connecting-IP")); ip != "" {
-			return ip
+		// CF-Connecting-IP hanya dipercaya di mode Cloudflare: Cloudflare selalu menimpanya, sedangkan nginx/proxy
+		// lain meneruskan header kiriman pengunjung apa adanya (pengunjung bisa berganti "IP" tiap permintaan).
+		if proxyHeader == "cf" {
+			if ip := strings.TrimSpace(r.Header.Get("CF-Connecting-IP")); net.ParseIP(ip) != nil {
+				return ip
+			}
 		}
 		// Elemen PERTAMA X-Forwarded-For bisa diisi pengunjung sendiri; proxy menambahkan IP
 		// yang ia lihat di UJUNG daftar, jadi ambil elemen terakhir (dok. Cloudflare HTTP headers).
 		if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
 			parts := strings.Split(xff, ",")
-			return strings.TrimSpace(parts[len(parts)-1])
+			if ip := strings.TrimSpace(parts[len(parts)-1]); net.ParseIP(ip) != nil {
+				return ip
+			}
 		}
 	}
 	host, _, err := net.SplitHostPort(r.RemoteAddr)

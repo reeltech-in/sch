@@ -175,6 +175,11 @@ func apiRekapMe(c *Ctx) error {
 	if err != nil {
 		return err
 	}
+	if !modulesEnabled(c.A.db)["lms"] { // modul Pembelajaran dimatikan: beranda siswa tanpa isi LMS
+		for _, k := range []string{"materials", "progress", "assignments", "submissions", "quizzes", "attempts", "attendance"} {
+			out[k] = []map[string]any{}
+		}
+	}
 	out["nilai"] = nilaiSiswa(out, time.Now())
 	return c.JSON(out)
 }

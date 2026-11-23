@@ -1250,10 +1250,14 @@ ACT.camStop = () => { Scanner.stop(); const v = $('#scanVideo'); if (v) v.hidden
 
 // Layar wajib ganti password (akun hasil impor atau direset admin)
 // Formulir ganti password (layar wajib ganti & halaman Akun Saya memakai yang sama)
+// panjang minimal password per peran (sama dengan passwordMin di server)
+const PW_MIN = { admin: 10, guru: 8, siswa: 6 };
 function pwForm(after) {
+  const min = PW_MIN[S.user && S.user.role] || 10;
   const fields = [{ n: 'old', l: 'Password saat ini', t: 'password', req: true, ac: 'current-password' },
-    { n: 'new', l: 'Password baru', t: 'password', req: true, minlength: 6, ac: 'new-password' },
-    { n: 'new2', l: 'Ulangi password baru', t: 'password', req: true, minlength: 6, ac: 'new-password' }];
+    { n: 'new', l: 'Password baru', t: 'password', req: true, minlength: min, ac: 'new-password',
+      hint: `Minimal ${min} karakter, tidak memuat username, dan bukan password umum seperti 12345678.` },
+    { n: 'new2', l: 'Ulangi password baru', t: 'password', req: true, minlength: min, ac: 'new-password' }];
   const id = registerForm(fields, async (v, form) => {
     if (v.new !== v.new2) throw new Error('Ulangan password baru tidak sama.');
     await POST('/password', { old: v.old, new: v.new });

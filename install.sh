@@ -22,6 +22,7 @@
 #   SCH_HTTPS_PORT=3221       port HTTPS lokal (kamera HP di jaringan sekolah); kosongkan = mati
 #   SCH_PROXY=0               1 = cloudflared/nginx di server yang sama (hanya 127.0.0.1 dipercaya)
 #   SCH_PROXY_IP=             IP proxy yang dipercaya (mis. IP mesin cloudflared); otomatis SCH_PROXY=1
+#   SCH_PROXY_HEADER=cf       cf = Cloudflare Tunnel; xff = nginx/proxy lain (CF-Connecting-IP diabaikan)
 #   SCH_DEMO=0                1 = isi data contoh (hanya bila database masih kosong)
 #   SCH_UFW=0                 1 = buka port di firewall ufw
 #   SCH_UNIT=keep             rewrite = tulis ulang file layanan systemd saat memperbarui
@@ -37,6 +38,7 @@ SCH_USER="${SCH_USER:-sch}"
 SCH_PORT="${SCH_PORT:-3220}"
 SCH_HTTPS_PORT="${SCH_HTTPS_PORT-3221}"
 SCH_PROXY_IP="${SCH_PROXY_IP:-}"
+SCH_PROXY_HEADER="${SCH_PROXY_HEADER:-}"
 SCH_PROXY="${SCH_PROXY:-0}"
 SCH_DEMO="${SCH_DEMO:-0}"
 SCH_UFW="${SCH_UFW:-0}"
@@ -158,6 +160,7 @@ if [ ! -f "$UNIT_FILE" ] || [ "$SCH_UNIT" = rewrite ]; then
   args="-addr :${SCH_PORT} -https '${SCH_HTTPS_PORT:+:${SCH_HTTPS_PORT}}' -db ${SCH_DIR}/data/sch.db"
   [ "$SCH_PROXY" = 1 ] && args="$args -proxy"
   [ -n "$SCH_PROXY_IP" ] && args="$args -proxy-ip ${SCH_PROXY_IP}"
+  [ -n "$SCH_PROXY_HEADER" ] && args="$args -proxy-header ${SCH_PROXY_HEADER}"
   [ "$SCH_DEMO" = 1 ] && args="$args -demo"
   cat > "$UNIT_FILE" <<EOF
 [Unit]

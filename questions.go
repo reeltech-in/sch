@@ -13,7 +13,7 @@ import (
 func init() {
 	moduleRoutes = append(moduleRoutes, func(a *App, m *http.ServeMux) {
 		m.HandleFunc("POST /api/cbt/{id}/soal/batch", a.mod("ujian", "admin,guru", apiCBTSoalBatch))
-		m.HandleFunc("POST /api/quizzes/{id}/questions/batch", a.h("admin,guru", apiQuizQuestionBatch))
+		m.HandleFunc("POST /api/quizzes/{id}/questions/batch", a.mod("lms", "admin,guru", apiQuizQuestionBatch))
 	})
 }
 

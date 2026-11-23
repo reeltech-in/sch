@@ -66,6 +66,23 @@ func apiElectionSave(c *Ctx) error {
 		th = 1
 	}
 	if id := c.ID("id"); id > 0 {
+		// Setelah ada suara masuk: pemilih, kelas, dan waktu mulai dikunci; pemilihan yang sudah selesai tidak bisa
+		// dibuka lagi. Tanpa ini, staf bisa memundurkan waktu selesai untuk melihat perolehan suara di tengah
+		// pemungutan (hasil disembunyikan sampai selesai) lalu membukanya kembali.
+		var curMulai, curSelesai, curPemilih, curKelas string
+		var suara int
+		if c.A.db.QueryRow(`SELECT mulai, selesai, pemilih, COALESCE(kelas_ids,'[]'), (SELECT COUNT(*) FROM election_voters v WHERE v.election_id=e.id)
+			FROM elections e WHERE id=?`, id).Scan(&curMulai, &curSelesai, &curPemilih, &curKelas, &suara) != nil {
+			return notFound()
+		}
+		if suara > 0 {
+			if mulai.(string) != curMulai || in.Pemilih != curPemilih || string(kb) != curKelas {
+				return bad("Pemungutan suara sudah berjalan; pemilih, kelas, dan waktu mulai tidak bisa diubah.")
+			}
+			if selesai.(string) != curSelesai && nowStr() > curSelesai {
+				return bad("Pemilihan sudah selesai; waktunya tidak bisa diubah lagi.")
+			}
+		}
 		_, err = c.A.db.Exec(`UPDATE elections SET judul=?, deskripsi=?, mulai=?, selesai=?, pemilih=?, kelas_ids=?, tampil_hasil=? WHERE id=?`, judul, str(in.Deskripsi), mulai, selesai, in.Pemilih, string(kb), th, id)
 	} else {
 		_, err = c.A.db.Exec(`INSERT INTO elections (judul, deskripsi, mulai, selesai, pemilih, kelas_ids, tampil_hasil, created_at) VALUES (?,?,?,?,?,?,?,?)`, judul, str(in.Deskripsi), mulai, selesai, in.Pemilih, string(kb), th, nowStr())
@@ -110,6 +127,22 @@ func apiCandidateSave(c *Ctx) error {
 		return bad(nama + " sudah terdaftar sebagai kandidat.")
 	}
 	if c.R.Method == http.MethodPut {
+		// setelah ada suara masuk: nomor, nama, dan wakil dikunci (suara tidak boleh "pindah" ke identitas lain);
+		// visi, misi, dan foto masih boleh diperbaiki
+		var started int
+		c.A.db.QueryRow(`SELECT COUNT(*) FROM election_voters WHERE election_id=?`, elID).Scan(&started)
+		if started > 0 {
+			var curNo int
+			var curNama string
+			var curWakil sql.NullString
+			if c.A.db.QueryRow(`SELECT no, nama, wakil FROM candidates WHERE id=?`, selfID).Scan(&curNo, &curNama, &curWakil) != nil {
+				return notFound()
+			}
+			wakil, _ := str(in.Wakil).(string)
+			if in.No != curNo || nama != curNama || wakil != curWakil.String {
+				return bad("Pemungutan suara sudah berjalan; nomor, nama, dan wakil kandidat tidak bisa diubah.")
+			}
+		}
 		_, err = c.A.db.Exec(`UPDATE candidates SET no=?, nama=?, wakil=?, visi=?, misi=?, foto=? WHERE id=?`, in.No, nama, str(in.Wakil), str(in.Visi), str(in.Misi), str(in.Foto), c.ID("id"))
 	} else {
 		var started int

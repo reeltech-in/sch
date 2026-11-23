@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -65,10 +66,14 @@ func (a *App) apiLogin(c *Ctx) error {
 	ip := limitKey(clientIP(c.R))
 	uname := strings.ToLower(strings.TrimSpace(in.Username))
 	pairKey, ipKey, ukey := "lp:"+ip+"|"+uname, "li:"+ip, "lu:"+uname
-	if c.A.limit.blockedN(pairKey, 5) || c.A.limit.blockedN(ipKey, 60) {
+	// Percobaan dicatat sebagai "gagal" SEBELUM password diperiksa, dalam satu kunci. Tanpa itu, puluhan permintaan
+	// serentak lolos pemeriksaan batas selama bcrypt berjalan (kegagalan baru tercatat setelahnya), sehingga batas
+	// 5 per 10 menit bisa ditembus untuk menebak password. Bila password benar, catatan itu dikembalikan.
+	ok, slow := c.A.limit.loginReserve(pairKey, ipKey, ukey)
+	if !ok {
 		return apiErr{429, "Terlalu banyak percobaan login. Coba lagi 10 menit lagi."}
 	}
-	if c.A.limit.blockedN(ukey, 15) {
+	if slow {
 		time.Sleep(2 * time.Second)
 	}
 	var id int64
@@ -80,14 +85,13 @@ func (a *App) apiLogin(c *Ctx) error {
 	}
 	if err := checkPassword(hash, in.Password); err != nil || id == 0 {
 		if ae, ok := err.(apiErr); ok && ae.code == 503 {
+			c.A.limit.unfail(pairKey, ipKey, ukey)
 			return ae // server sibuk: bukan kesalahan password
 		}
 		c.A.audit(c.R, nil, "LOGIN GAGAL", 401, "username: "+strings.TrimSpace(in.Username))
-		c.A.limit.fail(pairKey)
-		c.A.limit.fail(ipKey)
-		c.A.limit.fail(ukey)
 		return apiErr{401, "Username atau password salah."}
 	}
+	c.A.limit.unfail(ipKey, ukey)
 	c.A.limit.reset(pairKey)
 	defer func() { c.A.audit(c.R, c.A.userByID(id), "LOGIN", 200, "") }()
 	b := make([]byte, 32)
@@ -121,13 +125,53 @@ func (a *App) apiMe(c *Ctx) error {
 	return c.JSON(u)
 }
 
+// passwordMin: panjang minimal per peran. Admin dan guru memegang data banyak siswa, jadi lebih panjang;
+// siswa tetap 6 agar impor & slip akun dari sekolah tidak terganggu.
+var passwordMin = map[string]int{"admin": 10, "guru": 8, "siswa": 6}
+
+// passwordUmum: password yang paling sering dicoba lebih dulu oleh penebak (selalu ditolak, peran apa pun).
+var passwordUmum = map[string]bool{
+	"12345678": true, "123456789": true, "1234567890": true, "11111111": true, "00000000": true, "87654321": true,
+	"password": true, "password1": true, "password123": true, "qwerty123": true, "qwertyuiop": true,
+	"admin123": true, "admin12345": true, "administrator": true, "guru1234": true, "guru12345": true,
+	"sekolah123": true, "sekolah1234": true, "bismillah": true, "indonesia": true, "rahasia123": true,
+}
+
+// cekPassword memeriksa aturan password untuk akun dengan peran & username tertentu. Admin dan guru juga tidak
+// boleh memakai password umum atau yang memuat username.
+func cekPassword(role, username, pw string) error {
+	min := passwordMin[role]
+	if min == 0 {
+		min = 10
+	}
+	if len(pw) > 72 {
+		return bad("Password maksimal 72 karakter.")
+	}
+	if len([]rune(pw)) < min {
+		return bad(fmt.Sprintf("Password untuk akun %s minimal %d karakter.", role, min))
+	}
+	if role == "siswa" {
+		// siswa: cukup panjang minimal. Sekolah sering mengimpor dengan satu password awal bersama
+		// (mis. rahasia123), dan akun hasil impor wajib ganti password saat pertama login.
+		return nil
+	}
+	low := strings.ToLower(pw)
+	if u := strings.ToLower(strings.TrimSpace(username)); u != "" && strings.Contains(low, u) && len(u) >= 3 {
+		return bad("Password tidak boleh memuat username.")
+	}
+	if passwordUmum[low] || strings.Count(low, string([]rune(low)[0])) == len([]rune(low)) {
+		return bad("Password ini terlalu mudah ditebak. Pakai gabungan kata dan angka yang tidak umum.")
+	}
+	return nil
+}
+
 func (a *App) apiPassword(c *Ctx) error {
 	var in struct{ Old, New string }
 	if err := c.Bind(&in); err != nil {
 		return err
 	}
-	if len(in.New) < 6 || len(in.New) > 72 {
-		return bad("Password baru harus 6 sampai 72 karakter.")
+	if err := cekPassword(c.U.Role, c.U.Username, in.New); err != nil {
+		return err
 	}
 	if in.New == in.Old {
 		return bad("Password baru harus berbeda dari password lama.")

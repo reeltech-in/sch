@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/rand"
+	"database/sql"
 	"math/big"
 	"net/http"
 	"strings"
@@ -12,7 +13,19 @@ import (
 func init() {
 	configDefaults["ppdb"] = `{"buka":null,"tutup":null,"tahun_ajaran":"","kuota":0,"jalur":"Zonasi, Afirmasi, Prestasi, Mutasi","info":"Siapkan scan/foto Kartu Keluarga, Akta Kelahiran, dan pas foto (JPG/PNG/PDF, maks 2 MB per file)."}`
 	configDefaults["surat"] = `{"singkatan":"SKL","format":"{no}/{kode}/{singkatan}/{bulan}/{tahun}"}`
+	// berkas pendaftar PPDB yang sudah ada sebelum upload_akses dibuat ikut dicatat (aman dijalankan berulang)
+	moduleMigrations = append(moduleMigrations, func(db *sql.DB) error {
+		_, err := db.Exec(`INSERT OR IGNORE INTO upload_akses (nama, modul)
+			SELECT substr(j.value, 8), 'ppdb' FROM ppdb_applicants p, json_each(p.berkas) j
+			WHERE json_valid(p.berkas) AND j.value LIKE '/files/%'`)
+		return err
+	})
 	moduleSchemas = append(moduleSchemas, `
+-- berkas unggahan yang hanya boleh dibuka pengelola modulnya (mis. KK & akta pendaftar PPDB), lihat apiFile
+CREATE TABLE IF NOT EXISTS upload_akses (
+  nama  TEXT PRIMARY KEY,
+  modul TEXT NOT NULL
+) WITHOUT ROWID;
 CREATE TABLE IF NOT EXISTS ppdb_applicants (
   id           INTEGER PRIMARY KEY,
   no_daftar    TEXT NOT NULL UNIQUE,

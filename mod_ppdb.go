@@ -52,9 +52,11 @@ func (a *App) apiPPDBDaftar(c *Ctx) error {
 	}
 	// batas per perangkat & masa pendaftaran dicek SEBELUM membaca isi (hingga 10 MB), agar pengirim
 	// yang sudah diblokir tidak bisa menghabiskan memori server
-	if err := c.publicBlocked("ppdb:", 3); err != nil {
+	done, err := c.publicBlocked("ppdb:", 3)
+	if err != nil {
 		return err
 	}
+	defer done()
 	cfg := getConfig(a.db, "ppdb")
 	if open, msg := ppdbOpen(cfg); !open {
 		return bad(msg)
@@ -134,7 +136,9 @@ func (a *App) apiPPDBDaftar(c *Ctx) error {
 		d[f.key] = v
 		var nd string
 		if a.db.QueryRow(`SELECT no_daftar FROM ppdb_applicants WHERE `+f.key+`=? AND status<>'ditolak' LIMIT 1`, v).Scan(&nd) == nil {
-			return bad(f.label + " ini sudah terdaftar dengan nomor " + nd + ". Cek status pendaftaran dengan nomor tersebut.")
+			// nomor pendaftaran TIDAK disebut: siapa pun yang tahu NISN/NIK seorang anak tidak boleh tahu apakah
+			// anak itu mendaftar atau nomornya
+			return bad(f.label + " ini sudah terdaftar. Bila Anda belum pernah mendaftar, atau lupa nomor pendaftaran, hubungi panitia PPDB sekolah.")
 		}
 	}
 	// semua pemeriksaan lolos: baru simpan berkas (pendaftaran yang ditolak tidak memakai ruang penyimpanan)
@@ -145,13 +149,18 @@ func (a *App) apiPPDBDaftar(c *Ctx) error {
 		if !ok {
 			continue
 		}
-		url, err := a.savePublicUpload(data, false)
+		url, err := a.savePublicUpload(data, false, limitKey(clientIP(c.R)))
 		if err != nil {
 			a.removeUploads(tersimpan)
 			return err
 		}
 		berkas[k] = url
 		tersimpan = append(tersimpan, url)
+		// KK, akta, dll. hanya boleh dibuka pengelola PPDB (bukan siswa/guru lain yang kebetulan tahu nama filenya)
+		if _, err := a.db.Exec(`INSERT OR IGNORE INTO upload_akses (nama, modul) VALUES (?, 'ppdb')`, strings.TrimPrefix(url, "/files/")); err != nil {
+			a.removeUploads(tersimpan)
+			return err
+		}
 	}
 	bb, _ := json.Marshal(berkas)
 	var no string
@@ -171,7 +180,7 @@ func (a *App) apiPPDBDaftar(c *Ctx) error {
 		return err
 	}
 	if hp, _ := d["hp"].(string); hp != "" {
-		a.waQueue("ppdb", "ppdb:"+no, hp, map[string]string{"nama": d["nama"].(string), "no_daftar": no, "pin": pin}, true)
+		a.waQueue("ppdb", "ppdb:"+no, hp, map[string]string{"nama": waNama(d["nama"].(string)), "no_daftar": no, "pin": pin}, true)
 	}
 	return c.JSON(map[string]string{"no_daftar": no, "pin": pin, "nama": d["nama"].(string)})
 }
@@ -193,9 +202,9 @@ func apiPPDBCek(c *Ctx) error {
 	err := c.A.db.QueryRow(`SELECT nama, status, pin_hash, COALESCE(jalur,''), catatan FROM ppdb_applicants WHERE no_daftar=?`, strings.ToUpper(strings.TrimSpace(in.NoDaftar))).
 		Scan(&nama, &status, &hash, &jalur, &catatan)
 	if err != nil || checkPassword(hash, strings.TrimSpace(in.PIN)) != nil {
-		c.guessFailed("pc:", no)
 		return bad("Nomor pendaftaran atau PIN salah.")
 	}
+	c.guessOK("pc:", no)
 	return c.JSON(map[string]any{"nama": nama, "status": status, "jalur": jalur, "catatan": catatan.String})
 }
 

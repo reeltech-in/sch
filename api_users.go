@@ -99,8 +99,8 @@ func apiSaveUser(c *Ctx) error {
 		kelas = *in.KelasID
 	}
 	if id == 0 || in.Password != "" {
-		if len(in.Password) < 6 {
-			return bad("Password minimal 6 karakter.")
+		if err := cekPassword(in.Role, uname, in.Password); err != nil {
+			return err
 		}
 	}
 	nip, err := c.cekNIP(id, in.NIP)
@@ -280,8 +280,8 @@ func apiImportUsers(c *Ctx) error {
 		if x.pw == "" { // tanpa password: buat acak (bukan NIS, yang mudah ditebak)
 			x.pw, x.acak = randomPassword(8), true
 		}
-		if len(x.pw) < 6 || len(x.pw) > 72 {
-			skipped = append(skipped, line+"password harus 6–72 karakter ("+x.uname+")")
+		if err := cekPassword(in.Role, x.uname, x.pw); err != nil {
+			skipped = append(skipped, line+err.Error()+" ("+x.uname+")")
 			continue
 		}
 		rows = append(rows, x)

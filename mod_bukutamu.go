@@ -19,9 +19,11 @@ func (a *App) apiGuestAdd(c *Ctx) error {
 		Foto      string `json:"foto"`
 		Website   string `json:"website"`
 	}
-	if err := c.publicBlocked("tamu:", 6); err != nil { // sebelum membaca isi (hingga 3 MB)
+	done, err := c.publicBlocked("tamu:", 6) // sebelum membaca isi (hingga 3 MB)
+	if err != nil {
 		return err
 	}
+	defer done()
 	c.longBody()
 	if err := c.bindLarge(&in, 3<<20); err != nil {
 		return err
@@ -48,7 +50,7 @@ func (a *App) apiGuestAdd(c *Ctx) error {
 		if err != nil || len(data) > 2<<20 {
 			return bad("Foto tidak valid.")
 		}
-		if foto, err = a.savePublicUpload(data, true); err != nil {
+		if foto, err = a.savePublicUpload(data, true, limitKey(clientIP(c.R))); err != nil {
 			return err
 		}
 	}

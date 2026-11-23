@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"strings"
 	"time"
+	"unicode"
 )
 
 // Notifikasi WhatsApp lewat gateway pihak ketiga (Fonnte, atau gateway lain dengan mode "kustom", mis. Wablas).
@@ -49,6 +50,7 @@ CREATE TABLE IF NOT EXISTS wa_outbox (
   sent_at    TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_wa_antre ON wa_outbox(status, next_at);
+CREATE INDEX IF NOT EXISTS idx_wa_jenis ON wa_outbox(jenis, created_at);
 `)
 	moduleRoutes = append(moduleRoutes, func(a *App, m *http.ServeMux) {
 		m.HandleFunc("GET /api/wa/config", a.h("admin", apiWAConfig))
@@ -83,10 +85,44 @@ func waNumber(hp string) string {
 func waFill(tpl string, vals map[string]string) string {
 	pairs := make([]string, 0, len(vals)*2)
 	for k, v := range vals {
-		pairs = append(pairs, "{"+k+"}", v)
+		pairs = append(pairs, "{"+k+"}", waOneLine(v, 300))
 	}
 	return strings.NewReplacer(pairs...).Replace(tpl)
 }
+
+// waOneLine: isian pengguna yang disisipkan ke templat dijadikan satu baris (tanpa baris baru/tab) dan dibatasi
+// panjangnya, agar tidak bisa menyisipkan "paragraf" sendiri ke pesan resmi sekolah.
+func waOneLine(s string, max int) string {
+	s = strings.Join(strings.FieldsFunc(s, func(r rune) bool { return unicode.IsSpace(r) || unicode.IsControl(r) }), " ")
+	if r := []rune(s); len(r) > max {
+		s = string(r[:max])
+	}
+	return s
+}
+
+// waNama: nama dari formulir PUBLIK (PPDB) sebelum dikirim lewat WA sekolah, disingkat menjadi nama depan + inisial
+// (mis. "Muhammad R. A."), hanya huruf. Orang luar bisa mengisi nomor tujuan siapa pun, jadi isian bebasnya tidak
+// boleh menjadi kalimat (tautan, nomor rekening, "pengumuman" palsu) yang terkirim dari nomor WA sekolah.
+func waNama(s string) string {
+	kata := strings.FieldsFunc(s, func(r rune) bool { return !(unicode.IsLetter(r) || unicode.IsMark(r) || r == '\'' || r == '-') })
+	if len(kata) == 0 {
+		return ""
+	}
+	out := waOneLine(kata[0], 20)
+	for i, k := range kata[1:] {
+		if i == 2 {
+			break
+		}
+		out += " " + string(unicode.ToUpper([]rune(k)[0])) + "."
+	}
+	return out
+}
+
+// Batas pesan PPDB (dipicu formulir publik tanpa login): per nomor tujuan dan per hari untuk seluruh sekolah.
+const (
+	waPPDBPerNomor = 2
+	waPPDBPerHari  = 300
+)
 
 func cfgStr(c map[string]any, k string) string { s, _ := c[k].(string); return strings.TrimSpace(s) }
 func cfgOn(c map[string]any, k string) bool    { b, _ := c[k].(bool); return b }
@@ -119,6 +155,15 @@ func (a *App) waQueue(event, kunci, hp string, vals map[string]string, rahasia b
 		return
 	}
 	now := nowStr()
+	if event == "ppdb" {
+		kemarin := time.Now().UTC().Add(-24 * time.Hour).Format(time.RFC3339)
+		var perNomor, perHari int
+		a.db.QueryRow(`SELECT COUNT(*), COALESCE(SUM(tujuan=?),0) FROM wa_outbox WHERE jenis='ppdb' AND created_at >= ?`, to, kemarin).Scan(&perHari, &perNomor)
+		if perNomor >= waPPDBPerNomor || perHari >= waPPDBPerHari {
+			log.Printf("wa: pesan PPDB ke %s tidak dikirim (batas %d per nomor / %d per hari tercapai)", to, waPPDBPerNomor, waPPDBPerHari)
+			return
+		}
+	}
 	a.db.Exec(`INSERT OR IGNORE INTO wa_outbox (kunci, jenis, tujuan, pesan, rahasia, next_at, created_at) VALUES (?,?,?,?,?,?,?)`,
 		kunci, event, to, msg, b2i(rahasia), now, now)
 }
@@ -214,7 +259,8 @@ func (a *App) waSendNext() bool {
 	var to, msg string
 	var try, secret int
 	now := nowStr()
-	if a.db.QueryRow(`SELECT id, tujuan, pesan, percobaan, rahasia FROM wa_outbox WHERE status='antre' AND next_at<=? ORDER BY id LIMIT 1`, now).
+	if a.db.QueryRow(`SELECT id, tujuan, pesan, percobaan, rahasia FROM wa_outbox WHERE status='antre' AND next_at<=?
+		ORDER BY CASE WHEN jenis IN ('masuk','pulang','alfa') THEN 0 ELSE 1 END, id LIMIT 1`, now).
 		Scan(&id, &to, &msg, &try, &secret) != nil {
 		return false
 	}

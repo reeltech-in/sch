@@ -36,7 +36,11 @@ func main() {
 	showVer := flag.Bool("version", false, "tampilkan versi lalu keluar")
 	backupTo := flag.String("backup", "", "buat salinan database yang konsisten ke file ini lalu keluar (dipakai skrip deploy)")
 	proxyIP := flag.String("proxy-ip", "", "IP/CIDR proxy yang dipercaya, pisahkan koma (mis. IP VM cloudflared). Kosong = hanya proxy di komputer ini (127.0.0.1)")
+	flag.StringVar(&proxyHeader, "proxy-header", "cf", "sumber IP asli di mode proxy: cf = Cloudflare Tunnel (CF-Connecting-IP), xff = nginx/proxy lain (elemen terakhir X-Forwarded-For)")
 	flag.Parse()
+	if proxyHeader != "cf" && proxyHeader != "xff" {
+		log.Fatal("-proxy-header harus cf atau xff")
+	}
 	for _, p := range strings.Split(*proxyIP, ",") {
 		if p = strings.TrimSpace(p); p == "" {
 			continue
@@ -56,7 +60,12 @@ func main() {
 	}
 	if len(trustedProxies) > 0 {
 		trustProxy = true
-	} else if trustProxy {
+	}
+	if trustProxy && proxyHeader == "cf" {
+		log.Println("mode proxy: IP asli dibaca dari header Cloudflare (CF-Connecting-IP). Di belakang nginx/proxy lain " +
+			"(bukan Cloudflare), jalankan dengan -proxy-header xff agar header itu tidak bisa dipalsukan pengunjung.")
+	}
+	if len(trustedProxies) == 0 && trustProxy {
 		// -proxy tanpa -proxy-ip: hanya percaya proxy di mesin ini (cloudflared/nginx lokal). Sebelumnya semua
 		// alamat dipercaya, sehingga pengguna LAN bisa memalsukan CF-Connecting-IP dan lolos pembatas login.
 		for _, c := range []string{"127.0.0.0/8", "::1/128"} {
