@@ -8,6 +8,9 @@ Format versi: `MAYOR.MINOR.PERBAIKAN`
 Versi yang sedang berjalan terlihat di menu kiri aplikasi (bawah nama pengguna), di `GET /api/version`,
 di header respons `X-SCH-Version`, dan dengan perintah `sch-server -version`.
 
+## v1.28.3 — 2026-11-23
+- Tampilan hanya mencantumkan **© ReeLTech** (tautan "Kode sumber" dihapus).
+
 ## v1.28.2 — 2026-11-23 (Hak cipta)
 - Tampilan kini mencantumkan **© ReeLTech** beserta tautan **Kode sumber** (repo GitHub, lisensi AGPL-3.0) di bawah
   menu kiri dan di halaman login.

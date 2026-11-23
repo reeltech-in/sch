@@ -745,8 +745,8 @@ function brandHtml(sub) {
     <div><b>${esc(s.nama_sekolah || 'Sekolah')}</b><small>${esc(sub)}</small></div></div>`;
 }
 
-// Hak cipta & tautan kode sumber (AGPL-3.0 meminta pengguna lewat jaringan bisa mendapatkan kode sumbernya)
-const copyrightHtml = () => `© ${new Date().getFullYear()} ReeLTech · <a href="https://github.com/reeltech-in/sch" target="_blank" rel="noopener">Kode sumber</a>`;
+// Hak cipta di bawah menu kiri & halaman login
+const copyrightHtml = () => `© ${new Date().getFullYear()} ReeLTech`;
 
 function renderShell() {
   const u = S.user;
