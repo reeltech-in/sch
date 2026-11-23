@@ -76,8 +76,8 @@
     "hash": "cb1e14e2eb27ebabfd99397a8fe5120d"
   },
   "web/app.js": {
-    "mtime": 1795409187463.1382,
-    "hash": "0002ec2fee0ec073a310f029c7927bb7"
+    "mtime": 1795409865791.7444,
+    "hash": "bb5b120c0ee887f444292311a2558cb7"
   },
   "web/mod-ai.js": {
     "mtime": 1795319927251.7014,
@@ -116,8 +116,8 @@
     "hash": "e23343d8c9827b32230cc0d7b142ab21"
   },
   "CHANGELOG.md": {
-    "mtime": 1795409678363.3171,
-    "hash": "3b42368c031cd1b636bd800a8b623915"
+    "mtime": 1795409906174.1396,
+    "hash": "e85778f780e66add94b92a778c14102f"
   },
   "README.md": {
     "mtime": 1795409678363.8489,
@@ -280,8 +280,8 @@
     "hash": "659cf2388215daebdbc71f62c2c866a9"
   },
   ".graphify/GRAPH_REPORT.md": {
-    "mtime": 1795320077680.8877,
-    "hash": "9759f72195ad19283cebfc424b132217"
+    "mtime": 1795409727975.4675,
+    "hash": "d9ae0fcabe136e93bfacaa6b42ddd988"
   },
   "docs/INSTALL-UBUNTU.md": {
     "mtime": 1795409027759.681,
@@ -358,5 +358,9 @@
   "docs/INSTALL-WINDOWS.md": {
     "mtime": 1795407455023.2092,
     "hash": "5dcb1c0fbfd4fa07ff3ced6c61933b30"
+  },
+  "security_test.go": {
+    "mtime": 1795409678363.47,
+    "hash": "b7dcabf71881978d0b9cec665fe088bb"
   }
 }
