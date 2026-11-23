@@ -8,6 +8,10 @@ Format versi: `MAYOR.MINOR.PERBAIKAN`
 Versi yang sedang berjalan terlihat di menu kiri aplikasi (bawah nama pengguna), di `GET /api/version`,
 di header respons `X-SCH-Version`, dan dengan perintah `sch-server -version`.
 
+## v1.28.2 — 2026-11-23 (Hak cipta)
+- Tampilan kini mencantumkan **© ReeLTech** beserta tautan **Kode sumber** (repo GitHub, lisensi AGPL-3.0) di bawah
+  menu kiri dan di halaman login.
+
 ## v1.28.1 — 2026-11-23 (Perbaikan keamanan)
 Disarankan untuk semua sekolah. Perbarui dengan perintah pemasangan yang sama; data tidak berubah.
 

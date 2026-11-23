@@ -745,6 +745,9 @@ function brandHtml(sub) {
     <div><b>${esc(s.nama_sekolah || 'Sekolah')}</b><small>${esc(sub)}</small></div></div>`;
 }
 
+// Hak cipta & tautan kode sumber (AGPL-3.0 meminta pengguna lewat jaringan bisa mendapatkan kode sumbernya)
+const copyrightHtml = () => `© ${new Date().getFullYear()} ReeLTech · <a href="https://github.com/reeltech-in/sch" target="_blank" rel="noopener">Kode sumber</a>`;
+
 function renderShell() {
   const u = S.user;
   $('#app').innerHTML = `<div class="shell" id="shell">
@@ -753,7 +756,7 @@ function renderShell() {
       <nav class="nav">${(() => { let g = null; return navFor(u.role).map(([p, l, i, , grp]) => {
         const h = grp !== g && grp ? `<div class="nav-group">${esc(grp)}</div>` : ''; g = grp;
         return h + `<button type="button" data-act="nav" data-page="${p}">${ico(i)}${esc(l)}</button>`; }).join(''); })()}</nav>
-      <div class="who"><small class="muted">SCH ${esc(S.settings.versi || '')}</small></div>
+      <div class="who"><small class="muted">SCH ${esc(S.settings.versi || '')}<br><span class="copy">${copyrightHtml()}</span></small></div>
     </aside>
     <div class="scrim" data-act="closeMenu"></div>
     <div>${headerHtml(u)}
@@ -888,6 +891,7 @@ function renderLogin() {
     </div>
     <p class="login-note">Lupa password? Hubungi admin sekolah.</p>
     <p class="login-note" style="margin-top:6px">${[['ppdb', '#/ppdb', 'Daftar PPDB'], ['kelulusan', '#/kelulusan', 'Cek kelulusan'], ['bukutamu', '#/bukutamu', 'Buku tamu']].filter(([m]) => modOn(m)).map(([, h, l]) => `<a href="${h}">${l}</a>`).join(' · ')}</p>
+    <p class="login-note copy">${copyrightHtml()}</p>
   </div></div>`;
   document.title = (S.settings.nama_sekolah || 'Sekolah') + ' · Masuk';
   setTimeout(() => $('input[name=username]')?.focus(), 30);
