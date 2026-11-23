@@ -1,0 +1,49 @@
+# Membuat rilis di halaman Releases GitHub setiap kali tag versi di-push.
+#   1. Naikkan VERSION dan tulis "## v1.2.3 — tanggal" di CHANGELOG.md, commit.
+#   2. git tag v1.2.3 && git push origin v1.2.3
+# Hasilnya: paket Windows (.zip) dan program Linux/Raspberry Pi siap unduh, beserta checksum.
+name: Rilis
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  rilis:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Cek tag sama dengan VERSION
+        run: |
+          ver="$(tr -d '[:space:]' < VERSION)"
+          [ "${GITHUB_REF_NAME}" = "v${ver}" ] || { echo "Tag ${GITHUB_REF_NAME} tidak sama dengan VERSION (v${ver})"; exit 1; }
+          grep -q "^## v${ver} " CHANGELOG.md || { echo "CHANGELOG.md belum punya catatan v${ver}"; exit 1; }
+          echo "VER=${ver}" >> "$GITHUB_ENV"
+
+      - name: Tes & build semua platform
+        run: ./build.sh
+
+      - name: Kemas
+        run: |
+          mkdir -p paket/SCH-windows
+          cp dist/sch-server-windows-*.exe dist/jalankan.bat dist/jalankan-online.bat \
+             dist/PANDUAN.md dist/CHANGELOG.md LICENSE paket/SCH-windows/
+          (cd paket && zip -qr "SCH-v${VER}-windows.zip" SCH-windows)
+          for a in amd64 arm64 arm; do cp "dist/sch-server-linux-${a}" "paket/sch-server-v${VER}-linux-${a}"; done
+          (cd paket && sha256sum SCH-v*-windows.zip sch-server-v* > SHA256SUMS.txt)
+          awk -v v="## v${VER} " 'index($0, v)==1 {on=1; next} on && /^## v/ {exit} on' CHANGELOG.md > catatan.md
+
+      - name: Terbitkan
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" --title "SCH v${VER}" --notes-file catatan.md \
+            paket/SCH-v*-windows.zip paket/sch-server-v*-linux-* paket/SHA256SUMS.txt

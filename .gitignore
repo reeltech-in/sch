@@ -6,6 +6,7 @@ demo-data/
 *.db-shm
 *.db.tmp
 ADMIN-PASSWORD.txt
+deploy.env
 *.pem
 *.key
 
@@ -14,9 +15,10 @@ ADMIN-PASSWORD.txt
 /sch-server*
 dist/*
 !dist/jalankan.bat
+!dist/jalankan-online.bat
 *.new
 
-# referensi pihak ketiga (template asli edudigital, tidak dipakai saat berjalan)
+# bahan referensi lokal (tidak dipakai saat berjalan)
 template-lms/
 
 # status lokal graphify (lihat AGENTS.md)

@@ -268,7 +268,6 @@ di header respons `X-SCH-Version`, dan dengan perintah `sch-server -version`.
 
 > **Catatan pembaruan:** `-proxy` saja kini hanya mempercayai proxy di komputer yang sama. Bila cloudflared/nginx
 > berjalan di mesin lain atau Docker, tambahkan `-proxy-ip <IP>` (install.sh: `SCH_PROXY_IP=<IP> SCH_UNIT=rewrite`).
-> Server sch1.reeltech.net sudah memakai `-proxy-ip`, tidak perlu diubah.
 
 **Ujian & nilai**
 - Ujian CBT yang waktunya habis tetapi tidak dikumpulkan (HP mati, browser tertutup) kini dinilai otomatis dari

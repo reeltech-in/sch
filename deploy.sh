@@ -9,12 +9,14 @@
 #   3. unggah ke /opt/sch/releases/sch-server-v<versi>, arahkan /opt/sch/sch-server ke rilis itu
 #   4. restart layanan dan cek /api/version; bila gagal, otomatis kembali ke rilis sebelumnya
 #
-# Variabel (opsional): SCH_HOST=root@10.32.10.112  SCH_KEY=~/.ssh/sch_vm_ed25519  SCH_PORT=3220
+# Alamat server dibaca dari file deploy.env (tidak ikut di-commit; contoh: deploy.env.example)
+# atau variabel lingkungan: SCH_HOST=root@IP-SERVER  SCH_KEY=~/.ssh/kunci_ssh  SCH_PORT=3220
 set -euo pipefail
 cd "$(dirname "$0")"
+[ -f deploy.env ] && . ./deploy.env
 
-HOST="${SCH_HOST:-root@10.32.10.112}"
-KEY="${SCH_KEY:-$HOME/.ssh/sch_vm_ed25519}"
+HOST="${SCH_HOST:?isi SCH_HOST di deploy.env (salin dari deploy.env.example)}"
+KEY="${SCH_KEY:-$HOME/.ssh/id_ed25519}"
 PORT="${SCH_PORT:-3220}"
 VER="$(tr -d '[:space:]' < VERSION)"
 BUILD="$(date -u +%Y%m%d%H%M)"

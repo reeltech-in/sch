@@ -3,9 +3,12 @@
 #   ./rollback.sh            # tampilkan daftar rilis
 #   ./rollback.sh 1.3.0      # aktifkan sch-server-v1.3.0
 # Catatan: database TIDAK dikembalikan otomatis. Backup sebelum tiap rilis ada di /opt/sch/data/backups.
+# Alamat server dibaca dari deploy.env, sama seperti deploy.sh.
 set -euo pipefail
-HOST="${SCH_HOST:-root@10.32.10.112}"
-KEY="${SCH_KEY:-$HOME/.ssh/sch_vm_ed25519}"
+cd "$(dirname "$0")"
+[ -f deploy.env ] && . ./deploy.env
+HOST="${SCH_HOST:?isi SCH_HOST di deploy.env (salin dari deploy.env.example)}"
+KEY="${SCH_KEY:-$HOME/.ssh/id_ed25519}"
 SSH=(ssh -i "$KEY" -o IdentitiesOnly=yes -o BatchMode=yes "$HOST")
 
 if [ $# -eq 0 ]; then

@@ -10,41 +10,46 @@ Skrip `install.sh` otomatis:
 5. memasang layanan **systemd** `sch` (jalan otomatis saat server menyala, restart sendiri bila berhenti)
 6. mengecek program benar-benar berjalan, lalu menampilkan alamat dan **password admin pertama**
 
-Untuk Ubuntu 22.04 / 24.04 dan Debian 12 / 13 (x86_64, arm64). Butuh akses `sudo` dan internet.
+Untuk Ubuntu 22.04 / 24.04 dan Debian 12 / 13 (x86_64, arm64). Butuh akses `sudo` dan internet saat memasang;
+setelah terpasang, SCH berjalan tanpa internet.
+
+**Kebutuhan server:** RAM 1 GB, ruang disk 2 GB untuk program dan Go (ditambah foto, berkas, dan e-book sekolah),
+dan IP tetap di jaringan sekolah (atur *DHCP reservation* di router). VM, PC bekas, dan mini PC sama-sama bisa.
+
+Pakai Windows? Lihat [INSTALL-WINDOWS.md](INSTALL-WINDOWS.md).
 
 ---
 
 ## 1. Pasang baru
 
-### Repo publik — cukup satu baris
+Masuk ke server lewat SSH (atau buka terminal di server), lalu tempel satu baris ini:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/reeltech-in/sch/main/install.sh | sudo bash
 ```
 
-### Repo privat — clone dulu
+Proses pertama memakan waktu sekitar 2–5 menit, tergantung kecepatan internet (mengunduh Go ±70 MB).
 
-Butuh akun GitHub yang punya akses ke repo. Cara paling mudah memakai GitHub CLI:
+> **Ingin membaca skripnya dulu?** Unduh, periksa, lalu jalankan:
+> `curl -fsSLO https://raw.githubusercontent.com/reeltech-in/sch/main/install.sh`, lalu `less install.sh`,
+> lalu `sudo bash install.sh`.
+
+### Dari hasil git clone (fork atau kode yang Anda ubah)
 
 ```bash
-sudo apt-get update && sudo apt-get install -y git gh
+sudo apt-get update && sudo apt-get install -y git
 ```
 
 ```bash
-gh auth login
+git clone https://github.com/reeltech-in/sch.git ~/sch && cd ~/sch && sudo ./install.sh
 ```
 
-```bash
-gh repo clone reeltech-in/sch ~/sch && cd ~/sch && sudo ./install.sh
-```
-
-> Tanpa `gh`: `git clone https://github.com/reeltech-in/sch.git` lalu isi username GitHub dan
-> **Personal Access Token** (bukan password) saat diminta.
+Skrip memakai kode dari folder tempat ia berada, termasuk perubahan Anda. Untuk fork, ganti alamat repo-nya.
 
 Di akhir proses tampil seperti ini:
 
 ```
-SCH v1.18.0 berjalan.
+SCH v1.28.0 berjalan.
   Buka di browser : http://192.168.1.10:3220
   HTTPS lokal     : https://192.168.1.10:3221  (untuk kamera HP)
 Login pertama (segera ganti password, lalu hapus file ini):
@@ -61,7 +66,7 @@ sudo rm /opt/sch/data/ADMIN-PASSWORD.txt
 
 ## 2. Pengaturan saat memasang (opsional)
 
-Tambahkan variabel sebelum `bash` (repo publik) atau sebelum `./install.sh` (repo privat).
+Tambahkan variabel sebelum `bash` (pemasangan lewat `curl`) atau sebelum `./install.sh` (dari git clone).
 
 | Variabel | Bawaan | Fungsi |
 |---|---|---|
@@ -83,10 +88,10 @@ Contoh — port 8080, online lewat Cloudflare Tunnel yang berjalan di mesin 10.0
 curl -fsSL https://raw.githubusercontent.com/reeltech-in/sch/main/install.sh | sudo SCH_PORT=8080 SCH_PROXY_IP=10.0.0.5 SCH_UFW=1 bash
 ```
 
-Contoh — server percobaan dengan data contoh:
+Contoh — server percobaan dengan data contoh (jangan dipakai untuk data sungguhan):
 
 ```bash
-cd ~/sch && sudo SCH_DEMO=1 ./install.sh
+curl -fsSL https://raw.githubusercontent.com/reeltech-in/sch/main/install.sh | sudo SCH_DEMO=1 bash
 ```
 
 ---
@@ -97,17 +102,20 @@ Jalankan **perintah yang sama** lagi. Database otomatis dibackup ke
 `/opt/sch/data/backups/sebelum-v<versi>-<waktu>.db`, lalu versi baru diaktifkan. Bila versi baru
 tidak merespons dalam 60 detik, skrip **otomatis kembali** ke versi sebelumnya.
 
-Repo publik:
+Dipasang lewat `curl`:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/reeltech-in/sch/main/install.sh | sudo bash
 ```
 
-Repo privat:
+Dipasang dari git clone:
 
 ```bash
 cd ~/sch && git pull && sudo ./install.sh
 ```
+
+Apa saja yang berubah di tiap versi: [CHANGELOG.md](../CHANGELOG.md). Versi yang sedang berjalan terlihat di menu kiri
+aplikasi.
 
 Pengaturan layanan (port, proxy, dll.) dari pemasangan pertama **tetap dipakai**. Untuk mengubahnya,
 tambahkan `SCH_UNIT=rewrite` beserta pengaturan barunya.
@@ -145,8 +153,10 @@ Detail lengkap ada di [README bagian 3](../README.md#3-online-lewat-cloudflare-z
 Menghapus layanan dan program, **data tetap disimpan**:
 
 ```bash
-cd ~/sch && sudo ./install.sh --uninstall
+curl -fsSL https://raw.githubusercontent.com/reeltech-in/sch/main/install.sh | sudo bash -s -- --uninstall
 ```
+
+(Bila dipasang dari git clone: `cd ~/sch && sudo ./install.sh --uninstall`.)
 
 Menghapus semua data secara permanen (tidak bisa dibatalkan — backup dulu bila perlu):
 
@@ -169,3 +179,20 @@ sudo rm -rf /opt/sch && sudo userdel sch
 | `/opt/sch/src/` | kode sumber (bila dipasang lewat `curl`) |
 | `/etc/systemd/system/sch.service` | layanan systemd |
 | `/usr/local/go/` | Go (hanya untuk build; boleh dihapus, akan dipasang lagi saat update) |
+
+---
+
+## 8. Mengatasi masalah
+
+| Gejala | Penyebab & solusi |
+|---|---|
+| `git clone gagal` | Server tidak bisa menjangkau github.com. Cek internet/DNS: `curl -I https://github.com` |
+| `unduh Go gagal` / `checksum Go tidak cocok` | Unduhan dari go.dev terputus. Jalankan ulang perintah pemasangan |
+| Halaman tidak terbuka dari HP/laptop lain | Firewall menutup port. Pasang ulang dengan `SCH_UFW=1`, atau `sudo ufw allow 3220/tcp` dan `sudo ufw allow 3221/tcp` |
+| `tidak merespons di port 3220` | Port dipakai program lain. Cek `sudo ss -ltnp \| grep 3220`, lalu pasang dengan `SCH_PORT=8080 SCH_UNIT=rewrite` |
+| Kamera HP tidak mau menyala | Kamera butuh `https://`. Buka alamat port 3221, pilih **Lanjutkan** pada peringatan sertifikat |
+| Semua orang terblokir login setelah online | Server di belakang tunnel/proxy tanpa mode proxy. Pasang ulang dengan `SCH_PROXY=1` atau `SCH_PROXY_IP=<IP>` dan `SCH_UNIT=rewrite` |
+| Lupa password admin | Lihat baris "lupa password admin" di [bagian 4](#4-perintah-sehari-hari) |
+
+Log lengkap: `journalctl -u sch -n 100 --no-pager`. Bila masih bermasalah, buka Issue di GitHub dan sertakan versi
+serta potongan log (hapus dulu password atau data pribadi).

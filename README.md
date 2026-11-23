@@ -1,8 +1,31 @@
-# SCH — Sistem Informasi Sekolah (Go + SQLite)
+# SCH — Sistem Informasi Sekolah
 
-Satu aplikasi untuk seluruh kebutuhan sekolah, berjalan di **PC server sekolah sendiri**, tanpa
-internet dan tanpa biaya hosting. Satu file program, data tersimpan di satu file database.
-Satu login dan satu data siswa/guru/kelas dipakai bersama oleh semua modul.
+**Aplikasi sekolah lengkap yang gratis, terbuka, dan berjalan di server sekolah sendiri.**
+LMS, CBT, e-Rapor Kurikulum Merdeka, absensi QR, perpustakaan, PPDB, sampai kasir koperasi, dalam satu program.
+
+- **Tanpa internet & tanpa biaya hosting**: cukup satu PC/laptop di sekolah; guru dan siswa membuka lewat WiFi.
+- **Satu file program, satu file database**: tidak perlu memasang web server, PHP, atau MySQL. Backup cukup salin folder.
+- **Ringan**: RAM 10–50 MB, jalan di Windows 10/11, Linux, dan Raspberry Pi.
+- **Satu login untuk semua modul**: data siswa, guru, dan kelas diisi sekali, dipakai di semua modul.
+- **Data milik sekolah**: tidak dikirim ke pihak mana pun (kecuali Asisten AI bila sekolah mengaktifkannya).
+
+**[Unduh](https://github.com/reeltech-in/sch/releases/latest)** ·
+**[Pasang di Ubuntu/Debian](docs/INSTALL-UBUNTU.md)** ·
+**[Pasang di Windows](docs/INSTALL-WINDOWS.md)** ·
+**[Catatan rilis](CHANGELOG.md)** ·
+Lisensi **[AGPL-3.0](LICENSE)**
+
+### Coba dalam satu menit
+Server Ubuntu/Debian dengan data contoh:
+```bash
+curl -fsSL https://raw.githubusercontent.com/reeltech-in/sch/main/install.sh | sudo SCH_DEMO=1 bash
+```
+Windows: unduh `SCH-v…-windows.zip` dari [Releases](https://github.com/reeltech-in/sch/releases/latest), ekstrak, lalu
+jalankan di Command Prompt dari folder itu: `sch-server-windows-amd64.exe -db demo\sch.db -demo`.
+Buka `http://localhost:3220`. Akun contoh: guru `guru001` / `guru123`, siswa `siswa001` / `siswa123`
+(password admin tampil di layar). **Jangan pakai `-demo` untuk data sungguhan.**
+
+## Fitur
 
 | Modul | Isi |
 |---|---|
@@ -30,33 +53,42 @@ Admin bisa menyalakan/mematikan modul di **Pengaturan → Modul aplikasi**.
 untuk pustakawan, Surat & PPDB untuk TU, Kasir untuk pengelola koperasi). Mereka mendapat menu dan hak kelola
 modul itu saja, tanpa menjadi admin penuh.
 
-Kebutuhan server: PC/laptop apa saja (Windows 7+ atau Linux), RAM 1 GB sudah cukup.
+Kebutuhan server: PC/laptop apa saja (Windows 10/11, Windows Server 2016+, atau Linux), RAM 1 GB sudah cukup.
 Server memakai sekitar 10–50 MB RAM. Raspberry Pi juga bisa.
 
 ---
 
 ## 1. Menjalankan di PC server
 
+Semua file program ada di halaman **[Releases](https://github.com/reeltech-in/sch/releases/latest)**.
+
+### Server Ubuntu / Debian (disarankan)
+Satu perintah memasang dependensi, Go, build, user `sch`, dan layanan systemd yang menyala otomatis:
+```bash
+curl -fsSL https://raw.githubusercontent.com/reeltech-in/sch/main/install.sh | sudo bash
+```
+Pengaturan port/proxy, memperbarui, dan menghapus: lihat [docs/INSTALL-UBUNTU.md](docs/INSTALL-UBUNTU.md).
+
 ### Windows
-1. Salin ke satu folder, misalnya `C:\SCH`:
-   - `sch-server-windows-amd64.exe` (Windows 64-bit) atau `sch-server-windows-386.exe` (Windows 32-bit lama)
-   - `jalankan.bat`
+1. Unduh `SCH-v…-windows.zip` dari Releases dan ekstrak ke satu folder, misalnya `C:\SCH`. Isinya:
+   `sch-server-windows-amd64.exe` (Windows 64-bit), `sch-server-windows-386.exe` (Windows 10 32-bit),
+   `jalankan.bat`, dan `jalankan-online.bat`.
 2. Klik dua kali `jalankan.bat`.
 3. Saat pertama kali dijalankan muncul **username & password admin**. Password ini juga disimpan di
    `data\ADMIN-PASSWORD.txt`. Login, ganti password di menu **Akun Saya**, lalu hapus file itu.
 4. Jika Windows Firewall bertanya, pilih **Allow / Izinkan** untuk jaringan *Private*.
 
-### Server Ubuntu / Debian (otomatis, disarankan)
-Satu perintah memasang dependensi, Go, build, user `sch`, dan layanan systemd:
-```bash
-curl -fsSL https://raw.githubusercontent.com/reeltech-in/sch/main/install.sh | sudo bash
-```
-Repo privat, pengaturan port/proxy, update, dan uninstall: lihat [docs/INSTALL-UBUNTU.md](docs/INSTALL-UBUNTU.md).
+Panduan lengkap, termasuk agar server menyala otomatis saat PC dihidupkan:
+[docs/INSTALL-WINDOWS.md](docs/INSTALL-WINDOWS.md).
 
-### Linux / Raspberry Pi (manual)
+### Linux lain / Raspberry Pi (manual)
+Unduh program yang sesuai dari Releases (`linux-amd64` untuk PC, `linux-arm64` untuk Raspberry Pi 64-bit,
+`linux-arm` untuk 32-bit), lalu:
 ```bash
-chmod +x sch-server-linux-amd64        # Raspberry Pi 64-bit: sch-server-linux-arm64, 32-bit: sch-server-linux-arm
-./sch-server-linux-amd64 -addr :3220
+chmod +x sch-server-v*-linux-amd64
+```
+```bash
+./sch-server-v*-linux-amd64 -addr :3220
 ```
 
 ## 2. Membuka dari HP / laptop
@@ -210,13 +242,16 @@ cloud; kode SQL-nya standar sehingga bisa dipindahkan.
 Setiap rilis punya nomor versi (`MAYOR.MINOR.PERBAIKAN`) yang tampil di menu kiri aplikasi, di
 `/api/version`, di header `X-SCH-Version`, dan lewat `sch-server -version`. Riwayatnya ada di `CHANGELOG.md`.
 
-Alur rilis ke server:
+Alur rilis:
 1. Naikkan angka di file `VERSION` (mis. `1.4.0` → `1.4.1` untuk perbaikan, `1.5.0` untuk fitur baru).
-2. Tulis catatannya di `CHANGELOG.md` dengan judul `## v1.4.1 — tanggal`.
-3. Jalankan `./deploy.sh`. Skrip akan: build dengan versi tertanam → backup database ke
+2. Tulis catatannya di `CHANGELOG.md` dengan judul `## v1.4.1 — tanggal`, lalu commit.
+3. **Rilis publik**: `git tag v1.4.1 && git push origin v1.4.1`. GitHub Actions menjalankan tes, membuat paket
+   Windows/Linux/Raspberry Pi, dan menerbitkannya di halaman Releases beserta catatan dari CHANGELOG.
+4. **Server sendiri lewat SSH**: salin `deploy.env.example` menjadi `deploy.env` (tidak ikut di-commit), isi alamat
+   server & kunci SSH, lalu jalankan `./deploy.sh`. Skrip akan: build dengan versi tertanam → backup database ke
    `/opt/sch/data/backups/sebelum-v<versi>-<waktu>.db` → simpan rilis di `/opt/sch/releases/` → restart →
    cek `/api/version`. Bila versi baru tidak merespons, otomatis kembali ke rilis sebelumnya.
-4. Kembali ke rilis lama secara manual: `./rollback.sh` (lihat daftar) lalu `./rollback.sh 1.4.0`.
+5. Kembali ke rilis lama secara manual: `./rollback.sh` (lihat daftar) lalu `./rollback.sh 1.4.0`.
    Database tidak ikut dikembalikan; gunakan file backup bila perlu.
 
 `./build.sh` membuat semua file program (Windows/Linux/Raspberry Pi) dengan nomor versi di folder `dist/`.
@@ -261,3 +296,15 @@ Tes: `go test ./...` (dijalankan otomatis oleh `deploy.sh` dan `build.sh` sebelu
 
 Menambah modul baru: buat `mod_xxx.go` (daftarkan skema & rute di `init()`, kunci modul di `moduleKeys`), lalu buat
 `web/mod-xxx.js` yang memanggil `addNav()` dan mengisi `PAGES`, dan daftarkan file itu di `MOD_FILES` (`web/app.js`).
+
+## 12. Kontribusi & laporan
+- Bug dan usul fitur: buka **Issue**. Panduan kontribusi kode ada di [CONTRIBUTING.md](CONTRIBUTING.md).
+- Celah keamanan: laporkan secara pribadi, **jangan** lewat issue publik. Lihat [SECURITY.md](SECURITY.md).
+
+## 13. Lisensi
+SCH adalah perangkat lunak bebas di bawah **[GNU Affero General Public License v3.0](LICENSE)**.
+
+- Sekolah, dinas, dan siapa pun boleh memakai, menyalin, dan memasangnya **gratis**, termasuk untuk banyak sekolah.
+- Boleh diubah. Bila versi ubahan dibagikan **atau dijalankan sebagai layanan untuk orang lain** (misalnya hosting
+  yang dijual ke sekolah), kode sumber ubahannya wajib dibuka dengan lisensi yang sama.
+- Tanpa jaminan apa pun; sekolah bertanggung jawab atas data dan backup-nya sendiri.
