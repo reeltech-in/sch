@@ -201,7 +201,15 @@ func apiPPDBCek(c *Ctx) error {
 	var catatan sql.NullString
 	err := c.A.db.QueryRow(`SELECT nama, status, pin_hash, COALESCE(jalur,''), catatan FROM ppdb_applicants WHERE no_daftar=?`, strings.ToUpper(strings.TrimSpace(in.NoDaftar))).
 		Scan(&nama, &status, &hash, &jalur, &catatan)
-	if err != nil || checkPassword(hash, strings.TrimSpace(in.PIN)) != nil {
+	if err == nil {
+		err = checkPassword(hash, strings.TrimSpace(in.PIN))
+	}
+	if ae, ok := err.(apiErr); ok && ae.code == 503 {
+		c.guessOK("pc:", no) // server sibuk: bukan kesalahan isian
+		return ae
+	}
+	if err != nil {
+		c.guessFailed("pc:", no)
 		return bad("Nomor pendaftaran atau PIN salah.")
 	}
 	c.guessOK("pc:", no)

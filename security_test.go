@@ -413,3 +413,71 @@ func TestBerkasPPDBHanyaUntukPengelola(t *testing.T) {
 	}
 	expect(t, "siswa setelah migrasi", func() int { c, _ := e.login("siswa001", "siswa123").do("GET", url, nil); return c }(), 404, nil)
 }
+
+// Ratusan siswa satu sekolah (satu IP NAT) login bersamaan saat ujian dimulai: semua yang benar harus masuk.
+// Regresi v1.28.1: kunci IP ikut "dipesan" sebelum password diperiksa, sehingga hanya 60 dari 300 yang berhasil.
+func TestLoginMassalSatuIPSemuaMasuk(t *testing.T) {
+	e := newEnv(t)
+	var kelas, hash string
+	e.app.db.QueryRow(`SELECT kelas_id, password_hash FROM users WHERE username='siswa001'`).Scan(&kelas, &hash)
+	const n = 300
+	for i := 0; i < n; i++ {
+		e.app.db.Exec(`INSERT INTO users (username,password_hash,nama_lengkap,role,kelas_id,status,created_at) VALUES (?,?,?,?,?,?,?)`,
+			fmt.Sprintf("massal%03d", i), hash, "Siswa Massal", "siswa", kelas, "aktif", nowStr())
+	}
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	hasil := map[int]int{}
+	slot := make(chan struct{}, 100) // 100 login berjalan bersamaan (jauh di atas batas 60 per IP); lebih dari itu
+	// antrean koneksi OS penguji (macOS 128) yang menolak, bukan aplikasinya
+	for i := 0; i < n; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			slot <- struct{}{}
+			defer func() { <-slot }()
+			code, _ := e.anon().do("POST", "/api/login", map[string]string{"username": fmt.Sprintf("massal%03d", i), "password": "siswa123"})
+			mu.Lock()
+			hasil[code]++
+			mu.Unlock()
+		}(i)
+	}
+	wg.Wait()
+	if hasil[200] != n {
+		t.Errorf("login massal dengan password benar: %v, harusnya %d berhasil", hasil, n)
+	}
+}
+
+// Saat pengumuman dibuka, ratusan siswa mengecek kelulusan bersamaan dari WiFi sekolah (satu IP): semua data yang
+// benar harus terjawab. Regresi v1.28.1: kunci IP ikut dipesan, hanya 73 dari 200 yang berhasil.
+func TestCekKelulusanMassalSatuIPSemuaBerhasil(t *testing.T) {
+	e := newEnv(t)
+	b, _ := json.Marshal(map[string]any{"buka": time.Now().Add(-time.Minute).UTC().Format(time.RFC3339)})
+	kvSet(e.app.db, "cfg_kelulusan", string(b))
+	const n = 200
+	for i := 0; i < n; i++ {
+		e.app.db.Exec(`INSERT INTO users (username,password_hash,nama_lengkap,role,status,created_at) VALUES (?,?,?,?,?,?)`, fmt.Sprintf("lls%03d", i), "x", "L", "siswa", "aktif", nowStr())
+		e.app.db.Exec(`INSERT INTO student_profiles (siswa_id, nisn, tgl_lahir, updated_at) VALUES (last_insert_rowid(), ?, '2010-05-05', ?)`, fmt.Sprintf("99%08d", i), nowStr())
+		e.app.db.Exec(`INSERT INTO graduation (siswa_id, status, updated_at) SELECT siswa_id, 'lulus', '2026-01-01' FROM student_profiles WHERE nisn=?`, fmt.Sprintf("99%08d", i))
+	}
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	hasil := map[int]int{}
+	start := make(chan struct{})
+	for i := 0; i < n; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			<-start
+			code, _ := e.anon().do("POST", "/api/kelulusan/cek", map[string]string{"nisn": fmt.Sprintf("99%08d", i), "tgl_lahir": "2010-05-05"})
+			mu.Lock()
+			hasil[code]++
+			mu.Unlock()
+		}(i)
+	}
+	close(start)
+	wg.Wait()
+	if hasil[200] != n {
+		t.Errorf("cek kelulusan massal dengan data benar: %v, harusnya %d berhasil", hasil, n)
+	}
+}

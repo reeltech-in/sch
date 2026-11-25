@@ -490,6 +490,9 @@ func (a *App) apiFile(c *Ctx) error {
 	if _, err := os.Stat(p); err != nil {
 		return notFound()
 	}
+	// lampiran PDF / e-book unggahan bisa puluhan MB: di WiFi sekolah yang padat unduhannya lebih lama dari batas
+	// tulis server (60 detik) dan terputus di tengah. Perpanjang khusus untuk respons ini.
+	http.NewResponseController(c.W).SetWriteDeadline(time.Now().Add(30 * time.Minute))
 	c.W.Header().Set("Cache-Control", "private, max-age=604800")
 	c.W.Header().Set("Content-Security-Policy", "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; object-src 'self'; plugin-types application/pdf")
 	http.ServeFile(c.W, c.R, p)

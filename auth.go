@@ -85,13 +85,13 @@ func (a *App) apiLogin(c *Ctx) error {
 	}
 	if err := checkPassword(hash, in.Password); err != nil || id == 0 {
 		if ae, ok := err.(apiErr); ok && ae.code == 503 {
-			c.A.limit.unfail(pairKey, ipKey, ukey)
+			c.A.limit.unfail(pairKey)
 			return ae // server sibuk: bukan kesalahan password
 		}
+		c.A.limit.loginFailed(ipKey, ukey)
 		c.A.audit(c.R, nil, "LOGIN GAGAL", 401, "username: "+strings.TrimSpace(in.Username))
 		return apiErr{401, "Username atau password salah."}
 	}
-	c.A.limit.unfail(ipKey, ukey)
 	c.A.limit.reset(pairKey)
 	defer func() { c.A.audit(c.R, c.A.userByID(id), "LOGIN", 200, "") }()
 	b := make([]byte, 32)

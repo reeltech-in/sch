@@ -62,9 +62,11 @@ const (
 	guessTarget   = 20
 )
 
-// guessAllowed memeriksa batas DAN langsung mencatat percobaan ini sebagai "salah" dalam satu kunci (atomik).
-// Tanpa itu, banyak permintaan serentak lolos pemeriksaan sebelum kegagalan pertama tercatat (antre di database /
-// bcrypt), sehingga batas 10 per 10 menit bisa ditembus. Percobaan yang ternyata benar dikembalikan lewat guessOK.
+// guessAllowed memeriksa batas cek publik (kelulusan, status PPDB) dan memesan satu slot pada kunci DATA yang dicek
+// (NISN / nomor pendaftaran) dalam satu kunci mutex: tebakan serentak ke satu data tidak bisa melewati batas
+// guessIPWindow. Kunci IP TIDAK dipesan di depan, karena ratusan siswa satu sekolah berbagi satu IP (NAT) dan
+// mengecek bersamaan saat pengumuman dibuka (regresi v1.28.1: hanya 73 dari 200 cek yang benar berhasil).
+// Setelah diperiksa, panggil guessOK (isian benar) atau guessFailed (isian salah).
 func (c *Ctx) guessAllowed(scope, target string) error {
 	ip := limitKey(clientIP(c.R))
 	l := c.A.limit
@@ -77,32 +79,29 @@ func (c *Ctx) guessAllowed(scope, target string) error {
 	if d[scope+"ipd:"+ip] >= guessIPDay {
 		return apiErr{429, "Terlalu banyak percobaan salah dari perangkat ini hari ini. Coba lagi besok atau hubungi sekolah."}
 	}
-	if d[scope+"t:"+target] >= guessTarget && d[scope+"ipd:"+ip] > 0 {
+	if (d[scope+"t:"+target] >= guessTarget && d[scope+"ipd:"+ip] > 0) || l.blockedLocked(scope+"tw:"+target, guessIPWindow) {
 		return apiErr{429, "Data ini terlalu sering dicoba dengan isian salah hari ini. Periksa kembali isian Anda, coba dari HP lain, atau hubungi sekolah."}
 	}
-	l.failLocked(scope + "ip:" + ip)
-	d[scope+"ipd:"+ip]++
-	d[scope+"t:"+target]++
+	l.failLocked(scope + "tw:" + target)
 	return nil
 }
 
-// guessOK mengembalikan jatah percobaan yang dicatat guessAllowed bila isian ternyata benar.
+// guessOK: isian benar, slot yang dipesan guessAllowed dikembalikan.
 func (c *Ctx) guessOK(scope, target string) {
+	c.A.limit.unfail(scope + "tw:" + target)
+}
+
+// guessFailed: isian salah, dicatat pada kunci IP (10 menit & harian) dan hitungan harian data itu.
+// Slot pada kunci data tetap terpakai sebagai percobaan gagal.
+func (c *Ctx) guessFailed(scope, target string) {
 	ip := limitKey(clientIP(c.R))
 	l := c.A.limit
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	if ts := l.fails[scope+"ip:"+ip]; len(ts) > 0 {
-		l.fails[scope+"ip:"+ip] = ts[:len(ts)-1]
-	}
+	l.failLocked(scope + "ip:" + ip)
 	d := l.dailyLocked()
-	for _, k := range []string{scope + "ipd:" + ip, scope + "t:" + target} {
-		if d[k] > 1 {
-			d[k]--
-		} else {
-			delete(d, k)
-		}
-	}
+	d[scope+"ipd:"+ip]++
+	d[scope+"t:"+target]++
 }
 
 // blockedN: true bila key gagal >= n kali dalam 10 menit terakhir (dipakai per-username & formulir publik).
@@ -184,7 +183,11 @@ func (l *loginLimiter) pruneLocked() {
 	}
 }
 
-// loginReserve memeriksa batas login lalu langsung mencatat percobaan ini pada ketiga kunci dalam satu kunci mutex.
+// loginReserve memeriksa batas login lalu langsung mencatat percobaan ini pada kunci PASANGAN (IP+username) dalam
+// satu kunci mutex, sehingga tebakan serentak ke satu akun tidak bisa melewati batas 5.
+// Kunci IP (60) dan username (15) TIDAK dipesan di depan: ratusan siswa satu sekolah berbagi satu IP (NAT) dan
+// login bersamaan saat ujian dimulai; memesan kunci IP membuat login yang benar ikut ditolak setelah 60 orang
+// (regresi v1.28.1). Keduanya dicatat setelah password terbukti salah, lewat loginFailed.
 // ok=false: diblokir. slow=true: username ini sedang sering dicoba (diperlambat, tidak dikunci).
 func (l *loginLimiter) loginReserve(pair, ip, user string) (ok, slow bool) {
 	l.mu.Lock()
@@ -194,9 +197,15 @@ func (l *loginLimiter) loginReserve(pair, ip, user string) (ok, slow bool) {
 	}
 	slow = l.blockedLocked(user, 15)
 	l.failLocked(pair)
+	return true, slow
+}
+
+// loginFailed mencatat password yang terbukti salah pada kunci IP dan username (kunci pasangan sudah dipesan).
+func (l *loginLimiter) loginFailed(ip, user string) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
 	l.failLocked(ip)
 	l.failLocked(user)
-	return true, slow
 }
 
 // unfail menghapus satu catatan percobaan terakhir pada tiap kunci (percobaan yang ternyata berhasil).

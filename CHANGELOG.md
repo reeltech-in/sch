@@ -8,6 +8,17 @@ Format versi: `MAYOR.MINOR.PERBAIKAN`
 Versi yang sedang berjalan terlihat di menu kiri aplikasi (bawah nama pengguna), di `GET /api/version`,
 di header respons `X-SCH-Version`, dan dengan perintah `sch-server -version`.
 
+## v1.28.4 — 2026-11-25 (Perbaikan login & cek kelulusan massal, unduhan lambat)
+Sangat disarankan bagi yang sudah memasang v1.28.1–v1.28.3.
+- **Perbaikan regresi v1.28.1: login massal.** Ratusan siswa yang login bersamaan dari jaringan sekolah (satu IP)
+  sebagian besar ditolak "Terlalu banyak percobaan login" walau password benar (hanya 60 dari 300 berhasil),
+  misalnya saat ujian dimulai. Kini semua berhasil; tebakan serentak ke satu akun tetap dibatasi 5.
+- **Perbaikan regresi v1.28.1: cek kelulusan & status PPDB massal.** Saat pengumuman dibuka, cek dengan data benar dari
+  WiFi sekolah sebagian ditolak (73 dari 200 berhasil). Kini semua berhasil; tebakan serentak ke satu NISN/nomor
+  pendaftaran tetap dibatasi.
+- **Unduhan berkas besar tidak lagi terputus.** Lampiran PDF materi / e-book unggahan berukuran besar terputus setelah
+  ±60 detik di jaringan lambat (file 10 MB di 120 KB/detik hanya terunduh 9,2 MB). Kini batas waktunya 30 menit.
+
 ## v1.28.3 — 2026-11-23
 - Tampilan hanya mencantumkan **© ReeLTech** (tautan "Kode sumber" dihapus).
 

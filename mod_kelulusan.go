@@ -118,6 +118,7 @@ func apiGradCheck(c *Ctx) error {
 		LEFT JOIN classes k ON k.id=u.kelas_id JOIN graduation g ON g.siswa_id=u.id WHERE sp.nisn=? AND sp.tgl_lahir=?`,
 		strings.TrimSpace(in.NISN), tgl).Scan(&nama, &kelas, &status, &catatan)
 	if err != nil {
+		c.guessFailed("kl:", nisn)
 		return bad("Data tidak ditemukan. Periksa kembali NISN dan tanggal lahir.")
 	}
 	c.guessOK("kl:", nisn)
