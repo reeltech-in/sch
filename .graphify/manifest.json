@@ -1,7 +1,7 @@
 {
   "api.go": {
-    "mtime": 1795409027759.4307,
-    "hash": "d98a4e7e53883090ca6fae18134e57a7"
+    "mtime": 1795613172743.2158,
+    "hash": "875bba3a23ef6d503b7156cd50b259fa"
   },
   "api_lms.go": {
     "mtime": 1795319293530.569,
@@ -20,24 +20,24 @@
     "hash": "c1c26eae7035adcef1d04c35948060dd"
   },
   "main.go": {
-    "mtime": 1795409027760.639,
-    "hash": "e33e36966c19e1edf48b787a58823f74"
+    "mtime": 1795613172742.9817,
+    "hash": "2fb5f0314e5c1788725b355d053cd77f"
   },
   "maintenance.go": {
-    "mtime": 1795409034699.1028,
-    "hash": "788b5ee213493f65f03ba68337be026b"
+    "mtime": 1795613172743.0952,
+    "hash": "b066014a1b61a54c8b0b34dbdfbce5cd"
   },
   "migrate.go": {
-    "mtime": 1795319293533.3665,
-    "hash": "d24765980f18e69c833635705a08b590"
+    "mtime": 1795613078008.0923,
+    "hash": "ff53babc3edb9bf7249ac46ed05dcf8a"
   },
   "mod_absensi.go": {
-    "mtime": 1795409027760.783,
-    "hash": "ee54c7d7ce6af1d3ac49600530e11678"
+    "mtime": 1795613095141.1206,
+    "hash": "6e4a5348851956d98ac82fc41c2c65e0"
   },
   "mod_ai.go": {
-    "mtime": 1795319606803.405,
-    "hash": "4972c0ee05c473858e8baf1c0bcfdf53"
+    "mtime": 1795613095140.782,
+    "hash": "734aa5a3eeb93d336250ab708859ae5c"
   },
   "mod_layanan.go": {
     "mtime": 1795409430760.062,
@@ -52,8 +52,8 @@
     "hash": "39b0abdb6ed163b02d5161d8a914d055"
   },
   "mod_tahun.go": {
-    "mtime": 1795319293535.9841,
-    "hash": "2d048a82707ee7ade7fa3ba57208530d"
+    "mtime": 1795613078007.7424,
+    "hash": "0ae7ee529f75e652c86be8562d190bf1"
   },
   "mod_ujian.go": {
     "mtime": 1795319293536.1206,
@@ -64,8 +64,8 @@
     "hash": "f437f6fd3a1fd1a63a69cdc6bc37e20c"
   },
   "ops.go": {
-    "mtime": 1795319293536.8193,
-    "hash": "f8c2020be85d7d1da005d79a0c49de3e"
+    "mtime": 1795613095140.506,
+    "hash": "fa71aaa4a2268b32c103e75c29c37cb6"
   },
   "questions.go": {
     "mtime": 1795409027761.7512,
@@ -76,8 +76,8 @@
     "hash": "cb1e14e2eb27ebabfd99397a8fe5120d"
   },
   "web/app.js": {
-    "mtime": 1795410270308.5103,
-    "hash": "4d3a8700d4d123b3eebbe095ab46fa2c"
+    "mtime": 1795613041165.7612,
+    "hash": "f393fa8b7ea4a96deb4de9864b5fd882"
   },
   "web/mod-ai.js": {
     "mtime": 1795319927251.7014,
@@ -100,8 +100,8 @@
     "hash": "df9347990d1d051f3d1def8f1acb7cb5"
   },
   "web/pages-admin.js": {
-    "mtime": 1795409187463.7776,
-    "hash": "284f573c65bf6b20663ddebc650106f8"
+    "mtime": 1795613185109.8372,
+    "hash": "ee0f62e581094b2050e28da0628c77e2"
   },
   "web/pages-guru.js": {
     "mtime": 1795319764030.083,
@@ -116,12 +116,12 @@
     "hash": "e23343d8c9827b32230cc0d7b142ab21"
   },
   "CHANGELOG.md": {
-    "mtime": 1795612736637.9028,
-    "hash": "3f882376762aee0a038a41bbdb882755"
+    "mtime": 1795613459782.6594,
+    "hash": "60ad3d1b693e82a45ae33521fc44e0ed"
   },
   "README.md": {
-    "mtime": 1795409678363.8489,
-    "hash": "3a1967e987fc2519111846a2cd9f7e6d"
+    "mtime": 1795613459781.7605,
+    "hash": "bd67895ef9be319ba26f46fa83c7803a"
   },
   "docs/design-system.md": {
     "mtime": 1795319293531.8774,
@@ -148,8 +148,8 @@
     "hash": "866cb4855a6b32d609154c13d63adaa5"
   },
   "mod_wa.go": {
-    "mtime": 1795409027761.5195,
-    "hash": "b2c99bb504890ff7a9354f0806816970"
+    "mtime": 1795613095140.4011,
+    "hash": "30fa225434dffa4ffb483793f1f9377d"
   },
   "mod_ljk.go": {
     "mtime": 1795319293534.788,
@@ -216,8 +216,8 @@
     "hash": "50e3f4ad08700b52514f51d0071bfd7f"
   },
   "mod_kelulusan.go": {
-    "mtime": 1795612366346.3105,
-    "hash": "c049583f95a0c673af24c38dc3ef3d70"
+    "mtime": 1795613078007.3193,
+    "hash": "a82ae1387f60929d041f094768334c5e"
   },
   "mod_ppdb.go": {
     "mtime": 1795612366346.529,
@@ -280,12 +280,12 @@
     "hash": "659cf2388215daebdbc71f62c2c866a9"
   },
   ".graphify/GRAPH_REPORT.md": {
-    "mtime": 1795410344088.39,
-    "hash": "b4b992bdd3c153aaefe4fc6ac7c3b715"
+    "mtime": 1795612786598.8633,
+    "hash": "aa570b05958a66c49cd7f5c98fff8cf0"
   },
   "docs/INSTALL-UBUNTU.md": {
-    "mtime": 1795409027759.681,
-    "hash": "b56c6a7228f19e706d6cab2971ef5584"
+    "mtime": 1795613459782.0193,
+    "hash": "e62a65edbbfdff4d212f4cd41e91e1cc"
   },
   "docx.go": {
     "mtime": 1795319663789.0942,
@@ -356,11 +356,23 @@
     "hash": "22b294eefb5c45970f6c252ec988bcf4"
   },
   "docs/INSTALL-WINDOWS.md": {
-    "mtime": 1795407455023.2092,
-    "hash": "5dcb1c0fbfd4fa07ff3ced6c61933b30"
+    "mtime": 1795613459782.351,
+    "hash": "f0cac5c153dd6599cf29d9aaf11cb2c8"
   },
   "security_test.go": {
     "mtime": 1795612448897.7358,
     "hash": "a98b9392ec3947027c5da2bb33d376b2"
+  },
+  "backup.go": {
+    "mtime": 1795613274488.2666,
+    "hash": "1119acb9f3a24d4d6487603c335b1e83"
+  },
+  "ketahanan_test.go": {
+    "mtime": 1795613254404.4397,
+    "hash": "9241aeb45657353872a7d160dc0d1847"
+  },
+  ".github/workflows/tes.yml": {
+    "mtime": 1795613027518.0417,
+    "hash": "ae8aa6f333e74999b7bbe27fff38b264"
   }
 }
