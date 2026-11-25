@@ -31,7 +31,12 @@ func init() {
 	})
 }
 
-func (a *App) backupDir() string { return filepath.Join(filepath.Dir(a.dbPath), "backups") }
+func (a *App) backupDir() string {
+	if backupDirFlag != "" {
+		return backupDirFlag
+	}
+	return filepath.Join(filepath.Dir(a.dbPath), "backups")
+}
 
 // maybeMaintain menjalankan pemeliharaan bila hari ini belum dan sudah lewat pukul 01.00.
 func (a *App) maybeMaintain() {
@@ -131,6 +136,12 @@ func (a *App) maintain() (string, bool) {
 		if rows.Close() != nil || rows.Err() != nil {
 			return
 		}
+		// database dulu: bila gagal, file dibiarkan (tidak ada tautan ke foto yang sudah hilang). File yang tersisa
+		// karena gagal dihapus akan dibersihkan oleh pembersihan file yatim.
+		if _, err := a.db.Exec(upd, args...); err != nil {
+			log.Printf("pemeliharaan: gagal mengosongkan foto lama: %v", err)
+			return
+		}
 		for _, u := range urls {
 			if name := strings.TrimPrefix(u, "/files/"); fileNameRe.MatchString(name) {
 				if os.Remove(filepath.Join(a.uploadDir(), name)) == nil {
@@ -138,7 +149,6 @@ func (a *App) maintain() (string, bool) {
 				}
 			}
 		}
-		a.db.Exec(upd, args...)
 	}
 	if d := cfgInt(cfg, "selfie_hari", 60); d > 0 {
 		cut := time.Now().AddDate(0, 0, -d).Format("2006-01-02")
@@ -152,15 +162,15 @@ func (a *App) maintain() (string, bool) {
 	}
 	// log aktivitas lama
 	if d := cfgInt(cfg, "log_hari", 365); d > 0 {
-		a.db.Exec(`DELETE FROM audit_log WHERE waktu < ?`, time.Now().AddDate(0, 0, -d).UTC().Format(time.RFC3339))
-		a.db.Exec(`DELETE FROM wa_outbox WHERE status<>'antre' AND created_at < ?`, time.Now().AddDate(0, 0, -d).UTC().Format(time.RFC3339))
+		a.execLog("pemeliharaan: hapus log lama", `DELETE FROM audit_log WHERE waktu < ?`, time.Now().AddDate(0, 0, -d).UTC().Format(time.RFC3339))
+		a.execLog("pemeliharaan: hapus riwayat WA lama", `DELETE FROM wa_outbox WHERE status<>'antre' AND created_at < ?`, time.Now().AddDate(0, 0, -d).UTC().Format(time.RFC3339))
 	}
 	// dokumen Asisten AI lama (0 = simpan selamanya)
 	if d := cfgInt(cfg, "ai_hari", 0); d > 0 {
-		a.db.Exec(`DELETE FROM ai_documents WHERE created_at < ?`, time.Now().AddDate(0, 0, -d).UTC().Format(time.RFC3339))
+		a.execLog("pemeliharaan: hapus dokumen AI lama", `DELETE FROM ai_documents WHERE created_at < ?`, time.Now().AddDate(0, 0, -d).UTC().Format(time.RFC3339))
 	}
 	// penghitung kuota Asisten AI harian (ai_pakai:<tanggal>:<user>) yang lebih dari 7 hari
-	a.db.Exec(`DELETE FROM kv WHERE k LIKE 'ai_pakai:%' AND substr(k, 10, 10) < ?`, time.Now().AddDate(0, 0, -7).Format("2006-01-02"))
+	a.execLog("pemeliharaan: hapus kuota AI lama", `DELETE FROM kv WHERE k LIKE 'ai_pakai:%' AND substr(k, 10, 10) < ?`, time.Now().AddDate(0, 0, -7).Format("2006-01-02"))
 	// 3. file yatim
 	orphans, err := a.removeOrphans(24 * time.Hour)
 	trash := a.emptyTrash(30 * 24 * time.Hour)

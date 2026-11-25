@@ -96,5 +96,8 @@ Untuk tugas terjadwal, ganti argumen di bagian 2 menjadi
 | `C:\SCH\data\backups\` | backup otomatis harian |
 | `C:\SCH\PANDUAN.md` | panduan pemakaian lengkap |
 
-Backup lengkap = salin seluruh folder `C:\SCH\data` saat server dimatikan. Cara memulihkan ada di
+Backup lengkap: menu **Pengaturan → Penyimpanan & backup → Unduh backup lengkap (.zip)**, simpan di flashdisk.
+Memulihkan: hentikan server, salin file backup ke `C:\SCH`, lalu di Command Prompt jalankan
+`C:\SCH\sch-server-windows-amd64.exe -db C:\SCH\data\sch.db -restore C:\SCH\NAMA-FILE.zip`, lalu jalankan server lagi.
+Penjelasan lengkap ada di
 [README bagian 7](../README.md#7-backup--pemulihan).

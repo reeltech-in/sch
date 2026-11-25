@@ -443,7 +443,7 @@ func (a *App) apiAbsenSelfie(c *Ctx) error {
 		return err
 	}
 	if len(curiga) > 0 {
-		a.db.Exec(`UPDATE daily_attendance SET keterangan=? WHERE siswa_id=? AND tanggal=? AND (keterangan IS NULL OR keterangan='')`,
+		a.execLog("absensi: gagal menandai selfie perlu dicek", `UPDATE daily_attendance SET keterangan=? WHERE siswa_id=? AND tanggal=? AND (keterangan IS NULL OR keterangan='')`,
 			"Selfie perlu dicek: "+strings.Join(curiga, "; "), c.U.ID, localDate())
 	}
 	return c.JSON(r)

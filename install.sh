@@ -23,6 +23,7 @@
 #   SCH_PROXY=0               1 = cloudflared/nginx di server yang sama (hanya 127.0.0.1 dipercaya)
 #   SCH_PROXY_IP=             IP proxy yang dipercaya (mis. IP mesin cloudflared); otomatis SCH_PROXY=1
 #   SCH_PROXY_HEADER=cf       cf = Cloudflare Tunnel; xff = nginx/proxy lain (CF-Connecting-IP diabaikan)
+#   SCH_BACKUP_DIR=           folder backup harian di disk lain (mis. /mnt/usb/sch-backup); kosong = data/backups
 #   SCH_DEMO=0                1 = isi data contoh (hanya bila database masih kosong)
 #   SCH_UFW=0                 1 = buka port di firewall ufw
 #   SCH_UNIT=keep             rewrite = tulis ulang file layanan systemd saat memperbarui
@@ -40,6 +41,7 @@ SCH_HTTPS_PORT="${SCH_HTTPS_PORT-3221}"
 SCH_PROXY_IP="${SCH_PROXY_IP:-}"
 SCH_PROXY_HEADER="${SCH_PROXY_HEADER:-}"
 SCH_PROXY="${SCH_PROXY:-0}"
+SCH_BACKUP_DIR="${SCH_BACKUP_DIR:-}"
 SCH_DEMO="${SCH_DEMO:-0}"
 SCH_UFW="${SCH_UFW:-0}"
 SCH_UNIT="${SCH_UNIT:-keep}"
@@ -161,6 +163,12 @@ if [ ! -f "$UNIT_FILE" ] || [ "$SCH_UNIT" = rewrite ]; then
   [ "$SCH_PROXY" = 1 ] && args="$args -proxy"
   [ -n "$SCH_PROXY_IP" ] && args="$args -proxy-ip ${SCH_PROXY_IP}"
   [ -n "$SCH_PROXY_HEADER" ] && args="$args -proxy-header ${SCH_PROXY_HEADER}"
+  rw_extra=""
+  if [ -n "$SCH_BACKUP_DIR" ]; then
+    mkdir -p "$SCH_BACKUP_DIR" && chown "${SCH_USER}:${SCH_USER}" "$SCH_BACKUP_DIR" && chmod 700 "$SCH_BACKUP_DIR"
+    args="$args -backup-dir ${SCH_BACKUP_DIR}"
+    rw_extra=" ${SCH_BACKUP_DIR}"
+  fi
   [ "$SCH_DEMO" = 1 ] && args="$args -demo"
   cat > "$UNIT_FILE" <<EOF
 [Unit]
@@ -180,7 +188,7 @@ NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=true
 PrivateTmp=true
-ReadWritePaths=${SCH_DIR}/data
+ReadWritePaths=${SCH_DIR}/data${rw_extra}
 
 [Install]
 WantedBy=multi-user.target

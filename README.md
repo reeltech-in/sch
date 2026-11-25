@@ -202,6 +202,8 @@ juga menampilkan pemakaian disk dan daftar backup untuk diunduh.
 | `-db data/sch.db` | lokasi file database (folder ini juga menyimpan upload & sertifikat) | `data/sch.db` |
 | `-reset-admin` | buat password admin baru lalu keluar (jika lupa password) | – |
 | `-demo` | isi data contoh untuk mencoba (hanya jika database kosong) | – |
+| `-backup-dir /mnt/usb/sch` | folder backup harian otomatis, sebaiknya di disk lain | `data/backups` |
+| `-restore file.zip` | pulihkan dari backup lengkap (.zip) atau database (.db) lalu keluar; server harus mati | – |
 
 Mencoba dengan data contoh, memakai database terpisah:
 ```bash
@@ -210,11 +212,18 @@ sch-server-windows-amd64.exe -db demo/sch.db -demo
 Akun contoh: guru `guru001` / `guru123`, siswa `siswa001` / `siswa123`. Token ujian contoh: `MTK26`.
 
 ## 7. Backup & pemulihan
-Semua data ada di folder `data/`: `sch.db` (database) dan `uploads/` (foto, gambar soal, e-book).
-- **Backup database**: menu **Pengaturan → Unduh backup**, minimal seminggu sekali.
-- **Backup lengkap**: salin seluruh folder `data/` ke flashdisk saat server dimatikan.
-- **Pulihkan**: matikan server, kembalikan folder `data/` (atau ganti `data/sch.db` dengan file backup
-  dan hapus `sch.db-wal` serta `sch.db-shm`), lalu jalankan lagi.
+Semua data ada di folder `data/`: `sch.db` (database) dan `uploads/` (foto, berkas PPDB, gambar soal, e-book).
+- **Backup otomatis harian** (database saja) disimpan di `data/backups/`, atau di disk lain dengan `-backup-dir`
+  (mis. flashdisk/NAS yang terpasang). Backup di disk yang sama tidak menolong bila disk server rusak.
+- **Backup lengkap**: menu **Pengaturan → Penyimpanan & backup → Unduh backup lengkap (.zip)** berisi database dan
+  semua berkas. Simpan di luar server (flashdisk/Drive/komputer lain) minimal seminggu sekali.
+- **Pulihkan**: matikan server, lalu jalankan (Windows: `sch-server-windows-amd64.exe`, Ubuntu: lihat tutorialnya)
+  ```bash
+  ./sch-server -db data/sch.db -restore sch-backup-lengkap-2026-11-25-0800.zip
+  ```
+  File `.db` (backup harian/database saja) juga bisa. Backup diperiksa keutuhannya dulu; data yang sedang terpasang
+  tidak dihapus tetapi disimpan sebagai `data/backups/sebelum-pulih-…db` dan `data/uploads-sebelum-pulih-…`. Bila
+  server masih berjalan, pemulihan ditolak. Backup dari versi lama diperbarui otomatis saat server dinyalakan.
 
 ## 8. Keamanan
 - Password disimpan sebagai hash bcrypt. Login dibatasi 5 percobaan gagal per akun per perangkat dalam 10 menit,

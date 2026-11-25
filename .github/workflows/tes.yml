@@ -1,0 +1,35 @@
+# Tes otomatis untuk setiap push dan pull request: format, vet, dan seluruh tes Go.
+# Rilis (release.yml) juga menjalankan tes, tetapi baru saat tag dibuat; ini menangkap masalah lebih awal.
+name: Tes
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  tes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Format (gofmt)
+        run: |
+          beda="$(gofmt -l .)"
+          [ -z "$beda" ] || { echo "File belum diformat gofmt:"; echo "$beda"; exit 1; }
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Tes
+        run: go test -count=1 ./...
+
+      - name: Sintaks JavaScript
+        run: for f in web/*.js; do node --check "$f" || exit 1; done

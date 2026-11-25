@@ -164,7 +164,7 @@ func (a *App) waQueue(event, kunci, hp string, vals map[string]string, rahasia b
 			return
 		}
 	}
-	a.db.Exec(`INSERT OR IGNORE INTO wa_outbox (kunci, jenis, tujuan, pesan, rahasia, next_at, created_at) VALUES (?,?,?,?,?,?,?)`,
+	a.execLog("wa: gagal memasukkan pesan ke antrean", `INSERT OR IGNORE INTO wa_outbox (kunci, jenis, tujuan, pesan, rahasia, next_at, created_at) VALUES (?,?,?,?,?,?,?)`,
 		kunci, event, to, msg, b2i(rahasia), now, now)
 }
 
@@ -251,7 +251,7 @@ func (a *App) waSendNext() bool {
 	}
 	// pesan kehadiran yang tertunda >6 jam (gateway mati / notifikasi sempat dimatikan) tidak dikirim lagi:
 	// "sudah tiba pukul 07.00" yang datang sore/esok hari menyesatkan. Pesan lain kedaluwarsa setelah 3 hari.
-	a.db.Exec(`UPDATE wa_outbox SET status='gagal', galat='kedaluwarsa: tertunda terlalu lama',
+	a.execLog("wa: gagal menandai pesan kedaluwarsa", `UPDATE wa_outbox SET status='gagal', galat='kedaluwarsa: tertunda terlalu lama',
 		pesan=CASE WHEN rahasia=1 THEN '`+waHidden+`' ELSE pesan END WHERE status='antre'
 		AND ((jenis IN ('masuk','pulang','alfa') AND created_at < ?) OR created_at < ?)`,
 		time.Now().UTC().Add(-6*time.Hour).Format(time.RFC3339), time.Now().UTC().Add(-72*time.Hour).Format(time.RFC3339))
@@ -276,7 +276,7 @@ func (a *App) waSendNext() bool {
 			status = "gagal"
 		}
 		// pesan berisi PIN yang akhirnya gagal tidak disimpan terbuka (log & backup)
-		a.db.Exec(`UPDATE wa_outbox SET status=?, percobaan=?, galat=?, next_at=?,
+		a.execLog("wa: gagal mencatat kegagalan kirim", `UPDATE wa_outbox SET status=?, percobaan=?, galat=?, next_at=?,
 			pesan=CASE WHEN rahasia=1 AND ?='gagal' THEN '`+waHidden+`' ELSE pesan END WHERE id=?`, status, try, err.Error(), next, status, id)
 		return true
 	}

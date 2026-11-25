@@ -25,6 +25,7 @@ func (a *App) routes(m *http.ServeMux) {
 	m.HandleFunc("PUT /api/settings", a.h("admin", apiPutSettings))
 	m.HandleFunc("GET /api/dashboard", a.h("admin,guru", apiDashboard))
 	m.HandleFunc("GET /api/backup", a.h("admin", a.apiBackup))
+	m.HandleFunc("GET /api/backup/lengkap", a.h("admin", a.apiBackupLengkap))
 
 	m.HandleFunc("GET /api/classes", a.h("any", apiClasses))
 	m.HandleFunc("POST /api/classes", a.h("admin", apiSaveClass))

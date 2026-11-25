@@ -8,6 +8,20 @@ Format versi: `MAYOR.MINOR.PERBAIKAN`
 Versi yang sedang berjalan terlihat di menu kiri aplikasi (bawah nama pengguna), di `GET /api/version`,
 di header respons `X-SCH-Version`, dan dengan perintah `sch-server -version`.
 
+## v1.29.0 — 2026-11-25 (Backup lengkap & pemulihan, hasil audit ketahanan)
+- **Backup lengkap**: tombol baru di Pengaturan → Penyimpanan & backup mengunduh satu file **.zip** berisi database
+  dan semua berkas (foto, berkas PPDB, gambar soal, e-book). Sebelumnya backup hanya berisi database, sehingga
+  pemulihan meninggalkan foto & berkas yang hilang. Backup berjalan tanpa mengganggu pemakaian (login tetap normal).
+- **Pemulihan yang aman**: `sch-server -db data/sch.db -restore <file.zip atau .db>`. Backup diperiksa keutuhannya
+  dulu, data yang sedang terpasang disimpan (tidak dihapus), dan pemulihan ditolak bila server masih berjalan.
+- **Backup harian di disk lain**: pilihan `-backup-dir` (install.sh: `SCH_BACKUP_DIR`) untuk flashdisk/NAS.
+- Halaman yang mengalami galat tak terduga kini menampilkan pesan "muat ulang halaman", bukan diam membeku.
+- Penyimpanan yang gagal kini tidak lagi diam-diam setengah tersimpan: simpan kelulusan dan ubah nama tahun ajaran
+  melaporkan galatnya; pembersihan foto lama memperbarui database dulu sebelum menghapus file (tidak ada lagi tautan
+  ke foto yang sudah hilang); kegagalan catatan aktivitas, antrean WhatsApp, dan pembersihan berkala tercatat di log.
+- Pengembang: tes otomatis berjalan di GitHub untuk setiap push (format, vet, tes, sintaks JS); tes baru untuk backup &
+  pemulihan, alur materi–tugas–nilai, kasir, dan PPDB sampai menjadi siswa.
+
 ## v1.28.4 — 2026-11-25 (Perbaikan login & cek kelulusan massal, unduhan lambat)
 Sangat disarankan bagi yang sudah memasang v1.28.1–v1.28.3.
 - **Perbaikan regresi v1.28.1: login massal.** Ratusan siswa yang login bersamaan dari jaringan sekolah (satu IP)

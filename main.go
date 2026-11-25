@@ -35,6 +35,8 @@ func main() {
 	maxGB := flag.Float64("upload-max-gb", 5, "batas total ukuran file upload (GB)")
 	showVer := flag.Bool("version", false, "tampilkan versi lalu keluar")
 	backupTo := flag.String("backup", "", "buat salinan database yang konsisten ke file ini lalu keluar (dipakai skrip deploy)")
+	restoreFrom := flag.String("restore", "", "pulihkan dari file backup (.db atau .zip backup lengkap) lalu keluar; server harus dimatikan dulu")
+	flag.StringVar(&backupDirFlag, "backup-dir", "", "folder backup harian otomatis, sebaiknya di disk lain (USB/NAS). Kosong = <folder data>/backups")
 	proxyIP := flag.String("proxy-ip", "", "IP/CIDR proxy yang dipercaya, pisahkan koma (mis. IP VM cloudflared). Kosong = hanya proxy di komputer ini (127.0.0.1)")
 	flag.StringVar(&proxyHeader, "proxy-header", "cf", "sumber IP asli di mode proxy: cf = Cloudflare Tunnel (CF-Connecting-IP), xff = nginx/proxy lain (elemen terakhir X-Forwarded-For)")
 	flag.Parse()
@@ -77,6 +79,15 @@ func main() {
 	uploadMaxBytes = int64(*maxGB * (1 << 30))
 	if *showVer {
 		fmt.Println("SCH", versionString())
+		return
+	}
+	if *restoreFrom != "" {
+		ringkas, err := pulihkanBackup(*dbPath, *restoreFrom)
+		if err != nil {
+			log.Fatal("pemulihan dibatalkan: ", err)
+		}
+		fmt.Println(ringkas)
+		fmt.Println("Selesai. Jalankan server lagi; database diperbarui otomatis bila backup berasal dari versi lama.")
 		return
 	}
 	if *backupTo != "" {

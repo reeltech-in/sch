@@ -132,7 +132,7 @@ func (a *App) audit(r *http.Request, u *User, aksi string, status int, detail st
 	if len(detail) > 500 {
 		detail = detail[:500]
 	}
-	a.db.Exec(`INSERT INTO audit_log (waktu, user_id, nama, role, aksi, status, ip, detail) VALUES (?,?,?,?,?,?,?,?)`,
+	a.execLog("audit: gagal mencatat aktivitas", `INSERT INTO audit_log (waktu, user_id, nama, role, aksi, status, ip, detail) VALUES (?,?,?,?,?,?,?,?)`,
 		nowStr(), uid, nama, role, aksi, status, clientIP(r), nullIfEmpty(detail))
 }
 
@@ -196,4 +196,12 @@ func pageParams(c *Ctx, def int) (int, int) {
 // longBody: perpanjang batas waktu baca untuk upload besar lewat jaringan lambat (HP, sinyal lemah).
 func (c *Ctx) longBody() {
 	http.NewResponseController(c.W).SetReadDeadline(time.Now().Add(10 * time.Minute))
+}
+
+// execLog menjalankan perintah tulis yang kegagalannya tidak perlu menggagalkan permintaan (log, antrean, kuota,
+// pembersihan berkala), tetapi harus terlihat di log server agar masalah database tidak tersembunyi.
+func (a *App) execLog(what, q string, args ...any) {
+	if _, err := a.db.Exec(q, args...); err != nil {
+		log.Printf("%s: %v", what, err)
+	}
 }

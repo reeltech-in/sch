@@ -141,7 +141,9 @@ func migTahunAjaran(tx *sql.Tx) error {
 		if _, err := tx.Exec(`INSERT INTO academic_years (nama, aktif, created_at) VALUES (?,1,?)`, tn, nowStr()); err != nil {
 			return err
 		}
-		tx.Exec(`UPDATE settings SET tahun_ajaran=? WHERE id=1`, tn)
+		if _, err := tx.Exec(`UPDATE settings SET tahun_ajaran=? WHERE id=1`, tn); err != nil {
+			return err
+		}
 	}
 	var aktif int64
 	if err := tx.QueryRow(`SELECT id FROM academic_years WHERE aktif=1 ORDER BY id LIMIT 1`).Scan(&aktif); err != nil {

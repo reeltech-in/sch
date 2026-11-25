@@ -58,7 +58,9 @@ func apiGraduationSave(c *Ctx) error {
 	for _, it := range in.Items {
 		switch it.Status {
 		case "":
-			tx.Exec(`DELETE FROM graduation WHERE siswa_id=?`, it.SiswaID)
+			if _, err := tx.Exec(`DELETE FROM graduation WHERE siswa_id=?`, it.SiswaID); err != nil {
+				return err
+			}
 			continue
 		case "lulus", "tidak_lulus", "ditunda":
 		default:

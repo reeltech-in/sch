@@ -266,7 +266,7 @@ func (c *Ctx) aiUsedToday() int {
 }
 
 func (c *Ctx) aiCountUse() {
-	c.A.db.Exec(`INSERT INTO kv (k, v) VALUES (?, '1') ON CONFLICT (k) DO UPDATE SET v=CAST(v AS INTEGER)+1`, aiUsageKey(c.U.ID))
+	c.A.execLog("ai: gagal menghitung kuota", `INSERT INTO kv (k, v) VALUES (?, '1') ON CONFLICT (k) DO UPDATE SET v=CAST(v AS INTEGER)+1`, aiUsageKey(c.U.ID))
 }
 
 func apiAIStatus(c *Ctx) error {

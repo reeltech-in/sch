@@ -1422,6 +1422,20 @@ async function renderPublicOrLogin() {
 }
 window.addEventListener('hashchange', () => { if (!S.user) renderPublicOrLogin(); });
 
+// Galat tak tertangkap (bug tampilan, janji yang gagal tanpa catch): beri tahu pengguna daripada layar diam membeku.
+// Galat dari ekstensi browser / skrip luar diabaikan; permintaan yang sengaja dibatalkan juga diabaikan.
+let galatTerakhir = 0;
+function galatGlobal(err, sumber) {
+  if (err && (err.name === 'AbortError' || /ResizeObserver/.test(String(err.message || err)))) return;
+  if (sumber && !String(sumber).startsWith(location.origin)) return;
+  console.error('SCH galat tak tertangkap:', err);
+  if (Date.now() - galatTerakhir < 10000) return; // jangan membanjiri layar
+  galatTerakhir = Date.now();
+  try { toast('Terjadi galat di halaman ini. Bila ada yang tidak berjalan, muat ulang halaman (tarik ke bawah / F5).', 'bad'); } catch (_) { /* toast belum siap */ }
+}
+window.addEventListener('error', e => galatGlobal(e.error || e.message, e.filename));
+window.addEventListener('unhandledrejection', e => galatGlobal(e.reason));
+
 // Dijalankan setelah semua file modul dimuat
 window.addEventListener('DOMContentLoaded', async function boot() {
   try {

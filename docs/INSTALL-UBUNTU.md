@@ -76,6 +76,7 @@ Tambahkan variabel sebelum `bash` (pemasangan lewat `curl`) atau sebelum `./inst
 | `SCH_PROXY` | `0` | `1` = mode proxy untuk cloudflared/nginx di server yang **sama** (hanya 127.0.0.1 dipercaya) |
 | `SCH_PROXY_HEADER` | `cf` | `cf` = Cloudflare Tunnel; `xff` = **wajib** bila di belakang nginx/proxy lain (bukan Cloudflare), agar header `CF-Connecting-IP` kiriman pengunjung diabaikan. nginx harus mengisi `proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;` |
 | `SCH_DEMO` | `0` | `1` = isi data contoh untuk mencoba (hanya bila database kosong) |
+| `SCH_BACKUP_DIR` | – | folder backup harian di disk lain, mis. `/mnt/usb/sch-backup` (pasang disknya dulu, otomatis menyala saat boot) |
 | `SCH_UFW` | `0` | `1` = buka port di firewall `ufw` |
 | `SCH_TEST` | `0` | `1` = jalankan tes otomatis sebelum memasang |
 | `SCH_DIR` | `/opt/sch` | folder program & data |
@@ -132,6 +133,7 @@ tambahkan `SCH_UNIT=rewrite` beserta pengaturan barunya.
 | restart | `sudo systemctl restart sch` |
 | versi aktif | `curl -s http://127.0.0.1:3220/api/version` |
 | backup manual | `sudo -u sch /opt/sch/sch-server -db /opt/sch/data/sch.db -backup /opt/sch/data/backups/manual-$(date +%F).db` |
+| pulihkan backup | salin file backup ke `/opt/sch/data/`, lalu `sudo systemctl stop sch && sudo -u sch /opt/sch/sch-server -db /opt/sch/data/sch.db -restore /opt/sch/data/NAMA-FILE.zip && sudo systemctl start sch` |
 | lupa password admin | `sudo systemctl stop sch && sudo -u sch /opt/sch/sch-server -db /opt/sch/data/sch.db -reset-admin && sudo systemctl start sch` |
 | kembali ke versi lama | `ls /opt/sch/releases` lalu `sudo ln -sfn releases/sch-server-v1.17.1 /opt/sch/sch-server && sudo systemctl restart sch` |
 

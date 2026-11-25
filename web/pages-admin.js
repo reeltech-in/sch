@@ -400,9 +400,12 @@ async function storageCard() {
     ${bs.length ? `<div class="tw" style="max-height:220px;overflow:auto"><table><tbody>${bs.map(b => `<tr><td>${esc(b.nama)}<small class="muted">${fmtDT(b.waktu)} · ${fmtBytes(b.ukuran)}</small></td>
       <td><a class="btn ghost sm" href="/api/backups/${encodeURIComponent(b.nama)}" download>${ico('download')} Unduh</a></td></tr>`).join('')}</tbody></table></div>`
       : '<p class="muted">Belum ada. Backup dibuat otomatis setiap hari setelah pukul 01.00.</p>'}
-    <div class="acts" style="justify-content:flex-start;margin-top:12px"><a class="btn" href="/api/backup" download>${ico('db')} Unduh backup sekarang</a>${btn('Jalankan pemeliharaan', 'maintNow', {}, 'ghost')}</div>
-    <div class="hint" style="margin-top:14px">Simpan salinan backup di luar server (flashdisk/Drive) minimal seminggu sekali. Untuk memulihkan: matikan server, ganti
-      <code>data/sch.db</code> dengan file backup (ganti nama menjadi <code>sch.db</code>), lalu nyalakan lagi.</div></section>`;
+    <p class="muted" style="margin:6px 0 0">Backup harian hanya berisi database. Foto, berkas PPDB, gambar soal, dan e-book ikut di <b>backup lengkap</b>.</p>
+    <div class="acts" style="justify-content:flex-start;margin-top:12px"><a class="btn" href="/api/backup/lengkap" download>${ico('db')} Unduh backup lengkap (.zip)</a>
+      <a class="btn ghost" href="/api/backup" download>${ico('download')} Database saja</a>${btn('Jalankan pemeliharaan', 'maintNow', {}, 'ghost')}</div>
+    <div class="hint" style="margin-top:14px">Simpan backup lengkap di luar server (flashdisk/Drive/komputer lain) minimal seminggu sekali; backup otomatis ada di disk
+      yang sama dengan server. Untuk memulihkan: matikan server, lalu jalankan <code>sch-server -db data/sch.db -restore nama-file-backup.zip</code>
+      (atau file <code>.db</code>), lalu nyalakan lagi. Data yang sedang terpasang tidak dihapus, tetapi disimpan sebagai <code>sebelum-pulih-…</code>.</div></section>`;
 }
 ACT.maintNow = async el => {
   if (!(await confirmBox('Jalankan pemeliharaan sekarang? Backup dibuat, foto kedaluwarsa dan file yatim dihapus.', 'Jalankan', ''))) return;
