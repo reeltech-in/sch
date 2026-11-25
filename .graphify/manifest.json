@@ -60,8 +60,8 @@
     "hash": "43a60e4fc6816689e90f4fee46a52f9d"
   },
   "modules.go": {
-    "mtime": 1795409423893.9814,
-    "hash": "64925b73995e1c27886985e6f5e3ac02"
+    "mtime": 1795612598533.3982,
+    "hash": "f437f6fd3a1fd1a63a69cdc6bc37e20c"
   },
   "ops.go": {
     "mtime": 1795319293536.8193,
@@ -116,8 +116,8 @@
     "hash": "e23343d8c9827b32230cc0d7b142ab21"
   },
   "CHANGELOG.md": {
-    "mtime": 1795410270309.0266,
-    "hash": "2cb9ea686503f2773227e2c871a0f587"
+    "mtime": 1795612736637.9028,
+    "hash": "3f882376762aee0a038a41bbdb882755"
   },
   "README.md": {
     "mtime": 1795409678363.8489,
@@ -184,16 +184,16 @@
     "hash": "a9d389d7d7565edaf000ad21f7e9b36c"
   },
   "auth.go": {
-    "mtime": 1795409296834.8545,
-    "hash": "4a50370b827aa4a652002288e69acf6f"
+    "mtime": 1795612449113.7007,
+    "hash": "d123adf5832df0c4ffb37c4d7ddc5580"
   },
   "handler.go": {
     "mtime": 1795319293532.5886,
     "hash": "e3b04786608b1a330e21badd23257eb6"
   },
   "limiter.go": {
-    "mtime": 1795409102055.1702,
-    "hash": "bfa7d5cad6df59018512212999650980"
+    "mtime": 1795612590701.2388,
+    "hash": "05c2e86a5668edb4c08e7c0dd7643e37"
   },
   "mod_bukuinduk.go": {
     "mtime": 1795319293533.8767,
@@ -216,12 +216,12 @@
     "hash": "50e3f4ad08700b52514f51d0071bfd7f"
   },
   "mod_kelulusan.go": {
-    "mtime": 1795409027761.0996,
-    "hash": "36837ecfd1095a3d06ef78451579d4fa"
+    "mtime": 1795612366346.3105,
+    "hash": "c049583f95a0c673af24c38dc3ef3d70"
   },
   "mod_ppdb.go": {
-    "mtime": 1795409423893.875,
-    "hash": "e8bbf611f68b661c5ffc301c0c93ca72"
+    "mtime": 1795612366346.529,
+    "hash": "d296ebd8b95195104c9496d196428978"
   },
   "mod_surat.go": {
     "mtime": 1795319293535.8586,
@@ -280,8 +280,8 @@
     "hash": "659cf2388215daebdbc71f62c2c866a9"
   },
   ".graphify/GRAPH_REPORT.md": {
-    "mtime": 1795409950738.9622,
-    "hash": "e8000ebe7090c44abcadc2d9f8056475"
+    "mtime": 1795410344088.39,
+    "hash": "b4b992bdd3c153aaefe4fc6ac7c3b715"
   },
   "docs/INSTALL-UBUNTU.md": {
     "mtime": 1795409027759.681,
@@ -360,7 +360,7 @@
     "hash": "5dcb1c0fbfd4fa07ff3ced6c61933b30"
   },
   "security_test.go": {
-    "mtime": 1795409678363.47,
-    "hash": "b7dcabf71881978d0b9cec665fe088bb"
+    "mtime": 1795612448897.7358,
+    "hash": "a98b9392ec3947027c5da2bb33d376b2"
   }
 }
